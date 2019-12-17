@@ -1,0 +1,526 @@
+function summarizeAnalysis(analysis, summaryFile)
+	%% summarize active vs. passive
+
+	recordingModeLabels = {'Active MMR', 'Passive MMR' };
+		...'Passive Silence'};
+	modeCount = length(recordingModeLabels);
+
+	% sessions and their analyses selected for summarizing
+	sessions = {};
+
+	% summary struct
+	s = struct();
+	s.type = 'summary';
+	s.unitCount = modeCount;
+	s.units = cell(s.unitCount, 1);
+	s.targetFreqs = [];
+	s.targetLevels = [];
+	s.animalNames = {};
+
+
+	%% select matching active and passive sessions from analysis
+	for analysisID = 1:length(analysis)
+		a = analysis{analysisID};
+
+		if isfield(a, 'experimentMode'); a.mode = a.experimentMode; end
+		if isfield(a, 'experimentStart'); a.time = a.experimentStart; end
+		if isfield(a, 'experimentStartStr')
+			a.timeStr = a.experimentStartStr; end
+
+		% only compatible with EARS
+		if ~strcmpi(a.version, 'ears'); continue; end
+
+		mode = recordingMode(a);
+		if mode == 0; continue; end
+
+		% find matching date
+		id2 = 0;
+		for sessionID = 1:length(sessions)
+			for mode2 = 1:length(sessions{sessionID})
+				a2 = sessions{sessionID}{mode2};
+				if ~isempty(a2) && isSameDay(a.time, a2.time)
+					id2 = sessionID;
+					break;
+				end
+			end % mode2
+			if id2 ~= 0; break; end
+		end % analysisID2
+
+		% if no matching date found, append
+		if id2 == 0
+			sessions{end+1} = cell(2,1);
+			id2 = length(sessions);
+		end
+
+		sessions{id2}{mode} = a;
+	end % analysisID
+
+
+	%% drop cells that don't have both 'Active MMR' and 'Passive MMR'
+	drop = [];
+	for sessionID = 1:length(sessions)
+		if length(sessions{sessionID})<modeCount
+			drop = [drop, sessionID];
+			continue;
+		end
+
+		blank = false;
+		for mode = 1:modeCount
+			if isempty(sessions{sessionID}{mode})
+				blank = true;
+			elseif any(sessions{sessionID}{mode}.trialCountPerCond<10)
+				blank = true;
+			end
+		end
+		if blank
+			drop = [drop, sessionID];
+			continue;
+		end
+
+		% TODO: match target conditions
+		a1 = sessions{sessionID}{1};
+		a2 = sessions{sessionID}{2};
+		if ~isequal(a1.targetLevels, a2.targetLevels)
+			drop = [drop, sessionID];
+			continue;
+		end
+	% 	c1 = setdiff(a1.targetLevels, a2.targetLevels);
+	% 	c2 = setdiff(a2.targetLevels, a1.targetLevels);
+	end
+	drop = unique(drop);
+	sessions(drop) = [];
+
+
+	%% get all target stimulus conditions
+	for sessionID = 1:length(sessions)
+		for mode = 1:length(sessions{sessionID})
+			a = sessions{sessionID}{mode};
+	% 		if isempty(a); continue; end
+			s.animalNames = [s.animalNames a.animalName];
+			s.targetFreqs  = [s.targetFreqs , a.targetFreqs ];
+			s.targetLevels = [s.targetLevels, a.targetLevels];
+		end
+	end
+	s.animalName = unique(s.animalNames);
+	s.targetFreqs  = unique(s.targetFreqs);
+	s.targetLevels = unique(s.targetLevels);
+	s.targetFreqs = [1];
+% 	s.targetLevels = [40 50 60];
+	% the `unique` function has a weird behavior that returns a 0x1 vectors
+	% when acting on empty vectors, next 2 lines fix this
+	if isempty(s.targetFreqs ); s.targetFreqs  = []; end
+	if isempty(s.targetLevels); s.targetLevels = []; end
+	s.condCount = length(s.targetFreqs) ...
+		* length(s.targetLevels) + 1;    % +1 for nogo
+	s.targetDuration = sessions{1}{1}.targetDuration;
+	s.viewBounds = sessions{1}{1}.viewBounds;
+	s.unitCountPerCond = num2cell(zeros(1,s.condCount));
+	s.spikeConfig = sessions{1}{1}.spikeConfig;
+
+
+	%% setup summary units, each of which represent a specific recording mode
+	for modeID = 1:s.unitCount
+		u1 = sessions{1}{1}.units{1};
+
+		u = struct();
+		u.spikeConfig = u1.spikeConfig;
+		u.type = 'Summary';
+		u.condCount = s.condCount;
+		u.targetFreqs = s.targetFreqs;
+		u.targetLevels = s.targetLevels;
+		u.targetDuration = s.targetDuration;
+		u.viewBounds = s.viewBounds;
+
+		u.psthBin = u1.psthBin;
+		u.psthWin = u1.psthWin;
+		u.psthEdges = u1.psthEdges;
+		u.psthCenters = u1.psthCenters;
+		u.baseFreqs = u1.baseFreqs;
+		u.vectorBins = u1.vectorBins;
+		u.vectorBinNames = u1.vectorBinNames;
+		u.label = recordingModeLabels{modeID};
+
+		cc = cell(s.condCount, 5); % 5: scores
+
+		u.animalNames = cc;
+		u.sessionIDs = cc;
+		u.unitIDs = cc;
+		u.unitTypes = cc;
+		u.tonic = cc;
+		u.phasic = cc;
+		u.phasicSuppressing = cc;
+		u.phasicEnhancing = cc;
+		u.phasicNoChange = cc;
+		u.psth = cc;
+		u.psthMean = cc;
+		u.psthSTD = cc;
+		u.dPrimeCQMean = cc;
+		u.dPrimeCQMeanMean = cc;
+		u.dPrimeCQMeanErr = cc;
+		u.dPrimeCQSum = cc;
+		u.dPrimeBehavior = cell(s.condCount,1);
+		u.mfsl = cc;
+		u.mfslMean = cc;
+		u.mfslErr = cc;
+		u.maxFiring = cc;
+		u.maxFiringMean = cc;
+		u.maxFiringErr = cc;
+		u.meanFiring = cc;
+		u.meanFiringMean = cc;
+		u.meanFiringErr = cc;
+		u.vectorStrength = cc;
+		u.vectorStrengthMean = cc;
+		u.vectorStrengthErr = cc;
+		for condID = 1:u.condCount
+			for scoreID = 1:5
+				u.vectorStrength{condID,scoreID} = ...
+					cell(size(u.vectorBins,1), length(u.baseFreqs));
+			end
+		end
+
+		s.units{modeID} = u;
+	end
+
+
+	%% select target responding units and gather their activation metrics
+	s.singleUnits = 0;
+	s.multiUnits = 0;
+	s.targetRespondingUnits = 0;
+	s.targetRespondingUnits2 = [0 0];
+	s.tonicUnits = 0;
+	s.tonicUnits2 = [0 0];
+	s.phasicUnits = 0;
+	s.phasicUnits2 = [0 0];
+	s.phasicSuppressingUnits = 0;
+	s.phasicEnhancingUnits = 0;
+	s.phasicNoChangeUnits = 0;
+	for sessionID = 1:length(sessions)
+		for unitID = 1:sessions{sessionID}{1}.unitCount
+			% check if unit is auditory
+			targetResponse = 0;
+			phasic = 0;
+			for mode = 1:length(sessions{sessionID})
+				a = sessions{sessionID}{mode};
+	% 			if isempty(a); continue; end
+				u = a.units{unitID};
+				for uCondID = 2:u.condCount
+					sCondID = mapCondID(uCondID, u, s);
+					if sCondID==0; continue; end % for omitted conditions
+					
+					if u.dPrimeOnset{uCondID,1} > .3
+						targetResponse = targetResponse+1; end
+					if u.dPrimePeri{uCondID,1} > .3
+						targetResponse = targetResponse+1; end
+					if u.dPrimeOffset{uCondID,1} > .3
+						targetResponse = targetResponse+1; end
+% 					if any(abs(u.dPrime{uCondID,1}(0<=u.psthCenters & ...
+% 							u.psthCenters<u.targetDuration+50e-3)) > 1)
+% 						targetResponse = targetResponse+1;
+% 					end
+				end
+				
+				baseFreq = u.baseFreqs==10;
+				for uCondID = 1:u.condCount
+					sCondID = mapCondID(uCondID, u, s);
+					if sCondID==0; continue; end % for omitted conditions
+					
+					for binID = 1:size(u.vectorBins,1)
+						vs = u.vectorStrength{uCondID,1}{binID,baseFreq};
+						p = u.vectorPVal{uCondID,1}{binID,baseFreq};
+						if isnan(vs)
+							fprintf(['NAN: cond %d, bin %d, ' ...
+								'channel %d, %s\n'], uCondID, binID, ...
+								a.channels(unitID), u.dataFile);
+						end
+						if p<.001
+							phasic = phasic+1;
+						end
+					end
+				end
+			end
+
+			% does unit respond to target?
+			if targetResponse < 2; continue; end
+			
+			if isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
+					strcmpi(sessions{sessionID}{1}.spikeConfig, 'sorted')
+				unitType = sessions{sessionID}{1}.units{unitID}.type;
+				if strcmpi(unitType, 'single')
+					unitType2 = 1;
+					s.singleUnits = s.singleUnits + 1;
+				elseif strcmpi(unitType, 'multi')
+					unitType2 = 2;
+					s.multiUnits = s.multiUnits + 1;
+				end
+			end
+			
+			% for backwards compatibility
+			sorted = isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
+				any(strcmpi(sessions{sessionID}{1}.spikeConfig, ...
+				{'sorted', 'sortedjoint'})) || ...
+				isfield(sessions{sessionID}{1}.units{1},'spikeConfig')&&...
+				any(strcmpi(sessions{sessionID}{1}.units{1}.spikeConfig,...
+				{'sorted', 'sortedjoint'})) || ...
+				strcmpi(sessions{sessionID}{1}.units{unitID}.type, ...
+				'single');
+			
+			s.targetRespondingUnits = s.targetRespondingUnits + 1;
+			s.targetRespondingUnits2(unitType2) = ...
+				s.targetRespondingUnits2(unitType2) + 1;
+
+			% does unit respond to masker?
+			phasic = phasic>=2;
+			if phasic
+				s.phasicUnits = s.phasicUnits + 1;
+				s.phasicUnits2(unitType2) = s.phasicUnits2(unitType2) + 1;
+			else
+				s.tonicUnits2(unitType2) = s.tonicUnits2(unitType2) + 1;
+			end
+
+			% is unit masker suppressing?
+			phasicSuppressing = false;
+			phasicEnhancing = false;
+			phasicNoChange = false;
+			if phasic
+				u1 = sessions{sessionID}{1}.units{unitID};
+				u2 = sessions{sessionID}{2}.units{unitID};
+				baseFreq = u.baseFreqs==10;
+
+				for binID = 1:size(u.vectorBins,1)
+					vs1 = cellfun(@(c)c{binID,baseFreq}, ...
+						u1.vectorStrength(:,1));
+					vs2 = cellfun(@(c)c{binID,baseFreq}, ...
+						u2.vectorStrength(:,1));
+					if ttest(vs1, vs2)
+						if mean(vs1) < mean(vs2)
+							phasicSuppressing = true;
+						else
+							phasicEnhancing = true;
+						end
+					end
+				end
+				phasicNoChange = ~phasicSuppressing && ~phasicEnhancing;
+			end
+			
+			if phasicSuppressing
+				s.phasicSuppressingUnits = s.phasicSuppressingUnits + 1;
+			elseif phasicEnhancing
+				s.phasicEnhancingUnits = s.phasicEnhancingUnits + 1;
+			elseif phasicNoChange
+				s.phasicNoChangeUnits = s.phasicNoChangeUnits + 1;
+			end
+			
+			if phasic
+				phasicOrTonic = 'phasic';
+			else
+				phasicOrTonic = 'tonic';
+			end
+			
+			if sorted
+				fprintf('Selecting unit %d from %s on %s as %s\n', ...
+					sessions{sessionID}{1}.units{unitID}.number, ...
+					sessions{sessionID}{1}.animalName, ...
+					sessions{sessionID}{1}.timeStr, phasicOrTonic);
+			else
+				fprintf('Selecting channel %d from %s on %s as %s\n', ...
+					sessions{sessionID}{1}.channels(unitID), ...
+					sessions{sessionID}{1}.animalName, ...
+					sessions{sessionID}{1}.timeStr, phasicOrTonic);
+			end
+
+			for mode = 1:length(sessions{sessionID})
+				a = sessions{sessionID}{mode};
+				a = calculatePerformance(a);
+	% 			if isempty(a); continue; end
+				u = a.units{unitID};
+				for uCondID = 1:u.condCount
+					% map condition ID from unit to summary
+					sCondID = mapCondID(uCondID, u, s);
+					
+					% skip if a particular condition is not included in the
+					% summary analysis
+					if sCondID==0; continue; end
+
+					for scoreID = 1:5
+						% check if there have been any trials for the current
+						% condition and score pair
+						psth = u.psthMean{uCondID,scoreID};
+						if isempty(psth); continue; end
+
+						% keep a list of summarized animal names and unit IDs
+						% (different unit numbering scheme) 
+						s.units{mode}.animalNames{sCondID,scoreID}{end+1} = ...
+							a.animalName;
+						s.units{mode}.sessionIDs{sCondID,scoreID}(end+1) = ...
+							sessionID;
+						s.units{mode}.unitIDs{sCondID,scoreID}(end+1) = ...
+							s.targetRespondingUnits;
+						
+						s.units{mode}.unitTypes{sCondID,scoreID}{end+1} = ...
+							u.type;
+					
+						% does unit respond to masker?
+						s.units{mode}.tonic{ ...
+							sCondID,scoreID}(end+1) = ~phasic;
+						s.units{mode}.phasic{ ...
+							sCondID,scoreID}(end+1) = phasic;
+						s.units{mode}.phasicSuppressing{ ...
+							sCondID,scoreID}(end+1) = phasicSuppressing;
+						s.units{mode}.phasicEnhancing{ ...
+							sCondID,scoreID}(end+1) = phasicEnhancing;
+						s.units{mode}.phasicNoChange{ ...
+							sCondID,scoreID}(end+1) = phasicNoChange;
+
+						% psth
+						s.units{mode}.psth{sCondID,scoreID}(end+1,:) = psth;
+
+						% d'
+						dPrime = u.dPrimeCQMean{uCondID,scoreID};
+						pre = find(u.psthCenters < 0);
+						dPrime = dPrime - dPrime(pre(end));
+						s.units{mode}.dPrimeCQMean{sCondID,scoreID}( ...
+							end+1,:) = dPrime;
+						
+						dPrime = u.dPrimeCQSum{uCondID,scoreID};
+						pre = find(u.psthCenters < 0);
+						dPrime = dPrime - dPrime(pre(end));
+						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
+							end+1,:) = dPrime;
+
+						% vector strength
+						for binID = 1:size(u.vectorBins,1)
+							for baseFreqID = 1:length(u.baseFreqs)
+								vec = u.vectorStrength{ ...
+									uCondID,scoreID}{binID,baseFreqID};
+								s.units{mode}.vectorStrength{ ...
+									sCondID,scoreID}{binID,baseFreqID}( ...
+									end+1) = vec;
+							end
+						end
+
+						% mfsl (minimum first spike latency)
+						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = ...
+							u.mfsl{uCondID,scoreID};
+
+						% max firing rate
+						s.units{mode}.maxFiring{sCondID,scoreID}(end+1) = ...
+							u.maxFiring{uCondID,scoreID};
+
+						% max firing rate
+						s.units{mode}.meanFiring{sCondID,scoreID}(end+1) = ...
+							u.meanFiring{uCondID,scoreID};
+					end
+					
+					if isempty(u.psthMean{uCondID,1}); continue; end
+					
+					if mode==1
+						s.unitCountPerCond{sCondID} = ...
+							s.unitCountPerCond{sCondID} + 1;
+					end
+					
+					s.units{mode}.dPrimeBehavior{sCondID}(end+1) = ...
+						a.dPrimeBehavior{uCondID};
+				end
+			end
+		end
+	end
+
+	fprintf(['Selected %d target responding, %d tonic, %d phasic, ' ...
+		'%d phasic suppressing, %d phasic enhancing & ' ...
+		'%d phasic no-change units\n'], ...
+		s.targetRespondingUnits, s.tonicUnits, s.phasicUnits, ...
+		s.phasicSuppressingUnits, s.phasicEnhancingUnits, ...
+		s.phasicNoChangeUnits);
+	
+	if sorted
+		fprintf('Target responding: '); disp(s.targetRespondingUnits2);
+		fprintf('Phasic: '); disp(s.phasicUnits2);
+		fprintf('Tonic: '); disp(s.tonicUnits2);
+	end
+
+
+	%% calculate mean and std of psth and d'
+	for modeID = 1:s.unitCount
+		for condID = 1:s.condCount
+			for scoreID = 1:5
+				% psth
+				psth = s.units{modeID}.psth{condID,scoreID};
+				s.units{modeID}.psthMean{condID,scoreID} = ...
+					mean(psth, 1);
+				s.units{modeID}.psthSTD{condID,scoreID} = ...
+					std(psth, 0, 1) / sqrt(size(psth, 1));    % sem
+
+				% cumulative quadratic mean of d'
+				dPrime = s.units{modeID}.dPrimeCQMean{condID,scoreID};
+				s.units{modeID}.dPrimeCQMeanMean{condID,scoreID} = ...
+					mean(dPrime, 1);
+				s.units{modeID}.dPrimeCQMeanErr{condID,scoreID} = ...
+					std(dPrime, 0,1) / sqrt(size(dPrime,1));    % sem
+
+				% vector strength
+				for binID = 1:size(s.units{modeID}.vectorBins,1)
+					for baseFreqID = 1:length(s.units{modeID}.baseFreqs)
+						vec = s.units{modeID}.vectorStrength{ ...
+							condID,scoreID}{binID,baseFreqID};
+						s.units{modeID}.vectorStrengthMean{ ...
+							condID,scoreID}{binID,baseFreqID} = ...
+							mean(vec);
+						s.units{modeID}.vectorStrengthErr{ ...
+							condID,scoreID}{binID,baseFreqID} = ...
+							std(vec) / sqrt(length(vec));    % sem
+					end
+				end
+
+				% mfsl (minimum first spike latency)
+				mfsl = s.units{modeID}.mfsl{condID,scoreID};
+				s.units{modeID}.mfslMean{condID,scoreID} = ...
+					mean(mfsl);
+				s.units{modeID}.mfslErr{condID,scoreID} = ...
+					std(mfsl, 0) / sqrt(length(mfsl));    % sem
+
+				% max firing rate
+				maxFiring = s.units{modeID}.maxFiring{condID,scoreID};
+				s.units{modeID}.maxFiringMean{condID,scoreID} = ...
+					mean(maxFiring);
+				s.units{modeID}.maxFiringErr{condID,scoreID} = ...
+					std(maxFiring, 0) / sqrt(length(maxFiring));    % sem
+
+				% mean firing rate
+				meanFiring = s.units{modeID}.meanFiring{condID,scoreID};
+				s.units{modeID}.meanFiringMean{condID,scoreID} = ...
+					mean(meanFiring);
+				s.units{modeID}.meanFiringErr{condID,scoreID} = ...
+					std(meanFiring, 0) / sqrt(length(meanFiring));    % sem
+			end
+		end
+	end
+
+
+	%% save merged analysis in a .mat file
+	analysis = {s};
+	fprintf('Saving summary of analysis to %s\n', summaryFile);
+	save(summaryFile, 'analysis', '-v7.3');
+
+% 	fprintf('Done\n');
+end
+
+
+%% helper functions
+function res = recordingMode(a)
+	res = 0;
+	if strcmpi(a.mode, 'go nogo') && ...
+			strcmpi(a.maskerFile, 'supermasker.wav') && ...
+			a.maskerLevel == 50 && ...
+			isequal(a.targetFreqs, 1)
+		res = 1;
+	elseif strcmpi(a.mode, 'passive') && ...
+			strcmpi(a.maskerFile, 'supermasker.wav') && ...
+			a.maskerLevel == 50 && ...
+			isequal(a.targetFreqs, 1)
+		res = 2;
+% 	elseif strcmpi(a.mode, 'passive') && ...
+% 			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
+% 			isequal(a.targetFreqs, 1)
+% 		res = 3;
+	end
+end
