@@ -16,8 +16,6 @@ Raw behavioral and neural data are available upon reasonable request.
 
 ## Demo Results
 
-################################################################################
-
 A concise version of the processing pipeline used for neural signals is shown
 below along with plots for a representative unit.
 
