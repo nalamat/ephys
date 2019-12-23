@@ -1,0 +1,12 @@
+CMR02Head-Figs/
+CMR02Left-Figs/
+CMR05Fluffy-Figs/
+CMR05Left-Figs/
+Figs/
+Sudan/
+.RData
+.Rhistory
+*.mat
+*.csv
+*.zip
+*.fig
