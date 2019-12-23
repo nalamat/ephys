@@ -19,16 +19,16 @@ Raw behavioral and neural data are available upon reasonable request.
 A concise version of the processing pipeline used for neural signals is shown
 below along with plots for a representative unit.
 
-![Alt text](figures/pipeline.png?raw=true "Processing Pipeline")
-![Alt text](figures/sample-plots.png?raw=true "Sample Plots")
+![Processing Pipeline](figures/pipeline.png?raw=true)
+![Sample Plots](figures/sample-plots.png?raw=true)
 
 Putative neural units are automatically detected using PCA and K-means
 clustering, followed by manual inspection and labeling as single- or multi-unit.
 (See [Hill et al. 2012](https://neurophysics.ucsd.edu/lab/UltraMegaSort2000%20Manual.pdf))
 
-![Alt text](figures/units-1.png?raw=true "Sample Units 1")
-![Alt text](figures/units-3.png?raw=true "Sample Units 3")
-![Alt text](figures/units-2.png?raw=true "Sample Units 2")
+![Sample Units 1](figures/units-1.png?raw=true)
+![Sample Units 3](figures/units-3.png?raw=true)
+![Sample Units 2](figures/units-2.png?raw=true)
 
 Pooled neural activity across all phasic-units shows an opposite direction of
 activation at negative signal-to-noise ratios. This observation is further supported
