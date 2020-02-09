@@ -47,7 +47,7 @@ function viewAnalysis(analysis)
 			...'dprime cqsum', ...
 			'dprime neuro/behav', 'dprime behavior', ...
 			'vector 10', 'max firing', 'mean firing', ...
-			'delta', 'delta/behav', ...
+			'vector peri', 'delta', 'delta/behav', ...
 			... 'mfsl'...
 			};
 	else
@@ -1113,17 +1113,46 @@ function refreshPlot(fig, d)
 				plots = zeros(u.condCount,1);
 				
 				for condID = 1:u.condCount
-					strength = [u.vectorStrength{condID,scoreID}{binID,:}];
-					pval     = [u.vectorPVal{condID,scoreID}{binID,:}];
-% 					zscore   = [u.vectorZScore{condID,scoreID}{binID,:}];
-					sig      = pval < .001;
-% 					thr      = abs(zscore) > 1;
-					plots(condID) = plot(u.baseFreqs, strength, ...
-						'color', getColor(condID), 'linewidth',1.5);
-% 					plot(u.baseFreqs(sig & ~thr), strength(sig & ~thr), ...
-% 						'x', 'color', getColor(condID));
-					plot(u.baseFreqs(sig), strength(sig), ...
-						'*', 'color', getColor(condID));
+					if strcmpi(a.type, 'summary')
+						% hack: showing average of all bins
+						vs_pre = vertcat(u.vectorStrength{ ...
+							condID,scoreID}{1,:});
+						vs_peri = vertcat(u.vectorStrength{ ...
+							condID,scoreID}{2,:});
+						vs_post = vertcat(u.vectorStrength{ ...
+							condID,scoreID}{3,:});
+						vs = (vs_pre + vs_peri + vs_post) / 3;
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){condID,scoreID}==true;
+							vs = vs(:,msk);
+						end
+						avg = mean(vs, 2)';
+						err = std(vs, 0, 2)' / sqrt(size(vs, 2));
+
+						if isempty(avg); continue; end
+
+						col = getColor(condID);
+						plots(condID) = plot(u.baseFreqs, avg, ...
+							'color', col, 'linewidth', 1.5);
+% 						patches(condID) = patch( ...
+% 							[u.baseFreqs fliplr(u.baseFreqs)], ...
+% 							[avg+err fliplr(avg-err)], ...
+% 							col, 'edgecolor', 'none');
+% 						alpha(patches(condID), .2);
+
+					else
+						strength = [u.vectorStrength{condID,scoreID}{binID,:}];
+						pval     = [u.vectorPVal{condID,scoreID}{binID,:}];
+	% 					zscore   = [u.vectorZScore{condID,scoreID}{binID,:}];
+						sig      = pval < .001;
+	% 					thr      = abs(zscore) > 1;
+						plots(condID) = plot(u.baseFreqs, strength, ...
+							'color', getColor(condID), 'linewidth',1.5);
+	% 					plot(u.baseFreqs(sig & ~thr), strength(sig & ~thr), ...
+	% 						'x', 'color', getColor(condID));
+						plot(u.baseFreqs(sig), strength(sig), ...
+							'*', 'color', getColor(condID));
+					end
 				end
 
 				axis square tight;
