@@ -8,7 +8,7 @@ library(ggplot2) # ggplot
 #################
 # target evoked response
 
-data = read.xlsx('AnalysisNJIT\Summary-All-Sorted.xlsx', 'DeltaPSTH')
+data = read.xlsx('AnalysisNJIT/Summary-All-Sorted.xlsx', 'DeltaPSTH')
 data2 = subset(data, is.na(Score))
 data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$SNR = factor(data2$TargetLevel-50)
@@ -16,15 +16,18 @@ data2$SNR = factor(data2$TargetLevel-50)
 model = aov(DeltaPSTH ~ TargetLevel*RecMode + Error(factor(UnitID)), subset(data2, Type=='Phasic'))
 summary(model)
 
-dg = .3
-labs_xy = labs(x='SNR (dB)', y='Target-evoked response')
+dg = 0
+err_width = .2
+labs_xy = labs(x='SNR (dB)', y='Sound-evoked response')
 theme_my = theme_bw() + theme(plot.title=element_text(hjust=0.5))  # Center title
+no_y_grid = theme(panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank())
+yintercept = geom_hline(yintercept = 0, color='grey92')
 mean_point = stat_summary(fun.y=mean, geom='point', size=3,
                           position=position_dodge(width=dg))
-mean_line = stat_summary(fun.y='mean', geom='line', size=1,
+mean_line = stat_summary(fun.y='mean', geom='line', size=1.5,
                          position=position_dodge(width=dg))
 se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar',
-                           width=dg*.8, size=1, position=position_dodge(width=dg))
+                           width=err_width, size=1.5, position=position_dodge(width=dg))
 
 ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode, shape=Type)) +
   geom_point(size=2, position=position_dodge(width=dg)) +
@@ -53,20 +56,24 @@ ggplot(data2, aes(x=SNR, y=DeltaPSTH)) +
 
 
 ggplot(subset(data2, Type=='Phasic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
+  yintercept +
   se_errorbar + mean_line + mean_point + 
   labs_xy + labs(color='Mode', title='Phasic units') +
-  theme_my
+  coord_cartesian(ylim=c(-1.5,1.5)) +
+  theme_my + no_y_grid
 
 ggplot(subset(data2, Type=='Tonic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
+  yintercept +
   se_errorbar + mean_line + mean_point + 
   labs_xy + labs(color='Mode', title='Tonic units') +
-  theme_my
+  coord_cartesian(ylim=c(-1,1)) +
+  theme_my + no_y_grid
 
 
 #################
 # vector strength
 
-data = read.xlsx('Summary-All-Sorted.xlsx', 'VectorStrength')
+data = read.xlsx('AnalysisNJIT/Summary-All-Sorted.xlsx', 'VectorStrength')
 data2 = subset(data, is.na(Score) & Phasic)
 # data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$Bin = factor(data2$Bin, c('Pre','Peri','Post'), 1:3)
@@ -99,7 +106,7 @@ ggplot(data2, aes(x=SNR, y=VectorStrength, shape=Bin)) +
   theme_my
 
 ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, group=RecMode)) +
-  se_errorbar + mean_point +
+  se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic units') +
   theme_my
 
