@@ -19,6 +19,9 @@
 %           'ears', 'neurobehavior@njit', 'neurobehavior@nyu'
 %         - rootGroup (char array): The HDF5 root group which contains the
 %           most number of trials (only for Neurobehavior).
+%
+% TODO: performance table for neurobehavior (nyu and njit)
+% TODO: include different targetDuration in condCount as well
 function a = readTrialLog(arg1)
 	% set a sample file for testing
 	if ~exist('arg1', 'var')
@@ -32,7 +35,8 @@ function a = readTrialLog(arg1)
 	end
 	
 	% setup analysis struct
-	if ischar(arg1)
+	if ischar(arg1) || isstring(arg1)
+		arg1 = char(arg1);
 		a = struct();
 		a.dataPath = '';
 		a.dataFile = arg1;
@@ -61,7 +65,8 @@ function a = readTrialLog(arg1)
 	
 	% root group is only set for Neurobehavior data
 	a.rootGroup = '';
-	a.trialLog  = [];
+	a.trialLog  = [];   % will be array of structs
+	a.performance = []; % will be struct of arrays
 	
 	if ~strcmp(ext, '.log') && exist(file, 'file')
 		% read hdf5 file info
@@ -71,6 +76,7 @@ function a = readTrialLog(arg1)
 		if any(strcmp('/log', {info.Groups.Name}))
 			a.version  = 'ears';
 			a.trialLog = h5read(file, '/log/trial');
+			a.performance = h5read(file, '/log/performance');
 			if isempty(a.trialLog.trialStart); a.trialLog = []; end
 			
 		% Neurobehavior@NYU
@@ -88,9 +94,9 @@ function a = readTrialLog(arg1)
 						'/data/trial_log']);
 					trialCount2 = length(trialLog2.start);
 					if trialCount < trialCount2
-						a.rootGroup  = rootGroup2;
+						a.rootGroup = rootGroup2;
 						trialCount = trialCount2;
-						a.trialLog   = trialLog2;
+						a.trialLog = trialLog2;
 					end
 				catch
 				end
@@ -102,6 +108,7 @@ function a = readTrialLog(arg1)
 		if ~isempty(a.trialLog)
 			a.trialLog = structofarrays2arrayofstructs(a.trialLog);
 		end
+		% no need to convert performance table to array of structs
 	end
 	
 	% Neurobehavior@NJIT
@@ -227,9 +234,9 @@ function a = readTrialLog(arg1)
 	a.trialCount     = length(a.trialLog);
 	a.maskerFile     = a.trialLog(1).maskerFile;     % assume constant
 	a.maskerLevel    = a.trialLog(1).maskerLevel;    % assume constant
-	a.targetDuration = a.trialLog(1).targetDuration; % assume constant
 	a.targetFreqs    = [];
 	a.targetLevels   = [];
+	a.targetDuration = [];
 	
 	% read all go stimulus conditions
 	for trialID = 1:a.trialCount
@@ -238,13 +245,17 @@ function a = readTrialLog(arg1)
 		end
 		a.targetFreqs  = [a.targetFreqs , a.trialLog(trialID).targetFreq ];
 		a.targetLevels = [a.targetLevels, a.trialLog(trialID).targetLevel];
+		a.targetDuration = ...
+			[a.targetDuration, a.trialLog(trialID).targetDuration];
 	end
 	a.targetFreqs  = unique(a.targetFreqs);
 	a.targetLevels = unique(a.targetLevels);
+	a.targetDuration = unique(a.targetDuration);
 	% the `unique` function has a weird behavior that returns a 0x1 vector
 	% when acting on empty vectors, next 2 lines fix this
 	if isempty(a.targetFreqs ); a.targetFreqs  = []; end
 	if isempty(a.targetLevels); a.targetLevels = []; end
+	if isempty(a.targetDuration); a.targetDuration = []; end
 	a.condCount = length(a.targetFreqs) * ...
 		length(a.targetLevels)+1;    % +1 for nogo
 	% trial count per each stimulus condition (target, masker, go/nogo)
