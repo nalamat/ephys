@@ -61,14 +61,15 @@ function viewAnalysis(analysis)
 	end
 	
 	% subset the analysis based on any criteria
-	% exc = [];
-	% for analysisID = 1:length(data.analysis)
-	% 	a = data.analysis{analysisID};
-	% 	if ~strcmpi(a.maskerFile, 'supermasker.wav')
-	% 		exc = [exc analysisID];
-	% 	end
-	% end
-	% data.analysis(exc) = [];
+% 	exc = [];
+% 	for analysisID = 1:length(data.analysis)
+% 		a = data.analysis{analysisID};
+% 		if ~strcmpi(a.maskerFile, 'supermasker.wav') || length(a.targetLevels) < 3 ...
+% 				|| ~strcmpi(a.experimentMode, 'Passive')
+% 			exc = [exc analysisID];
+% 		end
+% 	end
+% 	data.analysis(exc) = [];
 
 	% show figure
 	fig = figure;
@@ -166,8 +167,8 @@ function refreshPlot(fig, d)
 	
 	colors = [
 		0.500, 0.500, 0.500;
-		0.000, 0.447, 0.741;
 		0.850, 0.325, 0.098;
+		0.000, 0.447, 0.741;
 		0.929, 0.694, 0.125;
 		0.494, 0.184, 0.556;
 		0.466, 0.674, 0.188;
@@ -209,8 +210,12 @@ function refreshPlot(fig, d)
 		end
 		vectorUL = .5;
 	else
-		firingUL = 200;
-		vectorUL = .6;
+		firingUL = 120;
+		vectorUL = .8;
+% 		firingUL = 40;
+% 		vectorUL = .4;
+		channelSubset = [];
+% 		channelSubset = [9];
 	end
 
 	subplots = {};
@@ -527,6 +532,10 @@ function refreshPlot(fig, d)
 		for unitID = unitFrom:unitTo
 			u = a.units{unitID};
 			
+			if ~isempty(channelSubset) && all(u.channel ~= channelSubset)
+				continue;
+			end
+			
 			if ~isfield(u, 'viewBounds') % for older analysis results
 				u.viewBounds = [-1, 2];
 			end
@@ -560,6 +569,11 @@ function refreshPlot(fig, d)
 					pos = channelMappingA4x4(a.channels(unitID));
 				end
 				unitCount = 16;
+				
+				if ~isempty(channelSubset)
+					pos = find(channelSubset == u.channel);
+					unitCount = length(channelSubset);
+				end
 			else
 				pos = unitID;
 				unitCount = a.unitCount;
@@ -703,7 +717,8 @@ function refreshPlot(fig, d)
 					
 					% mark significant changes of firing rate for
 					% onset, offset and duration of the target
-					if condID ~= 1 && ~strcmpi(a.type, 'summary')
+					if condID ~= 1 && ~strcmpi(a.type, 'summary') && ...
+							~isempty(u.dPrime{condID,scoreID})
 						dPrime = u.dPrime{condID,scoreID};
 						dPrimeOnset  = ...
 							sqrt(sum(dPrime(onset).^2) / sum(onset));
@@ -762,15 +777,16 @@ function refreshPlot(fig, d)
 				xticks(u.viewBounds(1):1:u.viewBounds(2));
 % 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
 % 				xticklabels(-1:.5:2);
-				xlim(u.viewBounds);
+				xlim([-.3, 1.3]);
+% 				xlim(u.viewBounds);
 				ylim([0,firingUL]);
 				ylabel('Firing rate (1/s)');
 				xlabel('Time (s)');
 				grid on;
 				
 				msk = plots~=0;
-				legend(plots(msk), condsStr(msk), ...
-					'location', 'northeastoutside');
+% 				legend(plots(msk), condsStr(msk), ...
+% 					'location', 'northeastoutside');
 				title(u.label);
 				
 				

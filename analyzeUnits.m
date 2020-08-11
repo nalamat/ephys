@@ -58,6 +58,9 @@ function units = analyzeUnits(units)
 	% 	u.vectorZScore     = c;
 		u.mtfF             = c;
 		u.mtfS             = c;
+		u.lfpRMS           = cell(u.lfpBandCount, u.condCount, 5, 3);
+		u.lfpRMSMean       = cell(u.lfpBandCount, u.condCount, 5, 3);
+		u.lfpRMSSTD        = cell(u.lfpBandCount, u.condCount, 5, 3);
 
 		c = cell(length(u.targetFreqs), 3);
 		u.rlf              = c;
@@ -91,7 +94,7 @@ function units = analyzeUnits(units)
 				trials = length(spikeTimes);
 
 				if trials == 0; continue; end
-
+				
 				psth = zeros(trials, binCount);
 				for trialID = 1:trials
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
@@ -349,6 +352,36 @@ function units = analyzeUnits(units)
 				end
 				u.mtfF{condID,scoreID} = mtfF;
 				u.mtfS{condID,scoreID} = mtfS;
+				
+				
+				
+				% LFP
+% 				for bandID = 1:u.bandCount
+% 					% trials x samples
+% 					lfp = [u.lfp{bandID, condID, scoreID){:}]';
+% 
+% 					targetStart = -u.viewBounds * u.fs;
+% 					targetStop = targetStart + ...
+% 						max(u.targetDuration) * u.fs;
+% 					
+% 					lfpRMS1 = rms(lfp(:, 1:targetStart), 2);
+% 					lfpRMS2 = rms(lfp(:, targetStart+1:targetStop), 2);
+% 					lfpRMS3 = rms(lfp(:, targetStop+1:end), 2);
+% 
+% 					u.lfpRMS{bandID, condID, scoreID, 1} = lfpRMS1;
+% 					u.lfpRMS{bandID, condID, scoreID, 2} = lfpRMS2;
+% 					u.lfpRMS{bandID, condID, scoreID, 3} = lfpRMS3;
+% 					
+% 					u.lfpRMSMean{bandID,condID,scoreID,1} = mean(lfpRMS1);
+% 					u.lfpRMSMean{bandID,condID,scoreID,2} = mean(lfpRMS2);
+% 					u.lfpRMSMean{bandID,condID,scoreID,3} = mean(lfpRMS3);
+% 					
+% 					u.lfpRMSSTD{bandID,condID,scoreID,1} = std(lfpRMS1);
+% 					u.lfpRMSSTD{bandID,condID,scoreID,2} = std(lfpRMS2);
+% 					u.lfpRMSSTD{bandID,condID,scoreID,3} = std(lfpRMS3);
+% 						
+% 				end % bandID
+				
 			end % scoreID
 
 		end % condID

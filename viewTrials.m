@@ -18,14 +18,23 @@ dataPath = '../Data-Booth1-EARS/';
 % dataFile = ['CMR05Fluffy/' ...
 % 'CMR05Fluffy-20190420-130127-MMR-Physiology-Passive-1kToneSupermasker.h5'];
 % dataFile = ['CMR05Fluffy/' ...
-% 'CMR05Fluffy-20190422-121943-MMR-Physiology-Active-1kTon eSupermasker.h5'];
+% 'CMR05Fluffy-20190422-121943-MMR-Physiology-Active-1kToneSupermasker.h5'];
 dataFile = ['CMR05Fluffy/' ...
 'CMR05Fluffy-20190511-150044-MMR-Physiology-Passive-1kToneSupermasker.h5'];
+% 'CMR05Fluffy-20190511-140859-MMR-Physiology-Active-1kToneSupermasker.h5'];
+% 'CMR05Fluffy-20190609-132455-MMR-Physiology-Active-1kToneSupermasker.h5'];
+% 'CMR05Fluffy-20190609-142823-MMR-Physiology-Passive-1kToneSupermasker.h5'];
 % 'CMR05Fluffy-20190723-160012-MMR-Physiology-Active-1kToneSupermasker.h5'];
 % dataFile = ['CMR05Tail/' ...
 % 'CMR05Tail-20190603-161221-MMR-Physiology-Passive-1kToneSupermasker.h5'];
 % dataFile = ['CMR05Tail/' ...
 % 'CMR05Tail-20190625-143603-MMR-Physiology-Passive-1kToneSupermasker.h5'];
+
+dataFile = ['CMR08Fluffy/' ...
+'CMR08Fluffy-20200713-140119-MMR-Physiology-Passive-1kToneSupermasker.h5'];
+
+%dataFile = ['../../antje/MMRPhysiology/CMRphys/Mar6_1012/' ...
+%	'aibehavphysFluffy0_Active_Mod4p2.hd5'];
 
 
 %% load h5 file
@@ -41,7 +50,7 @@ d.excludeTrials = [];
 d.excludeNoisy = false;
 d.viewBounds = [-1, 2];
 
-[trialView, d] = readTrialView(d);
+[trialView, lfp, d] = readTrialView(d);
 d.trialView    = trialView;
 
 d.channelCount      = length(d.channels);
@@ -71,7 +80,7 @@ refreshPlot(fig);
 function figKeyPress(fig, e)
 	d = guidata(fig);
 	trialID = d.trialID;
-	
+
 	switch e.Key
 % 		case 'leftarrow'
 % 			data.fileID = max([data.fileID-1, 1]);
@@ -110,37 +119,38 @@ end
 function refreshPlot(fig, d)
 	figure(fig);
 	clf;
-	
+
 	% Unpack data
 	if nargin < 2
 		d = guidata(fig);
 	end
-	
-	scale = 0.3;    % in mV
-	
-	
+
+	scale = 0.2;    % in mV
+
+
 	noiseFloor = median(abs([d.trialView{d.trialID, :}]))/0.6745;
 	noiseRatio = noiseFloor ./ d.noiseFloor;
-	
-	
+
+
 	try
 		ax = [];
 		for channelID = 1:d.channelCount
 			pos = channelMappingA4x4(d.channels(channelID));
 			ax(channelID) = subplot(ceil(d.channelCount/4),4,pos);
 			hold on;
-			
+
 			trace = d.trialView{d.trialID, channelID}';
 			time = (1:length(trace))/d.fs - 1;
 			plot(time, trace*1e3);    % convert to mV
-			
-			[spikeTimes, spikeIndices] = extractSpikesFromTrace(trace, ...
-				d.fs, d.spikeThreshold(channelID), d.spikeLength, ...
-				d.artifactThreshold(channelID), d.artifactLength);
+
+			[spikeTimes, spikeIndices] = extractSpikesFromTrace( ...
+				trace, d.fs, d.spikeThreshold(channelID), ...
+				d.spikeDuration, d.artifactThreshold(channelID), ...
+				d.artifactLength);
 			spikeTimes = spikeTimes + d.viewBounds(1);
 			plot(spikeTimes, trace(spikeIndices)*1e3, ...
-				'.', 'markersize', 20);
-			
+				'.', 'markersize', 5);
+
 			xticks(-1:1:2);
 			xticklabels(-1:1:2);
 			xlim(d.viewBounds);
@@ -149,13 +159,13 @@ function refreshPlot(fig, d)
 			threshold = [1,1] * d.spikeThreshold(channelID) * 1e3; % to mV
 			line(xlim(),  threshold, 'color', 'black', 'linestyle', ':');
 			line(xlim(), -threshold, 'color', 'black', 'linestyle', ':');
-			
+
 % 			line([0,0], ylim(), 'color', 'black');
 % 			line([1,1], ylim(), 'color', 'black');
 
 			xlabel('Time (s)');
 			ylabel('Voltage (mV)');
-			
+
 % 			noiseFloor1 = d.noiseFloor(channelID);
 % 			noiseFloor2 = median(abs(trace))/0.6745;
 
@@ -166,11 +176,11 @@ function refreshPlot(fig, d)
 				noiseRatio(channelID)));
 			grid on;
 		end
-		
+
 	catch err
 		disp(getReport(err))
 	end
-	
+
 	targetFile  = d.trialLog(d.trialID).targetFile;
 	targetLevel = d.trialLog(d.trialID).targetLevel;
 	maskerFile  = d.trialLog(d.trialID).maskerFile;
@@ -178,7 +188,7 @@ function refreshPlot(fig, d)
 	if maskerLevel < 0; maskerLevel = 0; end
 	if targetLevel < 0; targetLevel = 0; end
 	score = d.trialLog(d.trialID).score;
-	
+
 	% set master title for the figure
 	mtitle = sprintf(['Trial: %d/%d, Target: %s @ %g dB SPL, ' ...
 		'Masker: %s @ %g dB SPL, Score: %s, Noise ratio: %.2f\nData file: %s'], ...

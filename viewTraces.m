@@ -4,7 +4,7 @@
 % file = '../Data-Booth1-EARS/CMR03Left/CMR03Left-20180809-140459-MMR-Physiology.h5';
 % file = '../Data-Booth1-EARS/CMR02Head/CMR02Head-20180906-103121-MMR-Physiology-Active-1kToneSupermasker.h5';
 % file = '../Data-Booth1-EARS/CMR05Fluffy/CMR05Fluffy-20190531-134723-IM-Physiology-Passive-2kBeepGapFlatNoise.h5';
-file = '../Data-Booth1-EARS/CMR05Tail/CMR05Tail-20190623-155606-MMR-Physiology-Passive-Supermasker.h5';
+file = '../Data/CMR05Tail/CMR05Tail-20190623-155606-MMR-Physiology-Passive-Supermasker.h5';
 
 timeRange = [0, 40];
 

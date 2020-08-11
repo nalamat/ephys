@@ -1,8 +1,8 @@
 function summarizeAnalysis(analysis, summaryFile)
 	%% summarize active vs. passive
 
-	recordingModeLabels = {'Active MMR', 'Passive MMR' };
-		...'Passive Silence'};
+% 	recordingModeLabels = {'Active MMR', 'Passive MMR' };
+	recordingModeLabels = {'Passive MMR', 'Passive Silence'};
 	modeCount = length(recordingModeLabels);
 
 	% sessions and their analyses selected for summarizing
@@ -252,6 +252,10 @@ function summarizeAnalysis(analysis, summaryFile)
 					unitType2 = 2;
 					s.multiUnits = s.multiUnits + 1;
 				end
+			else
+				disp('Unsorted units');
+				unitType2 = 2;
+				s.multiUnits = s.multiUnits + 1;
 			end
 			
 			% for backwards compatibility
@@ -508,19 +512,19 @@ end
 %% helper functions
 function res = recordingMode(a)
 	res = 0;
-	if strcmpi(a.mode, 'go nogo') && ...
+% 	if strcmpi(a.mode, 'go nogo') && ...
+% 			strcmpi(a.maskerFile, 'supermasker.wav') && ...
+% 			a.maskerLevel == 50 && ...
+% 			isequal(a.targetFreqs, 1)
+% 		res = 1;
+	if strcmpi(a.mode, 'passive') && ...
 			strcmpi(a.maskerFile, 'supermasker.wav') && ...
 			a.maskerLevel == 50 && ...
 			isequal(a.targetFreqs, 1)
 		res = 1;
 	elseif strcmpi(a.mode, 'passive') && ...
-			strcmpi(a.maskerFile, 'supermasker.wav') && ...
-			a.maskerLevel == 50 && ...
+			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
 			isequal(a.targetFreqs, 1)
 		res = 2;
-% 	elseif strcmpi(a.mode, 'passive') && ...
-% 			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
-% 			isequal(a.targetFreqs, 1)
-% 		res = 3;
 	end
 end
