@@ -172,6 +172,8 @@ function a = readTrialLog(arg1)
 		map = {
 			% new name         old name
 			'targetFile'       'target_filename'
+			'targetFile'       'go_filename'      % only nyu
+% 			'targetFile2'      'nogo_filename'    % only nyu
 			'targetFreq'       'center_frequency' % only nyu
 			'targetLevel'      'target_level'
 			'trialType'        'ttype'
@@ -190,6 +192,7 @@ function a = readTrialLog(arg1)
 			'holdDuration'     'hold_duration'
 			'pokeHoldDuration' 'poke_hold_duration'
 			'rewardVolume'     'reward_volume'
+			'score'            'response'         % only nyu, TODO: fix
 			};
 		for i = 1:size(map,1)
 			if isfield(a.trialLog, map{i,2})

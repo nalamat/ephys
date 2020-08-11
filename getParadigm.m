@@ -1,8 +1,13 @@
 % determine paradigm of the specified data/analysis struct
-function [paradigmGroup,paradigmName] = getParadigm(a)
+% this script does not work properly on NYU data yet
+function [paradigmGroup, paradigmName] = getParadigm(a)
 
+	if ~isfield(a, 'experimentMode')
+		paradigmGroup = 'None';
+		paradigmName = 'None';
+		
 	% MMR
-	if strcmpi(a.experimentMode, 'go nogo') && ...
+	elseif strcmpi(a.experimentMode, 'go nogo') && ...
 			any(strcmpi(a.maskerFile, {'supermasker.wav', ...
 			'masker-mod-noise-1k.wav'})) && ...
 			isequal(a.targetFreqs, 1)
