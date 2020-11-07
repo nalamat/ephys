@@ -1,5 +1,14 @@
 summaryFile = 'AnalysisNJIT/Summary-All-Sorted.mat';
 exportFile = 'AnalysisNJIT/Summary-All-Sorted.xlsx';
+% summaryFile = 'AnalysisNJIT/Summary-CMR05Fluffy-Sorted.mat';
+% exportFile = 'AnalysisNJIT/Summary-CMR05Fluffy-Sorted.xlsx';
+% summaryFile = 'AnalysisNJIT/Summary-CMR05Tail-Sorted.mat';
+% exportFile = 'AnalysisNJIT/Summary-CMR05Tail-Sorted.xlsx';
+% summaryFile = 'AnalysisNJIT/Summary-D2Right-Sorted.mat';
+% exportFile = 'AnalysisNJIT/Summary-D2Right-Sorted.xlsx';
+summaryFile = 'AnalysisNJIT/Summary-CMR08Tail-Sorted.mat';
+exportFile = 'AnalysisNJIT/Summary-CMR08Tail-Sorted.xlsx';
+
 modes = {'Active', 'Passive'};
 scoresGo = {'', 'HIT', 'MISS'};
 scoresNogo = {'', 'CA', 'FA'};
@@ -41,7 +50,7 @@ for modeID = 1:length(a.units)
 	time = centers(0<=centers & centers<u.targetDuration);
 	time = time(1:round(50e-3/u.psthBin):end);
 	
-	for condID = 1:u.condCount
+	for condID = 1:u.condCount 
 		levelID = condID-1;
 		if levelID
 			level = u.targetLevels(levelID);
@@ -68,9 +77,10 @@ for modeID = 1:length(a.units)
 				if condID~=1
 					peri = 0<=u.psthCenters & ...
 						u.psthCenters<=u.targetDuration;
-					nogo = u.psth{1,scoreID}(i,peri);
+					nogo = u.psth{1,1}(i,peri);
 					go = u.psth{condID,scoreID}(i,peri);
 					delta = trapz(u.psthCenters(peri), go-nogo);
+					delta = delta / mean(nogo); % normalize
 
 					tables.DeltaPSTH(end+1,:) = ...
 						{sID mode unitID level score phasic delta};
