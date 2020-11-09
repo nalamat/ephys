@@ -1,15 +1,16 @@
-function [spikes, analysis] = extractSpikes(analysis, ...
-	excludeNoisy, viewBounds, ...
-	spikeDuration, spikeThresholdFactor, ...
+function [spikes, analysis] = extractSpikes(analysis, excludeNoisy, ...
+	viewBounds, spikeDuration, spikeThresholdFactor, ...
 	artifactDuration, artifactThresholdFactor)
 % analyze raw physiology traces from data files
 % in args:
-%     analysis (cell array of structs)
+%     analysis (cell array of structs): {sessions}
 %     viewBounds (array of 2 doubles): seconds before and after tone onset
 %         to analyze
 %     excludeNoisy (bool)
 % out args:
 %     analysis (cell array of structs)
+%     spikes (cell array of 2D cell arrays of array of doubles):
+%         {sessions}{trials x channels}[spikes]
 
 % read data from several files using readTrialView
 % select the relevant elctrode numbers you are interested in
@@ -23,12 +24,12 @@ function [spikes, analysis] = extractSpikes(analysis, ...
 % coding of conditions:
 % condID trialType targetFreq targetLevel
 %   1      NOGO        -          -
-%   2       GO         1          50
-%   3       GO         1          60
-%   4       GO         1          70
-%   5       GO         2          50
-%   6       GO         2          60
-%   7       GO         2          70
+%   2       GO         1          40
+%   3       GO         1          50
+%   4       GO         1          60
+%   5       GO         2          40
+%   6       GO         2          50
+%   7       GO         2          60
 
 	% scores = {'ALL', 'CR', 'FA';
 	% 	'ALL', 'HIT', 'MISS'};
@@ -77,9 +78,9 @@ function [spikes, analysis] = extractSpikes(analysis, ...
 		
 		% this iterates through all the cut sequences (trials)
 		for trialID = 1:a.trialCount
-			
-			for unitID = 1:length(a.channels) % choose unit (channel) number
-				
+			% choose unit (channel) number
+			for unitID = 1:length(a.channels)
+
 				trace = trialView{trialID, unitID};
 				if isempty(trace); continue; end
 
@@ -91,13 +92,13 @@ function [spikes, analysis] = extractSpikes(analysis, ...
 
 		end % trialID
 
-		spikes{analysisID} = sp;
 		analysis{analysisID} = a;
+		spikes{analysisID} = sp;
 	end % analysisID
 	
 	if single
-		spikes = spikes{1};
 		analysis = analysis{1};
+		spikes = spikes{1};
 	end
 	
 end % extractSpikes
