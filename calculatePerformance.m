@@ -1,8 +1,21 @@
 function a = calculatePerformance(a)
 	a.dPrimeBehavior = cell(1,a.condCount);
 	
-	fa = sum(strcmpi({a.trialLog.score}, 'fa'));
-	cr = sum(strcmpi({a.trialLog.score}, 'cr'));
+	if strcmpi(a.experimentMode, 'passive')
+		a.dPrimeBehavior(:) = {0};
+		return;
+	elseif strcmpi(a.experimentMode, 'poke training')
+		fa = sum([a.trialLog.targetLevel] == 0 & strcmpi({a.trialLog.score}, 'hit'));
+		cr = sum([a.trialLog.targetLevel] == 0 & strcmpi({a.trialLog.score}, 'miss'));
+	else
+		fa = sum(strcmpi({a.trialLog.score}, 'fa'));
+		cr = sum(strcmpi({a.trialLog.score}, 'cr'));
+	end
+	if fa+cr == 0
+		warning('[calculatePerformance] No nogo trials')
+		a.dPrimeBehavior(:) = {0};
+		return;
+	end
 	faRate = fa / (fa+cr);
 	faRate = max(.05, faRate);
 	faRate = min(.95, faRate);
@@ -30,4 +43,3 @@ function a = calculatePerformance(a)
 		a.dPrimeBehavior{condID} = dPrime;
 	end
 end
-
