@@ -25,7 +25,6 @@
 % Out args:
 %     trialView (cell array of vectors): Physiology aligned to target onset
 %		{trials x channels} x [view].
-%	  lfp (4-D matrix): Power of LFP bands (trials x channels x bands x 3).
 %     a (struct):
 %         - trialLog (array of structs): Trial by trial set of values and
 %           parameters.
@@ -33,7 +32,12 @@
 %           'ears', 'neurobehavior@njit', 'neurobehavior@nyu'
 %         - fs (double): Sampling frequency of the phyiology trace in Hz.
 %         - noiseFloor (double): Noise floor of each channel.
-function [trialView, lfp, a] = readTrialView(arg1)
+%         - spikesBand (2 doubles)
+%         - lfpBands (cell array of 2 doubles)
+%         - lfpBandNames (cell array of string)
+%         - lfp (4D matrix): RMS of LFP bands, pre/peri/post-stim
+%           {trials x channels x bands x 3}.
+function [trialView, a] = readTrialView(arg1)
 	% set a sample file for testing
 	if ~exist('arg1', 'var')
 		arg1 = ['../Data/CMR05Fluffy/CMR05Fluffy-20190609-' ...
@@ -113,8 +117,8 @@ function [trialView, lfp, a] = readTrialView(arg1)
 	
 	% extract segments of physiological trace per trial and channel
 	trialView = cell(length(a.trialLog), channelCount);
-	% extract LFP power per trial, channel, band and time segment
-	lfp = zeros(length(a.trialLog), channelCount, a.lfpBandCount, 3);
+	% extract LFP RMS per trial, channel, band and time segment
+	a.lfp = zeros(length(a.trialLog), channelCount, a.lfpBandCount, 3);
 	
 	% number of samples before and after sound onset
 	lb = round((a.viewBounds(1) - pad) * a.fs);
@@ -170,18 +174,17 @@ function [trialView, lfp, a] = readTrialView(arg1)
 			% remove extra padding
 			physTrialBand = physTrialBand(padNS+1:end-padNS, :);
 			
-			targetStartNS = -a.viewBounds * a.fs + 1;
-			targetStopNS = targetStartNS + max(a.targetDuration) * a.fs;
+			targetStartNS = round(-a.viewBounds(1) * a.fs + 1);
+			targetStopNS = targetStartNS + ...
+				round(max(a.targetDuration) * a.fs);
 			
 			lfp1 = rms(physTrialBand(1:targetStartNS-1, :));
 			lfp2 = rms(physTrialBand(targetStartNS:targetStopNS-1, :));
 			lfp3 = rms(physTrialBand(targetStopNS:end, :));
 			
-			for channelID = 1:channelCount
-				lfp(trialID, channelID, bandID, 1) = lfp1(channelID);
-				lfp(trialID, channelID, bandID, 2) = lfp2(channelID);
-				lfp(trialID, channelID, bandID, 3) = lfp3(channelID);
-			end
+			a.lfp(trialID, :, bandID, 1) = lfp1;
+			a.lfp(trialID, :, bandID, 2) = lfp2;
+			a.lfp(trialID, :, bandID, 3) = lfp3;
 		end
 	end
 	
@@ -221,7 +224,7 @@ function [trialView, lfp, a] = readTrialView(arg1)
 % 		disp(a.excludeTrials);
 		a.trialLog(a.excludeTrials) = [];
 		trialView(a.excludeTrials, :) = [];
-		lfp(a.excludeTrials, :, :, :) = [];
+		a.lfp(a.excludeTrials, :, :, :) = [];
 		
 		% recount trials
 		a.trialCount = length(a.trialLog);
