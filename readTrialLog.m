@@ -192,8 +192,8 @@ function a = readTrialLog(arg1)
 			'holdDuration'     'hold_duration'
 			'pokeHoldDuration' 'poke_hold_duration'
 			'rewardVolume'     'reward_volume'
-			'score'            'response'         % only nyu, TODO: fix
 			};
+		
 		for i = 1:size(map,1)
 			if isfield(a.trialLog, map{i,2})
 				% copy old parameter names to new parameter names
@@ -202,7 +202,31 @@ function a = readTrialLog(arg1)
 				a.trialLog = rmfield(a.trialLog, map{i,2});
 			end
 		end
-	end
+		
+		% trial by trial compatibility
+		for trialID = 1:length(a.trialLog)
+			% recode response
+			if strcmpi(a.trialLog(trialID).response, 'no response')
+				a.trialLog(trialID).response = 'None';
+			end
+			% define score
+			if strcmpi(a.trialLog(trialID).trialType(1:2), 'go')
+				if any(strcmpi(a.trialLog(trialID).response, 'spout'))
+					score = 'HIT';
+				else
+					score = 'MISS';
+				end
+			else
+				if any(strcmpi(a.trialLog(trialID).response, 'spout'))
+					score = 'FA';
+				else
+					score = 'CR';
+				end
+			end
+			a.trialLog(trialID).score = score;
+		end % trialID
+		
+	end % if neurobehavior
 	
 	% convert dB attenuations to dB SPL for backwards compatibility
 	if strcmpi(a.version, 'neurobehavior@njit')
