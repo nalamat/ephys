@@ -257,6 +257,15 @@ function a = readTrialLog(arg1)
 		end
 	end
 	
+	if strcmpi(a.version, 'ears')
+		sessionInfo = h5read(file, '/log/session');
+		a.experimentMode = deblank(sessionInfo.experimentMode');
+		a.experimentStartStr = deblank(sessionInfo.experimentStart');
+		a.experimentStart = datetime(a.experimentStartStr, ...
+			'inputformat', 'yyyy/MM/dd-HH:mm:ss');
+		a.experimentDuration = sessionInfo.experimentDuration;
+	end
+	
 	% store some other info in the data struct
 	a.trialCount     = length(a.trialLog);
 	a.maskerFile     = a.trialLog(1).maskerFile;     % assume constant
@@ -267,7 +276,8 @@ function a = readTrialLog(arg1)
 	
 	% read all go stimulus conditions
 	for trialID = 1:a.trialCount
-		if ~strcmpi(a.trialLog(trialID).trialType(1:2), 'GO')
+		if ~strcmpi(a.trialLog(trialID).trialType(1:2), 'GO') || ...
+				a.trialLog(trialID).targetLevel == 0
 			continue;
 		end
 		a.targetFreqs  = [a.targetFreqs , a.trialLog(trialID).targetFreq ];
@@ -290,15 +300,6 @@ function a = readTrialLog(arg1)
 	for trialID = 1:a.trialCount
 		condID = getCondID(a.trialLog(trialID), a);
 		a.trialCountPerCond(condID) = a.trialCountPerCond(condID) + 1;
-	end
-	
-	if strcmpi(a.version, 'ears')
-		sessionInfo = h5read(file, '/log/session');
-		a.experimentMode = deblank(sessionInfo.experimentMode');
-		a.experimentStartStr = deblank(sessionInfo.experimentStart');
-		a.experimentStart = datetime(a.experimentStartStr, ...
-			'inputformat', 'yyyy/MM/dd-HH:mm:ss');
-		a.experimentDuration = sessionInfo.experimentDuration;
 	end
 	
 	[a.paradigmGroup, a.paradigmName] = getParadigm(a);
