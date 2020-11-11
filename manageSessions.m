@@ -354,6 +354,7 @@ function btnCallback(btn, ~)
 			if exist('notify'); notify('Done analyzing'); end
 			
 		case 'aggregate'
+			% export all analyses into one mat file
 			if strcmpi(d.radioDataGroup.SelectedObject.String, 'summaries')
 				error('my:break', 'Aggregate not defined for summaries');
 			end
@@ -384,7 +385,7 @@ function btnCallback(btn, ~)
 				% reload summary file list
 				d = loadSummaries(d);
 			end
-			disp('Done');
+			disp('Done aggregating');
 			
 		case 'summarize'
 			% default aggregate file name
@@ -411,7 +412,7 @@ function btnCallback(btn, ~)
 				summarizeAnalysis(analysis, sumFile);
 				d = loadSummaries(d);
 			end
-			disp('Done');
+			disp('Done summarizing');
 			
 		case 'view'
 			analysis = loadSelectedAnalysis(d);
@@ -628,7 +629,7 @@ function mergeToolCloseRequest(fig3, ~)
 		res = questdlg('Close without saving?', ...
 			'Close', 'Yes', 'No', 'No');
 		
-		% after question dialog, all figure get enabled!!
+		% after question dialog, all figures get enabled!!
 		enableDisableFig(d.fig, 'off');
 		enableDisableFig(d2.fig2, 'off');
 		
@@ -780,7 +781,7 @@ end
 
 function d = loadSessions(d)
 	sessionTable = readtable('sessionTable.xlsx');
-	sessionTable = sessionTable(sessionTable.use~=false, :);
+	sessionTable = sessionTable(sessionTable.use~=-1, :);
 	sessionTable = sessionTable(~cellfun(@isempty, ...
 		sessionTable.dataFiles), :);
 	
