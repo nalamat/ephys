@@ -230,8 +230,8 @@ function btnCallback(btn, ~)
 				end
 				
 				if strcmpi(d.spikeConfig, 'unsorted')
-					[mat.spikes, mat.lfps, mat.analysis] = ...
-						extractSpikesAndLFP(mat.analysis);
+					[mat.spikes, mat.analysis] = ...
+						extractSpikes(mat.analysis);
 				elseif any(strcmpi(d.spikeConfig, ...
 						{'sorted', 'sortedjoint'}))
 					[mat.spikes, mat.analysis] = ...
@@ -328,12 +328,9 @@ function btnCallback(btn, ~)
 						error('my:break', 'Canceling');
 					end
 				end
-				if ~isfield(mat, 'lfps')
-					mat.lfps = {};
-				end
 				
 				% analyze
-				mat.analysis = spikesToUnits(mat.spikes, mat.lfps, ...
+				mat.analysis = spikesToUnits(mat.spikes, ...
 					mat.analysis, mat.spikeConfig);
 				for analysisID = 1:length(mat.analysis)
 					a = mat.analysis{analysisID}; % unpack
