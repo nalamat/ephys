@@ -90,7 +90,10 @@ function summarizeAnalysis(analysis, summaryFile)
 	% 	c2 = setdiff(a2.targetLevels, a1.targetLevels);
 	end
 	drop = unique(drop);
-	sessions(drop) = [];
+	if drop
+		fprintf('Dropping %d sessions\n', length(drop));
+		sessions(drop) = [];
+	end
 
 
 	%% get all target stimulus conditions
@@ -120,7 +123,7 @@ function summarizeAnalysis(analysis, summaryFile)
 	s.spikeConfig = sessions{1}{1}.spikeConfig;
 
 
-	%% setup summary units, each of which represent a specific recording mode
+	%% setup summary units, each representing a specific recording mode
 	for modeID = 1:s.unitCount
 		u1 = sessions{1}{1}.units{1};
 
@@ -281,6 +284,7 @@ function summarizeAnalysis(analysis, summaryFile)
 				s.phasicUnits = s.phasicUnits + 1;
 				s.phasicUnits2(unitType2) = s.phasicUnits2(unitType2) + 1;
 			else
+				s.tonicUnits = s.tonicUnits + 1;
 				s.tonicUnits2(unitType2) = s.tonicUnits2(unitType2) + 1;
 			end
 
