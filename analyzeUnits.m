@@ -28,7 +28,7 @@ function units = analyzeUnits(units)
 	% 	u.svmScores      = [];
 
 		% clear everything, in case the unit has been already analyzed once
-		c = cell(u.condCount, 5);
+		c = cell(u.condCount, 5); % {conds x scores}
 		u.psth             = c;
 		u.psthMean         = c;
 		u.psthSTD          = c;
@@ -58,9 +58,10 @@ function units = analyzeUnits(units)
 	% 	u.vectorZScore     = c;
 		u.mtfF             = c;
 		u.mtfS             = c;
-		u.lfpRMS           = cell(u.lfpBandCount, u.condCount, 5, 3);
-		u.lfpRMSMean       = cell(u.lfpBandCount, u.condCount, 5, 3);
-		u.lfpRMSSTD        = cell(u.lfpBandCount, u.condCount, 5, 3);
+		% {conds x scores}[bands x bins]
+		u.lfpMean          = c;
+		u.lfpSTD           = c;
+		u.lfpSEM           = c;
 
 		c = cell(length(u.targetFreqs), 3);
 		u.rlf              = c;
@@ -356,31 +357,13 @@ function units = analyzeUnits(units)
 				
 				
 				% LFP
-% 				for bandID = 1:u.bandCount
-% 					% trials x samples
-% 					lfp = [u.lfp{bandID, condID, scoreID){:}]';
-% 
-% 					targetStart = -u.viewBounds * u.fs;
-% 					targetStop = targetStart + ...
-% 						max(u.targetDuration) * u.fs;
-% 					
-% 					lfpRMS1 = rms(lfp(:, 1:targetStart), 2);
-% 					lfpRMS2 = rms(lfp(:, targetStart+1:targetStop), 2);
-% 					lfpRMS3 = rms(lfp(:, targetStop+1:end), 2);
-% 
-% 					u.lfpRMS{bandID, condID, scoreID, 1} = lfpRMS1;
-% 					u.lfpRMS{bandID, condID, scoreID, 2} = lfpRMS2;
-% 					u.lfpRMS{bandID, condID, scoreID, 3} = lfpRMS3;
-% 					
-% 					u.lfpRMSMean{bandID,condID,scoreID,1} = mean(lfpRMS1);
-% 					u.lfpRMSMean{bandID,condID,scoreID,2} = mean(lfpRMS2);
-% 					u.lfpRMSMean{bandID,condID,scoreID,3} = mean(lfpRMS3);
-% 					
-% 					u.lfpRMSSTD{bandID,condID,scoreID,1} = std(lfpRMS1);
-% 					u.lfpRMSSTD{bandID,condID,scoreID,2} = std(lfpRMS2);
-% 					u.lfpRMSSTD{bandID,condID,scoreID,3} = std(lfpRMS3);
-% 						
-% 				end % bandID
+				% dimensions: {conds x scores}[bands x bins x trials]
+				% bins are: pre/peri/post-stim
+				lfp = u.lfp{condID, scoreID};
+				u.lfpMean{condID, scoreID} = mean(lfp, 3);
+				u.lfpSTD{condID, scoreID} = std(lfp, [], 3);
+				u.lfpSEM{condID, scoreID} = u.lfpSTD{condID, scoreID} ...
+					/ sqrt(size(lfp, 3));
 				
 			end % scoreID
 
