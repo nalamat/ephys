@@ -8,7 +8,7 @@ function d = showGUI()
 	d.fig = figure( ...
 		'name', 'Manage Sessions', ...
 		'visible', 'off', ...
-		'position', [0 0 700 500], ...
+		'position', [0 0 720 550], ...
 		'numbertitle', 'off', ...
 		'menubar', 'none', ...
 		'toolbar', 'none', ...
@@ -72,6 +72,7 @@ function d = showGUI()
 			'sort with UMS2K if the option is selected']
 		'Inspect', 'Inspect sorted spikes with UMS2K'
 		'Analyze', 'Analyze extracted spikes and generate activity metrics'
+		'Mark', 'Mark selected sessions as "Good"'
 		'Aggregate', ['Append all analyses into one "mat" file, use ' ...
 			'for making portable "mat" files']
 		...'Combine', ... % combine
@@ -353,6 +354,35 @@ function btnCallback(btn, ~)
 			fprintf('Done analyzing\n');
 			if exist('notify'); notify('Done analyzing'); end
 			
+		case 'mark'
+			if strcmpi(d.radioDataGroup.SelectedObject.String, 'summaries')
+				error('my:break', 'Mark not defined for summaries');
+			end
+			
+			sessionIDs = d.sessionList.UserData(d.sessionList.Value);
+			if any(sessionIDs == 0) % select all
+				sessionIDs = d.sessionList.UserData(2:end);
+			end
+			
+			for i = 1:length(sessionIDs)
+				sessionID = sessionIDs(i);
+				fprintf('Session %d/%d\n', i, length(sessionIDs));
+				s = d.sessions{sessionID}; % unpack
+				file = s.(['file' d.spikeConfig]);
+				mat = struct();
+				mat.marked = true; %#ok<STRNU>
+				s.(['marked' d.spikeConfig]) = true;
+
+				if exist(file, 'file')
+					save(file, '-struct', 'mat', '-append');
+				end
+
+				d.sessions{sessionID} = s;
+				d = updateSessionList(d);
+			end
+
+			disp('Done marking');
+			
 		case 'aggregate'
 			% export all analyses into one mat file
 			if strcmpi(d.radioDataGroup.SelectedObject.String, 'summaries')
@@ -450,7 +480,7 @@ function btnButtonDownFcn(btn, e)
 	
 	flag = lower(btn.String);
 	switch flag
-		case {'extract', 'inspect', 'analyze'}
+		case {'extract', 'inspect', 'analyze', 'mark'}
 			if ~strcmpi(d.radioDataGroup.SelectedObject.String, 'sessions')
 				return;
 			end
@@ -484,6 +514,10 @@ function btnButtonDownFcn(btn, e)
 					if any(strcmpi(flag, {'extract','inspect','analyze'}))
 						mat.analyzed = false;
 						s.(['analyzed' d.spikeConfig]) = false;
+					end
+					if strcmpi(flag, 'mark')
+						mat.marked = false; %#ok<STRNU>
+						s.(['marked' d.spikeConfig]) = false;
 					end
 					
 					if exist(file, 'file')
@@ -739,7 +773,8 @@ function d = updateGUIState(d)
 	d.radioSpikeUnsorted.Enable = enable;
 	d.radioSpikeSorted.Enable = enable;
 	d.radioSpikeSortedJoint.Enable = enable;
-	btns = {'extract', 'inspect', 'analyze', 'aggregate', 'summarize'};
+	btns = {'extract', 'inspect', 'analyze', 'mark', 'aggregate', ...
+		'summarize'};
 	for i = 1:length(d.btns)
 		if any(strcmpi(d.btns{i}.String, btns))
 			d.btns{i}.Enable = enable;
@@ -832,9 +867,10 @@ function d = loadSessions(d)
 			extracted = false;
 			inspected = false;
 			analyzed = false;
+			marked = false;
 			if exist(file, 'file')
 				load(file, 'dataFiles', 'extracted', ...
-					'inspected', 'analyzed');
+					'inspected', 'analyzed', 'marked');
 			end
 			% if data files listed in session table have changed since
 			% the last extraction or analysis
@@ -848,6 +884,7 @@ function d = loadSessions(d)
 			s.(['extracted' spikeConfig]) = extracted;
 			s.(['inspected' spikeConfig]) = inspected;
 			s.(['analyzed' spikeConfig]) = analyzed;
+			s.(['marked' spikeConfig]) = marked;
 		end
 		
 		d.sessions{i} = s; % pack
@@ -887,11 +924,11 @@ function d = updateSessionList(d)
 	else
 		cols = {'animalName', 'date', 'paradigm', ...
 			['extracted' d.spikeConfig], ['inspected' d.spikeConfig], ...
-			['analyzed' d.spikeConfig]};
-		colNames = {'Animal Name', 'Date', 'Paradigm', 'E', 'I', 'A'};
+			['analyzed' d.spikeConfig], ['marked' d.spikeConfig]};
+		colNames = {'Animal Name', 'Date', 'Paradigm', 'E', 'I', 'A', 'M'};
 		animalNames = d.animalList.String(d.animalList.Value);
 
-		fmt = '%-13s | %-12s | %-10s | %s | %s | %s';
+		fmt = '%-13s | %-12s | %-10s | %s | %s | %s | %s';
 
 % 		fmt = '%%-%ds | %%-%ds | %%-%ds | %%s | %%s | %%s';
 % 		colWidths = {};
