@@ -148,11 +148,11 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				u.number        = unitNumbersAll(unitID);
 				if strcmpi(spikeConfig, 'sorted')
 					u.channel   = unitChannels(unitID);
-					u.label     = sprintf('#%d Ch %d %s', u.number, ...
-						u.channel, u.type);
+					u.label     = sprintf('Ch %d #%d %s', u.channel, ...
+						u.number, u.type(1));
 				else
 					u.channel   = 0;
-					u.label     = sprintf('#%d %s', u.number, u.type);
+					u.label     = sprintf('#%d %s', u.number, u.type(1));
 				end
 				u.spikeDuration = spikeDuration;
 			end
