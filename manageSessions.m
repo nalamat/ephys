@@ -639,17 +639,17 @@ function mergeToolCloseRequest(fig3, ~)
 			enableDisableFig(d2.fig2, 'on');
 		end
 	else
-		res = questdlg('Save inspected spikes?', ...
-			'Save', 'Yes', 'No', 'Yes');
+% 		res = questdlg('Save inspected spikes?', ...
+% 			'Save', 'Yes', 'No', 'Yes');
 		
-		% after question dialog, all figure get enabled!!
+		% after question dialog, all figures get enabled!!
 		enableDisableFig(d.fig, 'off');
 		enableDisableFig(d2.fig2, 'off');
 		
 		figure(d2.fig2);
 		delete(d3.fig3);
 		
-		if strcmpi(res, 'Yes')
+% 		if strcmpi(res, 'Yes')
 			d2.changed = true;
 			if strcmpi(d2.spikeConfig, 'sortedjoint')
 				d2.spikes = inspectedSpikes;
@@ -687,9 +687,9 @@ function mergeToolCloseRequest(fig3, ~)
 				enableDisableFig(d2.fig2, 'on');
 				rethrow(err);
 			end
-		else
-			disp('Changes not saved');
-		end
+% 		else
+% 			disp('Changes not saved');
+% 		end
 		
 		enableDisableFig(d2.fig2, 'on');
 	end
@@ -771,7 +771,7 @@ function d = loadSummaries(d)
 		files = dir(folder);
 		for j = 1:length(files)
 			file = files(j).name;
-			if length(file)>=3 && strcmpi(file(end-3:end), '.mat')
+			if length(file)>3 && strcmpi(file(end-3:end), '.mat')
 				d.summaries{end+1} = [folder file];
 			end
 		end
