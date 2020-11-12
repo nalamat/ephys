@@ -1,17 +1,28 @@
-function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
-
-	% coding of scores:
-	%  scoreID   trialType    score
-	%    1          GO       HIT+MISS
-	%    2          GO         HIT
-	%    3          GO         MISS
-	%    4          GO         HIT
-	%    5          GO         MISS
-	%    1         NOGO       CA+FA
-	%    2         NOGO        CA
-	%    3         NOGO        FA
-	%    4         NOGO        FA
-	%    5         NOGO        CA
+% Distribute extracted spikes times and LFP RMS (for multi-units) into
+% individual units and rearrange trials into a set of scores.
+% 
+% coding of scores:
+%   scoreID   trialType    score
+%     1          GO       HIT+MISS
+%     2          GO         HIT
+%     3          GO         MISS
+%     4          GO         HIT
+%     5          GO         MISS
+%     1         NOGO       CA+FA
+%     2         NOGO        CA
+%     3         NOGO        FA
+%     4         NOGO        FA
+%     5         NOGO        CA
+%
+% In args:
+%     spikes (cell array of 2D cell arrays of array of doubles):
+%         {sessions}{trials x channels}[spikes]
+%     analysis (cell array of structs): {sessions}
+%     spikeConfig (string): unsorted, sorted or sortedjoint
+% Out args:
+%     analysis (cell array of structs): Each struct contains a units
+%         cell array containing rearranged spikeTimes and lfp.
+function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 	scoreCount = 5;
 
 	unitTypeMap = containers.Map( ...
@@ -28,7 +39,6 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 	if strcmpi(spikeConfig, 'unsorted')
 		if single
 			spikes = {spikes};
-			lfps = {lfps};
 		end
 		
 	elseif any(strcmpi(spikeConfig, {'sorted', 'sortedjoint'}))
@@ -42,8 +52,6 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 		unitCountAll = 0;
 		unitChannels = [];
 		unitTypes = {};
-		
-		lfps = cell(length(analysis)); % empty
 		
 		for channelID = 1:length(spikes)
 			sp = spikes{channelID};
@@ -91,13 +99,14 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 	for analysisID = 1:length(analysis)
 		a = analysis{analysisID}; % unpack
 		sp = spikes{analysisID};
-		lfp = lfps{analysisID};
 		
 		if strcmpi(spikeConfig, 'unsorted')
 			a.unitCount = length(a.channels);
 		elseif any(strcmpi(spikeConfig, {'sorted', 'sortedjoint'}))
 			a.unitCount = unitCountAll;
 		end
+		
+		if ~isfield(a, 'spikesBand'); a.spikesBand = []; end
 		
 		a.units = cell(1, a.unitCount);
 		a.spikeConfig = spikeConfig;
@@ -113,9 +122,6 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 			u.viewBounds        = a.viewBounds;
 % 			u.trialCount        = a.trialCount;
 			u.spikesBand        = a.spikesBand;
-			u.lfpBands          = a.lfpBands;
-			u.lfpBandNames      = a.lfpBandNames;
-			u.lfpBandCount      = a.lfpBandCount;
 			u.maskerFile        = a.maskerFile;
 			u.maskerLevel       = a.maskerLevel;
 			u.targetDuration    = a.targetDuration;
@@ -128,6 +134,9 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 				u.channel       = a.channels(unitID);
 				u.number        = 0; % for sorted and sortedjoint only
 				u.label         = sprintf('Ch %d', a.channels(unitID));
+				u.lfpBands      = a.lfpBands;
+				u.lfpBandNames  = a.lfpBandNames;
+				u.lfpBandCount  = a.lfpBandCount;
 				u.spikeDuration = a.spikeDuration;
 				u.spikeThresholdFactor    = a.spikeThresholdFactor;
 				u.spikeThreshold          = a.spikeThreshold(unitID);
@@ -150,11 +159,12 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 
 			% spike times per stimulus condition and score for each trial
 			u.spikeTimes = cell(u.condCount, scoreCount);
-			u.lfp = cell(u.lfpBandCount, u.condCount, scoreCount);
+			u.lfp = cell(u.condCount, scoreCount);
 
 			for condID = 1:u.condCount
 				for scoreID = 1:scoreCount
 					u.spikeTimes{condID, scoreID} = {};
+					u.lfp{condID, scoreID} = zeros(0,0,0);
 				end
 			end
 
@@ -167,40 +177,44 @@ function analysis = spikesToUnits(spikes, lfps, analysis, spikeConfig)
 				% relative to tone onset
 				trialSpikeTimes = sp{trialID, unitID} + u.viewBounds(1);
 				
-				u.spikeTimes{condID, 1}{end+1} = trialSpikeTimes;
-				for bandID = 1:u.lfpBandCount
-					u.lfp{bandID, condID, 1}{end+1} = ...
-						lfp(trialID, unitID, bandID, :);
-				end
-
 				% look 'coding of scores' at the top
 				score = a.trialLog(trialID).score;
+				u.spikeTimes{condID, 1}{end+1} = trialSpikeTimes;
 				if any(strcmpi(score, {'HIT', 'CR'}))
 					u.spikeTimes{condID, 2}{end+1} = trialSpikeTimes;
-					for bandID = 1:u.lfpBandCount
-						u.lfp{bandID, condID, 2}{end+1} = ...
-							lfp(trialID, unitID, bandID, :);
-					end
 				end
 				if any(strcmpi(score, {'MISS', 'FA'}))
 					u.spikeTimes{condID, 3}{end+1} = trialSpikeTimes;
-					for bandID = 1:u.lfpBandCount
-						u.lfp{bandID, condID, 3}{end+1} = ...
-							lfp(trialID, unitID, bandID, :);
-					end
 				end
 				if any(strcmpi(score, {'HIT', 'FA'}))
 					u.spikeTimes{condID, 4}{end+1} = trialSpikeTimes;
-					for bandID = 1:u.lfpBandCount
-						u.lfp{bandID, condID, 4}{end+1} = ...
-							lfp(trialID, unitID, bandID, :);
-					end
 				end
 				if any(strcmpi(score, {'MISS', 'CR'}))
 					u.spikeTimes{condID, 5}{end+1} = trialSpikeTimes;
-					for bandID = 1:u.lfpBandCount
-						u.lfp{bandID, condID, 5}{end+1} = ...
-							lfp(trialID, unitID, bandID, :);
+				end
+				
+				if ~isfield(a, 'lfp'); continue; end
+				if strcmpi(spikeConfig, 'sorted')
+					% associate LFP of the entire channel to each unit
+					lfp = squeeze(a.lfp(trialID, u.channel, :, :));
+				else
+					lfp = squeeze(a.lfp(trialID, unitID, :, :));
+				end
+				
+				if strcmpi(spikeConfig, 'unsorted')
+					u.lfp{condID, 1}(:, :, end+1) = lfp;
+						
+					if any(strcmpi(score, {'HIT', 'CR'}))
+						u.lfp{condID, 2}(:, :, end+1) = lfp;
+					end
+					if any(strcmpi(score, {'MISS', 'FA'}))
+						u.lfp{condID, 3}(:, :, end+1) = lfp;
+					end
+					if any(strcmpi(score, {'HIT', 'FA'}))
+						u.lfp{condID, 4}(:, :, end+1) = lfp;
+					end
+					if any(strcmpi(score, {'MISS', 'CR'}))
+						u.lfp{condID, 5}(:, :, end+1) = lfp;
 					end
 				end
 
