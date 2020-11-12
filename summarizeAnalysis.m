@@ -1,8 +1,9 @@
 function summarizeAnalysis(analysis, summaryFile)
 	%% summarize active vs. passive
 
-% 	recordingModeLabels = {'Active MMR', 'Passive MMR' };
-	recordingModeLabels = {'Passive MMR', 'Passive Silence'};
+	recordingModeLabels = {'Active HE MMR', 'Passive MMR' };
+% 	recordingModeLabels = {'Active LE MMR', 'Passive MMR' };
+% 	recordingModeLabels = {'Passive MMR', 'Passive Silence'};
 	modeCount = length(recordingModeLabels);
 
 	% sessions and their analyses selected for summarizing
@@ -15,6 +16,7 @@ function summarizeAnalysis(analysis, summaryFile)
 	s.units = cell(s.unitCount, 1);
 	s.targetFreqs = [];
 	s.targetLevels = [];
+	s.maskerLevel = 50;
 	s.animalNames = {};
 
 
@@ -22,8 +24,8 @@ function summarizeAnalysis(analysis, summaryFile)
 	for analysisID = 1:length(analysis)
 		a = analysis{analysisID};
 
-		if isfield(a, 'experimentMode'); a.mode = a.experimentMode; end
-		if isfield(a, 'experimentStart'); a.time = a.experimentStart; end
+		if isfield(a, 'experimentStart')
+			a.time = a.experimentStart; end
 		if isfield(a, 'experimentStartStr')
 			a.timeStr = a.experimentStartStr; end
 
@@ -128,6 +130,7 @@ function summarizeAnalysis(analysis, summaryFile)
 		u.condCount = s.condCount;
 		u.targetFreqs = s.targetFreqs;
 		u.targetLevels = s.targetLevels;
+		u.maskerLevel = s.maskerLevel;
 		u.targetDuration = s.targetDuration;
 		u.viewBounds = s.viewBounds;
 
@@ -512,19 +515,20 @@ end
 %% helper functions
 function res = recordingMode(a)
 	res = 0;
-% 	if strcmpi(a.mode, 'go nogo') && ...
-% 			strcmpi(a.maskerFile, 'supermasker.wav') && ...
-% 			a.maskerLevel == 50 && ...
-% 			isequal(a.targetFreqs, 1)
-% 		res = 1;
-	if strcmpi(a.mode, 'passive') && ...
+	% poke training is the low-effort condition
+	if any(strcmpi(a.experimentMode, {'go nogo', 'poke training'})) && ...
 			strcmpi(a.maskerFile, 'supermasker.wav') && ...
 			a.maskerLevel == 50 && ...
 			isequal(a.targetFreqs, 1)
 		res = 1;
-	elseif strcmpi(a.mode, 'passive') && ...
-			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
+	elseif strcmpi(a.experimentMode, 'passive') && ...
+			strcmpi(a.maskerFile, 'supermasker.wav') && ...
+			a.maskerLevel == 50 && ...
 			isequal(a.targetFreqs, 1)
 		res = 2;
+% 	elseif strcmpi(a.mode, 'passive') && ...
+% 			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
+% 			isequal(a.targetFreqs, 1)
+% 		res = 2;
 	end
 end
