@@ -352,19 +352,19 @@ function summarizeAnalysis(analysis, summaryFile)
 						% check if there have been any trials for the current
 						% condition and score pair
 						psth = u.psthMean{uCondID,scoreID};
-						if isempty(psth); continue; end
+						if isempty(psth); psth = nan; end
 
-						% keep a list of summarized animal names and unit IDs
+						% keep a list of summarized animal names & unit IDs
 						% (different unit numbering scheme) 
-						s.units{mode}.animalNames{sCondID,scoreID}{end+1} = ...
-							a.animalName;
-						s.units{mode}.sessionIDs{sCondID,scoreID}(end+1) = ...
-							sessionID;
-						s.units{mode}.unitIDs{sCondID,scoreID}(end+1) = ...
-							s.targetRespondingUnits;
+						s.units{mode}.animalNames{sCondID,scoreID}{end+1} ...
+							= a.animalName;
+						s.units{mode}.sessionIDs{sCondID,scoreID}(end+1) ...
+							= sessionID;
+						s.units{mode}.unitIDs{sCondID,scoreID}(end+1) ...
+							= s.targetRespondingUnits;
 						
-						s.units{mode}.unitTypes{sCondID,scoreID}{end+1} = ...
-							u.type;
+						s.units{mode}.unitTypes{sCondID,scoreID}{end+1} ...
+							= u.type;
 					
 						% does unit respond to masker?
 						s.units{mode}.tonic{ ...
@@ -383,22 +383,33 @@ function summarizeAnalysis(analysis, summaryFile)
 
 						% d'
 						dPrime = u.dPrimeCQMean{uCondID,scoreID};
-						pre = find(u.psthCenters < 0);
-						dPrime = dPrime - dPrime(pre(end));
+						if isempty(dPrime); dPrime = nan;
+						else
+							% reference dPrime to tone onset
+							pre = find(u.psthCenters < 0);
+							dPrime = dPrime - dPrime(pre(end));
+						end
 						s.units{mode}.dPrimeCQMean{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
 						
 						dPrime = u.dPrimeCQSum{uCondID,scoreID};
-						pre = find(u.psthCenters < 0);
-						dPrime = dPrime - dPrime(pre(end));
+						if isempty(dPrime); dPrime = nan;
+						else
+							% reference dPrime to tone onset
+							pre = find(u.psthCenters < 0);
+							dPrime = dPrime - dPrime(pre(end));
+						end
 						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
 
 						% vector strength
 						for binID = 1:size(u.vectorBins,1)
 							for baseFreqID = 1:length(u.baseFreqs)
-								vec = u.vectorStrength{ ...
-									uCondID,scoreID}{binID,baseFreqID};
+								vec = u.vectorStrength{uCondID,scoreID};
+								if isempty(vec); vec = nan;
+								else
+									vec = vec{binID,baseFreqID};
+								end
 								s.units{mode}.vectorStrength{ ...
 									sCondID,scoreID}{binID,baseFreqID}( ...
 									end+1) = vec;
@@ -406,16 +417,23 @@ function summarizeAnalysis(analysis, summaryFile)
 						end
 
 						% mfsl (minimum first spike latency)
-						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = ...
-							u.mfsl{uCondID,scoreID};
+						mfsl = u.mfsl{uCondID,scoreID};
+						if isempty(mfsl); mfsl = nan; end
+						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = mfsl;
+							
 
 						% max firing rate
-						s.units{mode}.maxFiring{sCondID,scoreID}(end+1) = ...
-							u.maxFiring{uCondID,scoreID};
+						maxFiring = u.maxFiring{uCondID,scoreID};
+						if isempty(maxFiring); maxFiring = nan; end
+						s.units{mode}.maxFiring{sCondID,scoreID}(end+1) ...
+							= maxFiring;
+							
 
 						% max firing rate
-						s.units{mode}.meanFiring{sCondID,scoreID}(end+1) = ...
-							u.meanFiring{uCondID,scoreID};
+						meanFiring = u.meanFiring{uCondID,scoreID};
+						if isempty(meanFiring); meanFiring = nan; end
+						s.units{mode}.meanFiring{sCondID,scoreID}(end+1)...
+							= meanFiring;
 					end
 					
 					if isempty(u.psthMean{uCondID,1}); continue; end
