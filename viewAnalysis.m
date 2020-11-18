@@ -181,6 +181,7 @@ function refreshPlot(fig, d)
 		];
 	getColor = @(i)colors(mod(i-1,size(colors,1))+1,:);
 	targetRectColor = [0 0 .4 .1];
+	pokeRectColor = [0 .8 0 .15];
 	
 	% Unpack data
 	if nargin < 2
@@ -770,20 +771,25 @@ function refreshPlot(fig, d)
 					'position', [0 0 u.targetDuration firingUL], ...
 					'facecolor', targetRectColor, 'linestyle', 'none');
 				uistack(rect, 'bottom');
+% 				rect = rectangle( ...
+% 					'position', [50e-3 0 u.targetDuration-100e-3 firingUL], ...
+% 					'facecolor', targetRectColor, 'linestyle', 'none');
+% 				uistack(rect, 'bottom');
+				% mark poke
 				rect = rectangle( ...
-					'position', [50e-3 0 u.targetDuration-100e-3 firingUL], ...
-					'facecolor', targetRectColor, 'linestyle', 'none');
+					'position', [-.35 0 .1 firingUL], ...
+					'facecolor', pokeRectColor, 'linestyle', 'none');
 				uistack(rect, 'bottom');
 				
 				xticks(u.viewBounds(1):1:u.viewBounds(2));
 % 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
 % 				xticklabels(-1:.5:2);
-				xlim([-.3, 1.3]);
-% 				xlim(u.viewBounds);
+% 				xlim([-.3, 1.3]);
+				xlim(u.viewBounds);
 				ylim([0,firingUL]);
 				ylabel('Firing rate (1/s)');
 				xlabel('Time (s)');
-				grid on;
+% 				grid on;
 				
 				msk = plots~=0;
 % 				legend(plots(msk), condsStr(msk), ...
