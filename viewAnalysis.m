@@ -43,7 +43,7 @@ function viewAnalysis(analysis)
 	data.subsets = {'all', 'tonic', 'phasic', 'phasicSuppressing', ...
 		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
-		data.plotNames = {'psth err', 'dprime cqmean', ...
+		data.plotNames = {'psth', 'psth err', 'dprime cqmean', ...
 			...'dprime cqsum', ...
 			'dprime neuro/behav', 'dprime behavior', ...
 			'vector 10', 'max firing', 'mean firing', ...
@@ -51,13 +51,15 @@ function viewAnalysis(analysis)
 			... 'mfsl'...
 			};
 	else
-		data.plotNames = {'raster', 'psth', 'dprime cqmean', ...
+		data.plotNames = {'raster', 'psth', ...
+			... 'dprime cqmean', ...
 			... 'dprime cqsum', ...
 			... 'dprime mqmean', ...
-			'dprime', ...
+			... 'dprime', ...
 			... 'lfp alpha', 'lfp beta', 'lfp gamma', ...
 			'vector 10', 'vector pre', 'vector peri', 'vector post', ...
-			'rlf', 'mtf', 'mtf 10', 'max firing', 'mfsl', 'mutual info', ...
+			'rlf', 'mtf', 'mtf 10', 'max firing', 'mfsl', ...
+			'mutual info', ...
 			'psth err', 'psth heatmap'};
 	end
 	
@@ -204,21 +206,24 @@ function refreshPlot(fig, d)
 % 	a.unitCount = 2;
 % 	a.units = a.units(a.channels==13 | a.channels==14);
 
+	channelSubset = [];
+
 	if sorted
 		if strcmpi(a.type, 'summary')
+% 			firingUL = 7.5;
 			firingUL = 10;
 		else
-			firingUL = 22;
+			firingUL = 35;
 		end
-		vectorUL = .5;
+		vectorUL = .6;
 	else
-		firingUL = 120;
+		firingUL = 160;
 		vectorUL = .8;
 % 		firingUL = 40;
 % 		vectorUL = .4;
-		channelSubset = [];
 % 		channelSubset = [9];
 	end
+	
 
 	subplots = {};
 	subplots2 = {};
@@ -1468,7 +1473,11 @@ function refreshPlot(fig, d)
 		
 	catch err
 		if ~strcmpi(err.identifier, 'my:break')
-			plotTitle = '>> ERROR <<';
+			if exist('plotTitle', 'var')
+				plotTitle = ['[ERROR] ' plotTitle];
+			else
+				plotTitle = '[ERROR]';
+			end
 			disp(getReport(err));
 		end
 	end
