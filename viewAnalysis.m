@@ -55,6 +55,7 @@ function viewAnalysis(analysis)
 			... 'dprime cqsum', ...
 			... 'dprime mqmean', ...
 			'dprime', ...
+			... 'lfp alpha', 'lfp beta', 'lfp gamma', ...
 			'vector 10', 'vector pre', 'vector peri', 'vector post', ...
 			'rlf', 'mtf', 'mtf 10', 'max firing', 'mfsl', 'mutual info', ...
 			'psth err', 'psth heatmap'};
@@ -787,6 +788,40 @@ function refreshPlot(fig, d)
 				msk = plots~=0;
 % 				legend(plots(msk), condsStr(msk), ...
 % 					'location', 'northeastoutside');
+				title(u.label);
+				
+			
+			% Vector strength
+			elseif strcmpi(plotName(1:min(3, length(plotName))), 'lfp')
+				bandName = plotName(5:end);
+				bandName = [upper(bandName(1)) bandName(2:end)];
+				bandID = find(strcmpi(u.lfpBandNames, bandName));
+
+				plotTitle = ['RMS of ' bandName ' band'];
+				
+				plots = zeros(u.condCount, 1);
+				
+				for condID = 1:u.condCount
+					if strcmpi(a.type, 'summary')
+						error('Not implemented')
+
+					else
+						lfpMean = u.lfpMean{condID, scoreID}(bandID, :);
+						lfpSEM = u.lfpSEM{condID, scoreID}(bandID, :);
+						plots(condID) = plot(1:3, lfpMean, ...
+							'color', getColor(condID), 'linewidth',1.5);
+						errorbar(1:3, lfpMean, lfpSEM, ...
+							'color', getColor(condID), 'linewidth',1.5);
+					end
+				end
+
+				axis square tight;
+% 				ylim([0,vectorUL]);
+				xticks(1:3);
+				xticklabels({'Pre', 'Peri', 'Post'});
+				xlabel('');
+				ylabel(['RMS of ' bandName]);
+				legend(plots, condsStr, 'location', 'northeastoutside');
 				title(u.label);
 				
 				
