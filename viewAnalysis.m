@@ -236,6 +236,7 @@ function refreshPlot(fig, d)
 	else
 		levelLabel = 'Level (dB SPL)';
 	end
+	snrLabel = 'SNR (dB)';
 	
 	try
 % 		if a.unitCount > 16
@@ -249,7 +250,7 @@ function refreshPlot(fig, d)
 				error('Only for summary analysis');
 			end
 			if a.unitCount~=2 || ...
-					~strcmpi(a.units{1}.label, 'Active MMR') || ...
+					~strncmpi(a.units{1}.label, 'Active', 6) || ...
 					~strcmpi(a.units{2}.label, 'Passive MMR')
 				error('Only for active and passive MMR');
 			end
@@ -436,7 +437,7 @@ function refreshPlot(fig, d)
 				error('Only for summary analysis');
 			end
 			if a.unitCount~=2 || ...
-					~strcmpi(a.units{1}.label, 'Active MMR') || ...
+					~strncmpi(a.units{1}.label, 'Active', 6) || ...
 					~strcmpi(a.units{2}.label, 'Passive MMR')
 				error('Only for active and passive MMR');
 			end
@@ -548,12 +549,12 @@ function refreshPlot(fig, d)
 			end
 			
 			% 	if f.targetFreqs(1) == 0; f.targetFreqs(1) = .5; end
-			condsStr = {'Nogo'};
-			for freq = u.targetFreqs
-				for level = u.targetLevels
-					condsStr{end+1} = sprintf('%gk %gdB', freq, level);
-				end
-			end
+% 			if strcmpi(a.experimentMode, 'poke training')
+% 				nogoStr = 'No Target';
+% 				nogoStr = 'Nogo';
+% 			else
+			nogoStr = 'Nogo';
+% 			end
 			freqsStr      = cellfun(@(a)num2str(a,'%g'    ),...
 				num2cell(u.targetFreqs ),'un',0);
 			freqsStrHz    = cellfun(@(a)num2str(a,'%g kHz'),...
@@ -563,9 +564,37 @@ function refreshPlot(fig, d)
 			levelsStrdB   = cellfun(@(a)num2str(a,'%g dB' ),...
 				num2cell(u.targetLevels),'un',0);
 			levelsNogo    = [min(u.targetLevels)-10, ...
-				u.targetLevels];                   % add nogo to beginning
-			levelsNogoStr = ['Nogo', levelsStr];   % add nogo to beginning
-			levelsNogoStrdB = ['Nogo', levelsStrdB];% add nogo to beginning
+				u.targetLevels];                        % add nogo
+			levelsNogoStr = [nogoStr, levelsStr];       % add nogo
+			levelsNogoStrdB = [nogoStr, levelsStrdB];   % add nogo
+			
+			if ~isfield(u, 'maskerLevel')
+				warning('Assuming masker level = 50 dB SPL')
+				u.maskerLevel = 50;
+			end
+			
+			snr = u.targetLevels - u.maskerLevel;
+			snrStr     = cellfun(@(a)num2str(a,'%g'    ),...
+				num2cell(snr),'un',0);
+			snrStrdB   = cellfun(@(a)num2str(a,'%g dB' ),...
+				num2cell(snr),'un',0);
+			snrNogo = [min(snr)-10, snr];               % add nogo
+			snrNogoStr = [nogoStr, snrStr];             % add nogo
+			snrNogoStrdB = [nogoStr, snrStrdB];         % add nogo
+			
+			if length(u.targetFreqs) == 1
+				condsStr = snrNogoStrdB;
+			else
+				condsStr = {nogoStr};
+				for freq = u.targetFreqs
+	% 				for level = u.targetLevels
+	% 					condsStr{end+1} = sprintf('%gk %gdB', freq, level);
+	% 				end
+					for s = snr
+						condsStr{end+1} = sprintf('%gk %gdB', freq, s);
+					end
+				end
+			end
 
 			if any(strcmpi(a.type, {'session', 'datafile'}))
 				if sorted
@@ -659,7 +688,7 @@ function refreshPlot(fig, d)
 				yyaxis left
 				yticks([1, (2:length(u.targetLevels):u.condCount) + ...
 					floor(length(u.targetLevels)/2)]);
-				yticklabels(['Nogo', freqsStr]);
+				yticklabels([nogoStr, freqsStr]);
 				set(gca, 'ydir', 'normal');
 				set(gca, 'ycolor', 'black');
 				set(gca, 'ticklength', [0,0]);
@@ -670,14 +699,14 @@ function refreshPlot(fig, d)
 				yyaxis right
 				ylim(lim);
 				yticks(2:u.condCount);
-				yticklabels(repmat(u.targetLevels, 1, ...
-					length(u.targetFreqs)));
+				yticklabels(repmat(snr, 1, ...
+					length(snr)));
 				set(gca, 'ydir', 'normal');
 				set(gca, 'ycolor', 'black');
 				set(gca, 'ticklength', [0,0]);
 				
 				xlabel('Time (s)');
-				ylabel(levelLabel);
+				ylabel(snrLabel);
 				title(u.label);
 			
 				
@@ -880,7 +909,7 @@ function refreshPlot(fig, d)
 					
 					col = getColor(condID);
 					plots(condID) = plot(tab, avg, 'color', col, ...
-						'linewidth', 3);
+						'linewidth', 2);
 					if strcmpi(a.type, 'summary')
 						patches(condID) = patch([tab fliplr(tab)], ...
 							[avg+err fliplr(avg-err)], ...
@@ -948,7 +977,6 @@ function refreshPlot(fig, d)
 					% Add nogo
 					condIDs = (freqID-1)*length(u.targetLevels)+levelIDs+1;
 					col = getColor(freqID+2);
-					x = u.targetLevels-50;
 					if strcmpi(a.type,'summary')
 						avg = zeros(size(condIDs));
 						err = zeros(size(condIDs));
@@ -963,7 +991,7 @@ function refreshPlot(fig, d)
 							err(i) = std(dPrime);% / sqrt(length(dPrime));
 						end
 						
-						patches(freqID) = patch([x fliplr(x)], ...
+						patches(freqID) = patch([snr fliplr(snr)], ...
 							[avg+err fliplr(avg-err)], ...
 							col, 'edgecolor', 'none');
 						alpha(patches(freqID), .2);
@@ -971,8 +999,10 @@ function refreshPlot(fig, d)
 						a = calculatePerformance(a);
 						avg = [a.dPrimeBehavior{condIDs}];
 					end
-					plots(freqID) = plot(x, avg, 'color', col, ...
-						'linewidth',3);
+					plots(freqID) = plot(snr, avg, '-o', 'color', col, ...
+						'linewidth',2);
+					p = plots(freqID);
+					set(p, 'markerfacecolor', get(p, 'color'));
 				end
 				
 				% push ribbons to the back of line plots
@@ -983,15 +1013,17 @@ function refreshPlot(fig, d)
 				end
 				
 				axis square tight;
-				xticks(u.targetLevels-50);
 % 				xticklabels(levelsStr);
+				xticks(snr)
+				xticklabels(snrStr);
+% 				xlim([min(snr)-1, max(snr)+1]);
 				
 				yLim = ylim;
 % 				ylim([0 yLim(2)]);
-				ylim([0 3]);
+				ylim([0 3.5]);
 				
 % 				xlabel(levelLabel);
-				xlabel('TMR (dB)');
+				xlabel(snrLabel);
 				ylabel('Sensitivity index (d'')');
 				legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
@@ -1232,13 +1264,13 @@ function refreshPlot(fig, d)
 				for freqID = 1:length(u.targetFreqs)
 					rlf = u.rlf{freqID,scoreID};
 					rlf = [u.meanFiring{1,scoreID}, rlf]; % Add nogo
-					plot(levelsNogo, rlf, 'color', getColor(freqID));
+					plot(snrNogo, rlf, 'color', getColor(freqID));
 				end
 				
 				axis square tight;
-				xticks(levelsNogo);
-				xticklabels(levelsNogoStr);
-				xlabel(levelLabel);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
+				xlabel(snrLabel);
 				ylabel('Mean firing rate (1/s)');
 				legend(freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
@@ -1287,14 +1319,14 @@ function refreshPlot(fig, d)
 						end
 						arr(end+1) = mean(mtfS);
 					end
-					plot(levelsNogo, 10*log10(arr), ...
+					plot(snrNogo, 10*log10(arr), ...
 						'color', getColor(freqID));
 				end
 				
 				axis square tight;
-				xticks(levelsNogo);
-				xticklabels(levelsNogoStr);
-				xlabel(levelLabel);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
+				xlabel(snrLabel);
 				ylabel('MTF power at 10 Hz (Peri)');
 				legend(freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
@@ -1362,10 +1394,10 @@ function refreshPlot(fig, d)
 				end
 				
 				axis square tight;
-				xticks(levelsNogo);
-				xticklabels(levelsNogoStr);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
 % 				ylim([0,firingUL]);
-				xlabel(levelLabel);
+				xlabel(snrLabel);
 				ylabel([plotTitle ' (1/s)']);
 				legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
@@ -1419,9 +1451,9 @@ function refreshPlot(fig, d)
 				end
 				
 				axis square tight;
-				xticks(levelsNogo);
-				xticklabels(levelsNogoStr);
-				xlabel(levelLabel);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
+				xlabel(snrLabel);
 				ylabel('MFSL (ms)');
 				legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
@@ -1439,8 +1471,10 @@ function refreshPlot(fig, d)
 					xticks(1:length(u.targetFreqs));
 					xticklabels(freqsStr);
 					xlabel(freqLabel)
-					leg = legend(levelsStr);
-					title(leg, levelLabel);
+% 					leg = legend(levelsStr);
+% 					title(leg, levelLabel);
+					leg = legend(snrStr);
+					title(leg, snrLabel);
 					
 				else
 					for freqID = 1:length(u.targetFreqs)
@@ -1454,8 +1488,8 @@ function refreshPlot(fig, d)
 							plt.Marker = 'x';
 						end
 					end
-					xticks(u.targetLevels);
-					xlabel(levelLabel);
+					xticks(snr);
+					xlabel(snrLabel);
 					leg = legend(freqsStrHz);
 					title(leg, freqLabel);
 				end
