@@ -4,11 +4,27 @@ library(tidyr) # gather
 library(dplyr) # recode
 library(ggplot2) # ggplot
 
+# gerbil = 'HE-All'
+# gerbil = 'HE-CMR05Fluffy'
+# gerbil = 'HE-CMR05Tail'
+# gerbil = 'HE-D2Right'
+gerbil = 'HE-E1Right'
+
+# gerbil = 'LE-All'
+# gerbil = 'LE-CMR08Tail'
+# gerbil = 'LE-CMR08Head'
+
+summaryFile = paste('AnalysisNJIT/Summary-', gerbil, '-Sorted.xlsx', sep='')
+# summaryFile = 'AnalysisNJIT/Summary-ARO2020-CMR05Fluffy+CMR05Tail-Sorted.xlsx'
+
+save_plot = function(plot, file) {
+  ggsave(plot, file=file, height=4, width=6, dpi=600)
+}
 
 #################
 # target evoked response
 
-data = read.xlsx('AnalysisNJIT/Summary-All-Sorted.xlsx', 'DeltaPSTH')
+data = read.xlsx(summaryFile, 'DeltaPSTH')
 data2 = subset(data, is.na(Score))
 data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$SNR = factor(data2$TargetLevel-50)
@@ -73,7 +89,7 @@ ggplot(subset(data2, Type=='Tonic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, grou
 #################
 # vector strength
 
-data = read.xlsx('AnalysisNJIT/Summary-All-Sorted.xlsx', 'VectorStrength')
+data = read.xlsx(summaryFile, 'VectorStrength')
 data2 = subset(data, is.na(Score) & Phasic)
 # data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$Bin = factor(data2$Bin, c('Pre','Peri','Post'), 1:3)
@@ -119,7 +135,7 @@ ggplot(data2, aes(x=SNR, y=VectorStrength)) +
 #################
 # d prime
 
-data = read.xlsx('Summary-All-Sorted.xlsx', 'dPrime')
+data = read.xlsx(summaryFile, 'dPrime')
 data2 = subset(data, is.na(Score) & 0<=Time & Time<=1, select=-c(Score))
 data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$SNR = factor(data2$TargetLevel-50)
