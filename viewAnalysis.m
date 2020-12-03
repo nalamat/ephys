@@ -48,7 +48,7 @@ function viewAnalysis(analysis)
 			'dprime neuro/behav', 'dprime behavior', ...
 			'vector 10', 'max firing', 'mean firing', ...
 			'vector peri', 'delta', 'delta/behav', ...
-			... 'mfsl'...
+			'mfsl', 'mfsl-violin', ...
 			};
 	else
 		data.plotNames = {'raster', 'psth', ...
@@ -1351,7 +1351,7 @@ function refreshPlot(fig, d)
 					condIDs = [1, (freqID-1)*length(u.targetLevels) + ...
 						levelIDs+1];
 					col = getColor(freqID);
-					x = levelsNogo;
+					x = snrNogo;
 					if strcmpi(a.type,'summary')
 						avg = zeros(size(condIDs));
 						err = zeros(size(condIDs));
@@ -1417,7 +1417,7 @@ function refreshPlot(fig, d)
 					condIDs = [1, (freqID-1)*length(u.targetLevels) + ...
 						levelIDs+1];
 					col = getColor(freqID);
-					x = levelsNogo;
+					x = snrNogo;
 					if strcmpi(a.type,'summary')
 						avg = zeros(size(condIDs));
 						err = zeros(size(condIDs));
@@ -1439,7 +1439,7 @@ function refreshPlot(fig, d)
 					else
 						avg = [u.mfsl{condIDs,scoreID}];
 					end
-					plots(freqID) = plot(x, avg, 'color', col, ...
+					plots(freqID) = plot(x, avg*1000, 'color', col, ...
 						'linewidth',3);
 				end
 				
@@ -1456,6 +1456,40 @@ function refreshPlot(fig, d)
 				xlabel(snrLabel);
 				ylabel('MFSL (ms)');
 				legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				title(u.label);
+
+				
+			% Plot MFSL
+			elseif strcmpi(plotName, 'mfsl-violin')
+				plotTitle = 'MFSL Violin';
+				if ~strcmpi(a.type, 'summary')
+					error('Only for summary analysis');
+				end
+				sameYLim = true;
+				
+				plots = zeros(1,1);
+				mfsl = cell(1,u.condCount);
+				for condID = 1:u.condCount
+					mfsl{condID} = u.mfsl{condID,scoreID} * 1000;
+					if ~strcmpi(subset, 'all')
+						msk = u.(subset){condID,scoreID}==true;
+						mfsl{condID} = mfsl{condID}(msk);
+					end
+					mfsl{condID}(~isfinite(mfsl{condID})) = [];
+				end
+				try
+				violin(mfsl);
+				catch
+					disp('err')
+				end
+				
+				axis square tight;
+				xticks(1:u.condCount);
+				xticklabels(snrNogoStr);
+				xlabel(snrLabel);
+				ylabel('MFSL (ms)');
+				ylim([0 200]);
+% 				legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				title(u.label);
 				
 				
