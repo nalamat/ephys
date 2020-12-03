@@ -21,21 +21,35 @@ function units = analyzeUnits(units)
 		u = units{unitID};   % unpack
 		
 		% few basic parameters for analysis
-		u.psthBin        = 10e-3;
-		u.psthWin        = 50e-3;
+		u.psthBin        = 10e-3; % bin size for calculating PSTH
 		% -1s before onset and +1s after offset of tone
 		u.psthEdges      = u.viewBounds(1)-u.psthBin/2 : u.psthBin : ...
 			u.viewBounds(2)+u.psthBin/2;
 		u.psthCenters    = u.psthEdges(1:end-1)+u.psthBin/2;
-		u.baseFreqs      = 1:1:20;
+		u.gap = 50e-3;
+		binCount = length(u.psthCenters);
+		onset = 0<=u.psthCenters & u.psthCenters<u.gap;
+		peri = 0<=u.psthCenters & u.psthCenters<u.targetDuration;
+		periNoOnsetOffset = u.gap<=u.psthCenters & ...
+			u.psthCenters<u.targetDuration-u.gap;
+		offset = u.targetDuration-u.gap<=u.psthCenters & ...
+			u.psthCenters<u.targetDuration+u.gap;
+		
+		% convolution window for smoothing PSTH
+		u.psthWin        = 50e-3;            % convolution window size
+% 		win = gausswin(u.psthWin/u.psthBin); % gaussian window
+		win = rectwin(u.psthWin/u.psthBin);  % rectangular window
+		win = win / u.psthWin;               % normalize window
+		
 		% Skip the first 10 ms after tone onset/offset
+		u.baseFreqs      = 1:1:20;
 		u.vectorBins     = [u.viewBounds(1), 0;
-							10e-3, u.targetDuration;
-							u.targetDuration+10e-3, u.viewBounds(2)];
+							u.gap, u.targetDuration-u.gap;
+							u.targetDuration, u.viewBounds(2)];
 		u.vectorBinNames = {'Pre','Peri','Post'};
 
-	% 	u.svmTimes       = 10e-3:10e-3:1;
-	% 	u.svmScores      = [];
+% 		u.svmTimes       = 10e-3:10e-3:1;
+% 		u.svmScores      = [];
 
 		% clear everything, in case the unit has been already analyzed once
 		c = cell(u.condCount, 5); % {conds x scores}
@@ -58,7 +72,7 @@ function units = analyzeUnits(units)
 	% 	u.zscoreOffset     = [];
 		u.lambda           = c;
 		u.mutualInfo       = c;
-		u.mfsl             = c;
+		u.mfsl             = c; % minimum first spike latency
 		u.maxFiring        = c;
 		u.meanFiring       = c;
 		u.stdFiring        = c;
@@ -87,17 +101,6 @@ function units = analyzeUnits(units)
 	% 		% average spikes per second
 	% 		psthMean = psthMean / u.trialCountPerCond(condID) / u.psthBin;
 	% 		u.psthMean{condID} = psthMean;
-
-	% 		win = gausswin(u.psthWin/u.psthBin);
-			win = rectwin(u.psthWin/u.psthBin);
-			win = win / u.psthWin;
-
-			binCount = length(u.psthCenters);
-			gap = 50e-3;
-			onset = 0<=u.psthCenters & u.psthCenters<gap;
-			peri = gap<=u.psthCenters & u.psthCenters<u.targetDuration;
-			offset = u.targetDuration<=u.psthCenters & ...
-				u.psthCenters<u.targetDuration+gap;
 
 			for scoreID = 1:5
 				% better method for calculating PSTH with STD of firing rate
@@ -258,13 +261,14 @@ function units = analyzeUnits(units)
 				end
 
 				% minimum first spike latency (MFSL) peri-stimulus
-				% assume no two peaks within 5*psthBin
-				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(peri), ...
-					'minpeakdistance',50e-3/u.psthBin);
+				% assume no two peaks within 2*psthBin
+				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(peri)); ...
+% 					'minpeakdistance',5);
 				if ~isempty(locs)
 					psthCentersPeri = u.psthCenters(peri);
 					mfsl = psthCentersPeri(locs(1));
 				else
+					warning('[analyzeUnits] no MFSL found for unit %s, cond %d, score %d', u.label, condID, scoreID);
 					mfsl = inf;
 				end
 				u.mfsl{condID,scoreID} = mfsl;
