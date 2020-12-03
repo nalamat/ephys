@@ -1,4 +1,5 @@
-% Distribute extracted spikes times and LFP RMS (for multi-units) into
+function analysis = spikesToUnits(spikes, analysis, spikeConfig)
+% Distribute extracted spike times and LFP RMS (for multi-units) into
 % individual units and rearrange trials into a set of scores.
 % 
 % coding of scores:
@@ -22,7 +23,7 @@
 % Out args:
 %     analysis (cell array of structs): Each struct contains a units
 %         cell array containing rearranged spikeTimes and lfp.
-function analysis = spikesToUnits(spikes, analysis, spikeConfig)
+
 	scoreCount = 5;
 
 	unitTypeMap = containers.Map( ...

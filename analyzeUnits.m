@@ -1,4 +1,14 @@
 function units = analyzeUnits(units)
+% Analyze detected spikes for each unit and calculate metrics such as PSTH,
+% neurometric d', mean and max firing rate, vector strength, modulation
+% transfer function, etc.
+%
+% In args:
+%     units (cell array of structs):
+%         spikeTimes (nested cell array): relative to tone onset in sec,
+%             {conds x scores}{trials}(spike times)
+%         lfp (nested cell array): RMS of LFP bands,
+%             {conds x scores}(bands x pre/per/post x trials)
 
 	if ~iscell(units)
 		single = true;
