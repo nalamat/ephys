@@ -1,9 +1,15 @@
-function summarizeAnalysis(analysis, summaryFile)
-	%% summarize active vs. passive
+function summarizeAnalysis(analysis, summaryFile, effort)
+	%% summarize active MMR vs. passive MMR (+ passive quiet)
+	
+	fprintf('Summarizing analysis\n');
+	
+	effort = [' ' effort];
 
-	recordingModeLabels = {'Active HE MMR', 'Passive MMR' };
-% 	recordingModeLabels = {'Active LE MMR', 'Passive MMR' };
-% 	recordingModeLabels = {'Passive MMR', 'Passive Silence'};
+	recordingModeLabels = {
+		['Active MMR' effort]
+		'Passive MMR'
+		'Passive Quiet'
+		};
 	modeCount = length(recordingModeLabels);
 
 	% sessions and their analyses selected for summarizing
@@ -61,13 +67,16 @@ function summarizeAnalysis(analysis, summaryFile)
 	%% drop cells that don't have both 'Active MMR' and 'Passive MMR'
 	drop = [];
 	for sessionID = 1:length(sessions)
-		if length(sessions{sessionID})<modeCount
+		% don't drop if only missing passive quiet
+		if length(sessions{sessionID}) < 2 %modeCount
 			drop = [drop, sessionID];
+			disp('Drop session: mode count');
 			continue;
 		end
 
 		blank = false;
-		for mode = 1:modeCount
+		% don't use passive quiet
+		for mode = 1:2 %modeCount
 			if isempty(sessions{sessionID}{mode})
 				blank = true;
 			elseif any(sessions{sessionID}{mode}.trialCountPerCond<10)
@@ -76,6 +85,7 @@ function summarizeAnalysis(analysis, summaryFile)
 		end
 		if blank
 			drop = [drop, sessionID];
+			disp('Drop session: blank');
 			continue;
 		end
 
@@ -84,6 +94,7 @@ function summarizeAnalysis(analysis, summaryFile)
 		a2 = sessions{sessionID}{2};
 		if ~isequal(a1.targetLevels, a2.targetLevels)
 			drop = [drop, sessionID];
+			disp('Drop session: target levels');
 			continue;
 		end
 	% 	c1 = setdiff(a1.targetLevels, a2.targetLevels);
@@ -192,11 +203,11 @@ function summarizeAnalysis(analysis, summaryFile)
 	s.singleUnits = 0;
 	s.multiUnits = 0;
 	s.targetRespondingUnits = 0;
-	s.targetRespondingUnits2 = [0 0];
+	s.targetRespondingUnits2 = [0 0]; % count single/multi-units separately
 	s.tonicUnits = 0;
-	s.tonicUnits2 = [0 0];
+	s.tonicUnits2 = [0 0];            % count single/multi-units separately
 	s.phasicUnits = 0;
-	s.phasicUnits2 = [0 0];
+	s.phasicUnits2 = [0 0];           % count single/multi-units separately
 	s.phasicSuppressingUnits = 0;
 	s.phasicEnhancingUnits = 0;
 	s.phasicNoChangeUnits = 0;
@@ -205,7 +216,8 @@ function summarizeAnalysis(analysis, summaryFile)
 			% check if unit is auditory
 			targetResponse = 0;
 			phasic = 0;
-			for mode = 1:length(sessions{sessionID})
+			% don't use passive quiet for categorizing units for now
+			for mode = 1:2 %length(sessions{sessionID})
 				a = sessions{sessionID}{mode};
 	% 			if isempty(a); continue; end
 				u = a.units{unitID};
@@ -384,7 +396,12 @@ function summarizeAnalysis(analysis, summaryFile)
 							sCondID,scoreID}(end+1) = phasicNoChange;
 
 						% psth
-						s.units{mode}.psth{sCondID,scoreID}(end+1,:) = psth;
+						c = size(s.units{mode}.psth{sCondID,scoreID}, 2);
+						if c && c<size(psth,2) % fix for nan entries
+							s.units{mode}.psth{sCondID, ...
+								scoreID}(:,c+1:size(psth, 2)) = nan;
+						end
+						s.units{mode}.psth{sCondID,scoreID}(end+1,:) =psth;
 
 						% d'
 						dPrime = u.dPrimeCQMean{uCondID,scoreID};
@@ -393,6 +410,12 @@ function summarizeAnalysis(analysis, summaryFile)
 							% reference dPrime to tone onset
 							pre = find(u.psthCenters < 0);
 							dPrime = dPrime - dPrime(pre(end));
+						end
+						c = size(s.units{mode}.dPrimeCQMean{sCondID, ...
+							scoreID}, 2);
+						if c && c<size(dPrime,2) % fix for nan entries
+							s.units{mode}.dPrimeCQMean{sCondID, ...
+								scoreID}(:,c+1:size(dPrime, 2)) = nan;
 						end
 						s.units{mode}.dPrimeCQMean{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
@@ -403,6 +426,12 @@ function summarizeAnalysis(analysis, summaryFile)
 							% reference dPrime to tone onset
 							pre = find(u.psthCenters < 0);
 							dPrime = dPrime - dPrime(pre(end));
+						end
+						c = size(s.units{mode}.dPrimeCQSum{sCondID, ...
+							scoreID}, 2);
+						if c && c<size(dPrime,2) % fix for nan entries
+							s.units{mode}.dPrimeCQSum{sCondID, ...
+								scoreID}(:,c+1:size(dPrime, 2)) = nan;
 						end
 						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
@@ -425,14 +454,12 @@ function summarizeAnalysis(analysis, summaryFile)
 						mfsl = u.mfsl{uCondID,scoreID};
 						if isempty(mfsl); mfsl = nan; end
 						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = mfsl;
-							
 
 						% max firing rate
 						maxFiring = u.maxFiring{uCondID,scoreID};
 						if isempty(maxFiring); maxFiring = nan; end
 						s.units{mode}.maxFiring{sCondID,scoreID}(end+1) ...
 							= maxFiring;
-							
 
 						% max firing rate
 						meanFiring = u.meanFiring{uCondID,scoreID};
@@ -462,10 +489,12 @@ function summarizeAnalysis(analysis, summaryFile)
 		s.phasicSuppressingUnits, s.phasicEnhancingUnits, ...
 		s.phasicNoChangeUnits);
 	
+	% display counts for single/multi-units separately
 	if sorted
-		fprintf('Target responding: '); disp(s.targetRespondingUnits2);
-		fprintf('Phasic: '); disp(s.phasicUnits2);
-		fprintf('Tonic: '); disp(s.tonicUnits2);
+		fprintf('       Single  Multi\n');
+		fprintf('Total:  %3d    %3d  \n', s.targetRespondingUnits2);
+		fprintf('Phasic: %3d    %3d  \n', s.phasicUnits2);
+		fprintf('Tonic:  %3d    %3d  \n', s.tonicUnits2);
 	end
 
 
@@ -528,10 +557,8 @@ function summarizeAnalysis(analysis, summaryFile)
 
 	%% save merged analysis in a .mat file
 	analysis = {s};
-	fprintf('Saving summary of analysis to %s\n', summaryFile);
+	fprintf('Saving summary to %s\n', summaryFile);
 	save(summaryFile, 'analysis', '-v7.3');
-
-% 	fprintf('Done\n');
 end
 
 
@@ -549,9 +576,9 @@ function res = recordingMode(a)
 			a.maskerLevel == 50 && ...
 			isequal(a.targetFreqs, 1)
 		res = 2;
-% 	elseif strcmpi(a.mode, 'passive') && ...
-% 			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
-% 			isequal(a.targetFreqs, 1)
-% 		res = 2;
+	elseif strcmpi(a.experimentMode, 'passive') && ...
+			(strcmpi(a.maskerFile, '') || a.maskerLevel == 0) && ...
+			isequal(a.targetFreqs, 1)
+		res = 3;
 	end
 end
