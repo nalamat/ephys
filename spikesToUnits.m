@@ -51,6 +51,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 		spikes2 = cell(length(analysis));
 		unitNumbersAll = [];
 		unitCountAll = 0;
+		unitChannelIDs = [];
 		unitChannels = [];
 		unitTypes = {};
 		
@@ -88,6 +89,8 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 			unitNumbersAll = [unitNumbersAll unitNumbers'];
 			unitCountAll = unitCountAll + unitCount;
 			channel = analysis{1}.channels(channelID);
+			unitChannelIDs = [unitChannelIDs ...
+				repmat(channelID, 1, unitCount)];
 			unitChannels = [unitChannels repmat(channel, 1, unitCount)];
 			unitTypes = [unitTypes labelCats(sp.labels(labelsMask,2))];
 		end
@@ -148,6 +151,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				u.type          = unitTypeMap(unitTypes{unitID});
 				u.number        = unitNumbersAll(unitID);
 				if strcmpi(spikeConfig, 'sorted')
+					u.channelID = unitChannelIDs(unitID);
 					u.channel   = unitChannels(unitID);
 					u.label     = sprintf('Ch %d #%d %s', u.channel, ...
 						u.number, u.type(1));
@@ -197,7 +201,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				if ~isfield(a, 'lfp'); continue; end
 				if strcmpi(spikeConfig, 'sorted')
 					% associate LFP of the entire channel to each unit
-					lfp = squeeze(a.lfp(trialID, u.channel, :, :));
+					lfp = squeeze(a.lfp(trialID, u.channelID, :, :));
 				else
 					lfp = squeeze(a.lfp(trialID, unitID, :, :));
 				end
