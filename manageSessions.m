@@ -395,7 +395,7 @@ function btnCallback(btn, ~)
 			else
 				aggFileName = 'Aggregate';
 			end
-			aggFile = sprintf('AnalysisNJIT/%s.mat', aggFileName);
+			aggFile = sprintf('results/%s.mat', aggFileName);
 			
 			% get file name to save aggregate analysis from user
 			aggFile = inputdlg('Enter aggregate file:', ...
@@ -424,8 +424,29 @@ function btnCallback(btn, ~)
 			else
 				sumFile = 'All';
 			end
-			sumFile = sprintf('AnalysisNJIT/Summary-%s-%s.mat', ...
-				sumFile, d.spikeConfig);
+			
+			% determine effort condition (HE/LE) of selected animals
+			HE = {'CMR05Fluffy', 'CMR05Tail', 'D2Right', 'E1Right'};
+			LE = {'CMR08Tail', 'CMR08Head'};
+			
+			strcmplist = @(s1,s2) arrayfun(@(s) any(strcmpi(s, s2)), s1);
+			animalList = d.animalList.String(d.animalList.Value);
+			if all(strcmplist(animalList, HE))
+				effort = 'HE';
+			elseif all(strcmplist(animalList, LE))
+				effort = 'LE';
+			else
+				effort = '';
+			end
+			
+			% include effort condition (HE/LE) in the default summary file
+			if effort
+				sumFile = sprintf('results/Summary-%s-%s-%s.mat', ...
+					effort, sumFile, d.spikeConfig);
+			else
+				sumFile = sprintf('results/Summary-%s-%s.mat', ...
+					sumFile, d.spikeConfig);
+			end
 			
 			% get file name to save aggregate analysis from user
 			sumFile = inputdlg('Enter summary file path:', ...
@@ -439,7 +460,8 @@ function btnCallback(btn, ~)
 			analysis = loadSelectedAnalysis(d);
 			
 			if ~isempty(analysis)
-				summarizeAnalysis(analysis, sumFile);
+				summarizeAnalysis(analysis, sumFile, effort);
+				exportSummary(sumFile)
 				d = loadSummaries(d);
 			end
 			disp('Done summarizing');
@@ -800,7 +822,7 @@ end
 function d = loadSummaries(d)
 	d.summaries = {};
 	
-	dirs = {'AnalysisNJIT/', 'AnalysisNYU/'};
+	dirs = {'results/'};
 	for i = 1:length(dirs)
 		folder = dirs{i};
 		files = dir(folder);
@@ -816,7 +838,7 @@ end
 
 function d = loadSessions(d)
 	sessionTable = readtable('sessionTable.xlsx');
-	sessionTable = sessionTable(sessionTable.use~=-1, :);
+	sessionTable = sessionTable(sessionTable.use~=false, :);
 	sessionTable = sessionTable(~cellfun(@isempty, ...
 		sessionTable.dataFiles), :);
 	
