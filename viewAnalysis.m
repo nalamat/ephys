@@ -44,7 +44,7 @@ function viewAnalysis(analysis)
 		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
 		data.plotNames = {
-			...'dprime cqsum', ...
+			'deltaPSTH'
 			'psth'
 			'psth err'
 			'dprime cqmean'
@@ -261,12 +261,110 @@ function refreshPlot(fig, d)
 % 				'should not exceed 16']);
 % 		end
 
-		if strcmpi(plotName, 'delta')
-			plotTitle = '\Delta plots';
+		%% summary plots that use both active and passive analyses
+		% difference between PSTH of go and nogo
+		if strcmpi(plotName, 'deltaPSTH')
+			plotTitle = 'Sound evoked response';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
 			end
-			if a.unitCount~=2 || ...
+			if a.unitCount<2 || ...
+					~strncmpi(a.units{1}.label, 'Active MMR', 10) || ...
+					~strcmpi(a.units{2}.label, 'Passive MMR')
+				error('Only for active and passive MMR');
+			end
+			
+			modeCount = 2;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+				
+				% calculate average psth of nogo
+				nogo = vertcat(u.psth{1,scoreID});
+				if ~strcmpi(subset, 'all')
+					msk = u.(subset){1,scoreID}==true;
+					nogo = nogo(msk, :);
+				end
+				nogoAvg = mean(nogo, 1);
+				nogoErr = std(nogo, 0, 1) / sqrt(size(nogo, 1));
+				
+				for snrID = 1:3
+					% calculate average psth of go
+					go = vertcat(u.psth{snrID+1,scoreID});
+					if ~strcmpi(subset, 'all')
+						msk = u.(subset){1,scoreID}==true;
+						go = go(msk, :);
+					end
+					goAvg = mean(go, 1);
+					goErr = std(go, 0, 1) / sqrt(size(go, 1));
+					
+					% plot go and nogo
+					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
+					hold on;
+					pltNogo = plot(u.psthCenters, nogoAvg, ...
+						'color', colors2{modeID, 1}, ...
+						'linewidth', 1.5);
+					pltGo = plot(u.psthCenters, goAvg, 'color', ...
+						colors2{modeID, 1+snrID}, ...
+						'linewidth', 1.5);
+					
+					peri = 0 <= u.psthCenters & u.psthCenters < 1;
+					periCenters = u.psthCenters(peri);
+					
+					pltDelta = patch([periCenters fliplr(periCenters)], ...
+						[goAvg(peri) fliplr(nogoAvg(peri))], ...
+						[1 1 0], 'edgecolor', 'none');
+					alpha(pltDelta, .4);
+					uistack(pltDelta, 'bottom');
+					
+					% push ribbons to the back of line plots
+% 					for condID = u.condCount:-1:2
+% 						if patches(condID)
+% 							uistack(patches(condID),'bottom');
+% 						end
+% 					end
+
+					markTarget(u, modeID==1);
+
+					xticks(u.viewBounds(1):1:u.viewBounds(2));
+	% 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
+	% 				xticklabels(-1:.5:2);
+	% 				xlim([-.3, 1.3]);
+					xlim(u.viewBounds);
+					ylim([0,firingUL]);
+					ylabel('Firing rate (1/s)');
+					xlabel('Time (s)');
+	% 				grid on;
+
+					if u.maskerLevel
+						snr = u.targetLevels(snrID) - u.maskerLevel;
+						condStr = num2str(snr, '%d dB');
+						condStr2 = num2str(snr, '%d dB SNR');
+					else
+						level = u.targetLevels(snrID);
+						condStr = num2str(level, '%d dB');
+						condStr2 = num2str(level, '%d dB SPL');
+					end
+% 					msk = plots~=0;
+% 					legend(plots(msk), condsStr(msk), ...
+% 						'location', 'northeast');
+					legend([pltNogo pltGo], {'Nogo' condStr}, ...
+						'location', 'northeast');
+					title([u.label ', ' condStr2]);
+				end
+			end
+			
+			
+			% skip to the end
+			error('my:break', '');
+			
+		% difference between PSTH of active vs passive
+		elseif strcmpi(plotName, 'deltaAP')
+			
+			plotTitle = '\Delta AP plots';
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+			if a.unitCount<2 || ...
 					~strncmpi(a.units{1}.label, 'Active', 6) || ...
 					~strcmpi(a.units{2}.label, 'Passive MMR')
 				error('Only for active and passive MMR');
