@@ -43,12 +43,22 @@ function viewAnalysis(analysis)
 	data.subsets = {'all', 'tonic', 'phasic', 'phasicSuppressing', ...
 		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
-		data.plotNames = {'psth', 'psth err', 'dprime cqmean', ...
+		data.plotNames = {
 			...'dprime cqsum', ...
-			'dprime neuro/behav', 'dprime behavior', ...
-			'vector 10', 'max firing', 'mean firing', ...
-			'vector peri', 'delta', 'delta/behav', ...
-			'mfsl', 'mfsl-violin', ...
+			'psth'
+			'psth err'
+			'dprime cqmean'
+% 			'dprime cqsum'
+			'dprime neuro/behav'
+			'dprime behavior'
+			'vector 10'
+			'vector peri'
+% 			'max firing'
+% 			'mean firing'
+			'deltaAP'
+			'deltaAP/behav'
+			'mfsl'
+			'mfsl-violin'
 			};
 	else
 		data.plotNames = {'raster', 'psth', ...
@@ -182,8 +192,15 @@ function refreshPlot(fig, d)
 		0.000, 0.000, 0.000;
 		];
 	getColor = @(i)colors(mod(i-1,size(colors,1))+1,:);
-	targetRectColor = [0 0 .4 .1];
-	pokeRectColor = [0 .8 0 .15];
+	
+	% active/passive summary colors (ARO style)
+	% rows: active mmr, passive mmr, passive quiet
+	% cols: nogo, -10, 0, +10 db snr
+	colors2 = {
+		[240,160,140]/255, [233,99,103]/255, [229,66,72]/255, [224,35,39]/255;
+		[.6 .6 .6], [.3 .3 .3], [.15 .15 .15], [0 0 0];
+		[.6 .6 .6], [.3 .3 .3], [.15 .15 .15], [0 0 0];
+		};
 	
 	% Unpack data
 	if nargin < 2
@@ -211,9 +228,9 @@ function refreshPlot(fig, d)
 	if sorted
 		if strcmpi(a.type, 'summary')
 % 			firingUL = 7.5;
-			firingUL = 10;
+			firingUL = 7;
 		else
-			firingUL = 35;
+			firingUL = 15;
 		end
 		vectorUL = .6;
 	else
@@ -267,7 +284,7 @@ function refreshPlot(fig, d)
 			sameYLim = true;
 			
 			
-			%% delta AP = active nogo - passive nogo
+			% delta AP = active nogo - passive nogo
 			condID = 1; % nogo
 			psthA = vertcat(uA.psth{condID,scoreID});
 			psthP = vertcat(uP.psth{condID,scoreID});
@@ -313,9 +330,12 @@ function refreshPlot(fig, d)
 			title('{\Delta}AP (Nogos)');
 			
 			
-			%% delta MA, MP and M
+			% delta MA, MP and M
 			for condID = 2:condCount
-				%% delta MA = active nogo - active go
+				% delta MA = active nogo - active go
+				snr = uA.targetLevels(condID-1) - uA.maskerLevel;
+				snrStr = num2str(snr, '%d dB');
+				
 				psthNogo = vertcat(uA.psth{1,scoreID});
 				psthGo = vertcat(uA.psth{condID,scoreID});
 				if ~strcmpi(subset, 'all')
@@ -357,11 +377,13 @@ function refreshPlot(fig, d)
 				ylabel('Firing rate (1/s)');
 				xlabel('Time (s)');
 				legend([pltNogo, pltGo], {'Nogo', 'Go'});
-				title(['{\Delta}MA ' ...
-					num2str(uA.targetLevels(condID-1), '%d dB')])
+				title(['{\Delta}MA ' snrStr])
 				
 				
-				%% delta MP = passive nogo - passive go
+				% delta MP = passive nogo - passive go
+				snr = uP.targetLevels(condID-1) - uP.maskerLevel;
+				snrStr = num2str(snr, '%d dB');
+				
 				psthNogo = vertcat(uP.psth{1,scoreID});
 				psthGo = vertcat(uP.psth{condID,scoreID});
 				if ~strcmpi(subset, 'all')
@@ -405,11 +427,10 @@ function refreshPlot(fig, d)
 				ylabel('Firing rate (1/s)');
 				xlabel('Time (s)');
 				legend([pltNogo, pltGo], {'Nogo', 'Go'});
-				title(['{\Delta}MP ' ...
-					num2str(uP.targetLevels(condID-1), '%d dB')])
+				title(['{\Delta}MP ' snrStr])
 				
 				
-				%% delta M = delta MA / delta PA
+				% delta M = delta MA / delta PA
 				deltaM = deltaMA ./ deltaMP;
 				deltaM(abs(deltaM)>10) = nan;%sign(deltaM(abs(deltaM)>10)).*10;
 				
@@ -423,20 +444,19 @@ function refreshPlot(fig, d)
 				xlim(viewBounds);
 				ylabel('{\Delta}MA/{\Delta}MP');
 				xlabel('Time (s)');
-				title(['{\Delta}M ' ...
-					num2str(uP.targetLevels(condID-1), '%d dB')])
+				title(['{\Delta}M ' snrStr])
 			end
 			
 			% skip to the end
 			error('my:break', '');
 			
-		elseif strcmpi(plotName, 'delta/behav')
-			%% delta AP versus behavioral d'
+		elseif strcmpi(plotName, 'deltaAP/behav')
+			% delta AP versus behavioral d'
 			plotTitle = '{\Delta}AP vs behavioral d'' plots';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
 			end
-			if a.unitCount~=2 || ...
+			if a.unitCount<2 || ...
 					~strncmpi(a.units{1}.label, 'Active', 6) || ...
 					~strcmpi(a.units{2}.label, 'Passive MMR')
 				error('Only for active and passive MMR');
@@ -458,7 +478,9 @@ function refreshPlot(fig, d)
 			condsStr = {'Nogo'};
 			for freq = uA.targetFreqs
 				for level = uA.targetLevels
-					condsStr{end+1} = sprintf('%gk %gdB', freq, level);
+% 					condsStr{end+1} = sprintf('%gk %gdB', freq, level);
+					condsStr{end+1} = sprintf('%g dB', ...
+						level - uA.maskerLevel);
 				end
 			end
 			
@@ -470,9 +492,9 @@ function refreshPlot(fig, d)
 			ax = subplot(1,1,1);
 			axis square tight;
 			hold on;
-			f = fopen('AnalysisNJIT/deltaAP-behav.csv', 'w');
-			fprintf(f, ['sessionID, conditionID, conditionLabel, ' ...
-				'dPrimeBehav, deltaAP\n']);
+% 			f = fopen('results/deltaAP-behav.csv', 'w');
+% 			fprintf(f, ['sessionID, conditionID, conditionLabel, ' ...
+% 				'dPrimeBehav, deltaAP\n']);
 			for condID = 1:condCount
 				peri = 0<=psthCenters & psthCenters<=targetDuration;
 				psthA = vertcat(uA.psth{condID,1});
@@ -502,18 +524,18 @@ function refreshPlot(fig, d)
 				deltaAP = splitapply(@mean, deltaAP, groups);
 				dpBehav = splitapply(@mean, dpBehav, groups);
 				
-				for i = 1:length(deltaAP)
-					fprintf(f, '%d, %d, %s, %g, %g\n', ...
-						sessionIDs(find(groups==i, 1)), condID, ...
-						condsStr{condID}, dpBehav(i), deltaAP(i));
-				end
+% 				for i = 1:length(deltaAP)
+% 					fprintf(f, '%d, %d, %s, %g, %g\n', ...
+% 						sessionIDs(find(groups==i, 1)), condID, ...
+% 						condsStr{condID}, dpBehav(i), deltaAP(i));
+% 				end
 				
 				plots(condID) = plot(dpBehav, deltaAP, '.', ...
 						'markersize', 15, ...
 						...'color', getColor(condID));
 						'color', getShade(condID));
 			end
-			fclose(f);
+% 			fclose(f);
 			
 			xLim = xlim;
 			xlim([0 xLim(2)]);
@@ -529,9 +551,12 @@ function refreshPlot(fig, d)
 			error('my:break', '');
 		end
 
+		%% regular plots that are per unit
 		if sorted
 			unitFrom = (pageID-1)*16+1;
+% 			unitFrom = (pageID-1)*16+2;
 			unitTo = min([pageID*16, a.unitCount]);
+% 			a.unitCount = 2;
 		else
 			unitFrom = 1;
 			unitTo = a.unitCount;
@@ -539,6 +564,7 @@ function refreshPlot(fig, d)
 		
 		for unitID = unitFrom:unitTo
 			u = a.units{unitID};
+% 			unitID = unitID - 1;
 			
 			if ~isempty(channelSubset) && all(u.channel ~= channelSubset)
 				continue;
@@ -647,11 +673,7 @@ function refreshPlot(fig, d)
 					end
 				end
 				
-				% mark target duration
-				rect = rectangle( ...
-					'position', [0 0 u.targetDuration ySum], ...
-					'facecolor', targetRectColor, 'linestyle', 'none');
-				uistack(rect, 'bottom');
+				markTarget(u);
 				
 % 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
 				xticks(u.viewBounds(1):1:u.viewBounds(2));
@@ -782,6 +804,13 @@ function refreshPlot(fig, d)
 % 						end
 					end
 					
+					if ~strcmpi(a.type, 'summary')
+						x = u.mfsl{condID,scoreID};
+						[~, i] = min(abs(u.psthCenters-x));
+						y = u.psthMean{condID,scoreID}(i);
+						plot(x, y, '*', 'color', col);
+					end
+					
 % 					if u.pvalPeri{condID} < .05
 % 						plot(.5, ypos, '*', 'color', getColor(condID));
 % 					end
@@ -800,20 +829,7 @@ function refreshPlot(fig, d)
 					end
 				end
 				
-				% mark target duration
-				rect = rectangle( ...
-					'position', [0 0 u.targetDuration firingUL], ...
-					'facecolor', targetRectColor, 'linestyle', 'none');
-				uistack(rect, 'bottom');
-% 				rect = rectangle( ...
-% 					'position', [50e-3 0 u.targetDuration-100e-3 firingUL], ...
-% 					'facecolor', targetRectColor, 'linestyle', 'none');
-% 				uistack(rect, 'bottom');
-				% mark poke
-				rect = rectangle( ...
-					'position', [-.35 0 .1 firingUL], ...
-					'facecolor', pokeRectColor, 'linestyle', 'none');
-				uistack(rect, 'bottom');
+				markTarget(u);
 				
 				xticks(u.viewBounds(1):1:u.viewBounds(2));
 % 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
@@ -826,8 +842,8 @@ function refreshPlot(fig, d)
 % 				grid on;
 				
 				msk = plots~=0;
-% 				legend(plots(msk), condsStr(msk), ...
-% 					'location', 'northeastoutside');
+				legend(plots(msk), condsStr(msk), ...
+					'location', 'northeast');
 				title(u.label);
 				
 			
@@ -931,15 +947,7 @@ function refreshPlot(fig, d)
 				
 				ylimits = ylim;
 				
-				% mark target duration
-				rect = rectangle( ...
-					'position', [0 -100 u.targetDuration 200], ...
-					'facecolor', targetRectColor, 'linestyle', 'none');
-				uistack(rect, 'bottom');
-				rect = rectangle( ...
-					'position', [50e-3 -100 u.targetDuration-100e-3 200], ...
-					'facecolor', targetRectColor, 'linestyle', 'none');
-				uistack(rect, 'bottom');
+				markTarget(u);
 				
 				xticks(u.viewBounds(1):1:u.viewBounds(2));
 % 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
@@ -960,7 +968,7 @@ function refreshPlot(fig, d)
 				xlabel('Time (s)');
 				msk = plots~=0;
 				legend(plots(msk), condsStr(msk), ...
-					'location', 'northeastoutside');
+					'location', 'northwest');
 				title(u.label);
 
 				
@@ -976,8 +984,8 @@ function refreshPlot(fig, d)
 					levelIDs = 1:length(u.targetLevels);
 					% Add nogo
 					condIDs = (freqID-1)*length(u.targetLevels)+levelIDs+1;
-					col = getColor(freqID+2);
 					if strcmpi(a.type,'summary')
+						col = colors2{unitID,end};
 						avg = zeros(size(condIDs));
 						err = zeros(size(condIDs));
 						for i = 1:length(condIDs)
@@ -991,16 +999,19 @@ function refreshPlot(fig, d)
 							err(i) = std(dPrime);% / sqrt(length(dPrime));
 						end
 						
-						patches(freqID) = patch([snr fliplr(snr)], ...
-							[avg+err fliplr(avg-err)], ...
-							col, 'edgecolor', 'none');
-						alpha(patches(freqID), .2);
+% 						patches(freqID) = patch([snr fliplr(snr)], ...
+% 							[avg+err fliplr(avg-err)], ...
+% 							col, 'edgecolor', 'none');
+% 						alpha(patches(freqID), .2);
 					else
+						col = getColor(freqID+2);
 						a = calculatePerformance(a);
 						avg = [a.dPrimeBehavior{condIDs}];
 					end
-					plots(freqID) = plot(snr, avg, '-o', 'color', col, ...
-						'linewidth',2);
+% 					plots(freqID) = plot(snr, avg, '-o', 'color', col, ...
+% 						'linewidth',2);
+					plots(freqID) = errorbar(snr, avg, err, '-o', ...
+						'color', col, 'linewidth', 2);
 					p = plots(freqID);
 					set(p, 'markerfacecolor', get(p, 'color'));
 				end
@@ -1016,7 +1027,7 @@ function refreshPlot(fig, d)
 % 				xticklabels(levelsStr);
 				xticks(snr)
 				xticklabels(snrStr);
-% 				xlim([min(snr)-1, max(snr)+1]);
+				xlim([min(snr)-1, max(snr)+1]);
 				
 				yLim = ylim;
 % 				ylim([0 yLim(2)]);
@@ -1025,7 +1036,9 @@ function refreshPlot(fig, d)
 % 				xlabel(levelLabel);
 				xlabel(snrLabel);
 				ylabel('Sensitivity index (d'')');
-				legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				if length(freqsStr) > 1
+					legend(plots, freqsStrHz, 'location', 'northeast');
+				end
 				title(u.label);
 				
 				
@@ -1073,7 +1086,8 @@ function refreshPlot(fig, d)
 					plots(condID) = plot(dpBehav, dpNeuro, '.', ...
 						'markersize', 15, ...
 						...'color', getColor(condID));
-						'color', getShade(condID));
+						...'color', getShade(condID));
+						'color', colors2{unitID, condID});
 				end
 				
 				xLim = xlim;
@@ -1084,7 +1098,7 @@ function refreshPlot(fig, d)
 				ylabel('Neurometric d''');
 				msk = plots~=0;
 				legend(plots(msk), condsStr(msk), ...
-					'location', 'northeastoutside');
+					'location', 'northwest');
 				title(u.label);
 
 				
@@ -1111,12 +1125,16 @@ function refreshPlot(fig, d)
 						if isempty(avg); continue; end
 						
 						col = getColor(condID);
-						plots(condID) = plot(bins, avg, ...
+% 						plots(condID) = plot(bins, avg, ...
+% 							'color', col, 'linewidth', 2);
+% 						patches(condID) = patch([bins fliplr(bins)], ...
+% 							[avg+err fliplr(avg-err)], ...
+% 							col, 'edgecolor', 'none');
+% 						alpha(patches(condID), .2);
+						plots(condID) = errorbar(bins, avg, err, '-o', ...
 							'color', col, 'linewidth', 2);
-						patches(condID) = patch([bins fliplr(bins)], ...
-							[avg+err fliplr(avg-err)], ...
-							col, 'edgecolor', 'none');
-						alpha(patches(condID), .2);
+						p = plots(condID);
+						set(p, 'markerfacecolor', get(p, 'color'));
 					else
 						if isempty(u.vectorStrength{condID,scoreID})
 							strength = nan(size(bins));
@@ -1149,7 +1167,7 @@ function refreshPlot(fig, d)
 				end
 				
 				axis square tight;
-% 				xlim([.5, bins(end)+.5]);
+				xlim([.9, bins(end)+.1]);
 				xticks(bins);
 				if strcmp(u.vectorBinNames{2}, 'Intra')
 					u.vectorBinNames{2} = 'Peri';
@@ -1158,7 +1176,7 @@ function refreshPlot(fig, d)
 				ylim([0,vectorUL]);
 				ylabel('Vector strength at 10 Hz');
 				msk = plots~=0;
-				legend(plots(msk), condsStr(msk), 'location', 'northeastoutside');
+				legend(plots(msk), condsStr(msk), 'location', 'northeast');
 				title(u.label);
 
 				
@@ -1253,7 +1271,7 @@ function refreshPlot(fig, d)
 				ylim([0,vectorUL]);
 				xlabel('Base frequency (Hz)');
 				ylabel(['Vector strength (' binName ')']);
-				legend(plots, condsStr, 'location', 'northeastoutside');
+				legend(plots, condsStr, 'location', 'northeast');
 				title(u.label);
 
 				
@@ -1272,7 +1290,9 @@ function refreshPlot(fig, d)
 				xticklabels(snrNogoStr);
 				xlabel(snrLabel);
 				ylabel('Mean firing rate (1/s)');
-				legend(freqsStrHz, 'location', 'northeastoutside');
+				if length(freqsStr) > 1
+					legend(freqsStrHz, 'location', 'northeastoutside');
+				end
 				title(u.label);
 
 				
@@ -1328,7 +1348,9 @@ function refreshPlot(fig, d)
 				xticklabels(snrNogoStr);
 				xlabel(snrLabel);
 				ylabel('MTF power at 10 Hz (Peri)');
-				legend(freqsStrHz, 'location', 'northeastoutside');
+				if length(freqsStr) > 1
+					legend(freqsStrHz, 'location', 'northeastoutside');
+				end
 				title(u.label);
 
 				
@@ -1399,7 +1421,9 @@ function refreshPlot(fig, d)
 % 				ylim([0,firingUL]);
 				xlabel(snrLabel);
 				ylabel([plotTitle ' (1/s)']);
-				legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				if length(freqsStr) > 1
+					legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				end
 				title(u.label);
 
 				
@@ -1416,9 +1440,9 @@ function refreshPlot(fig, d)
 					% Add nogo
 					condIDs = [1, (freqID-1)*length(u.targetLevels) + ...
 						levelIDs+1];
-					col = getColor(freqID);
 					x = snrNogo;
 					if strcmpi(a.type,'summary')
+						col = colors2{unitID,end};
 						avg = zeros(size(condIDs));
 						err = zeros(size(condIDs));
 						for i = 1:length(condIDs)
@@ -1428,19 +1452,24 @@ function refreshPlot(fig, d)
 								msk = u.(subset){condID,scoreID}==true;
 								mfsl = mfsl(msk);
 							end
+							mfsl(~isfinite(mfsl)) = [];
 							avg(i) = mean(mfsl);
 							err(i) = std(mfsl) / sqrt(length(mfsl));
 						end
 						
-						patches(freqID) = patch([x fliplr(x)], ...
-							[avg+err fliplr(avg-err)], ...
-							col, 'edgecolor', 'none');
-						alpha(patches(freqID), .2);
+% 						patches(freqID) = patch([x fliplr(x)], ...
+% 							[avg+err fliplr(avg-err)]*1000, ...
+% 							col, 'edgecolor', 'none');
+% 						alpha(patches(freqID), .2);
 					else
+						col = getColor(freqID);
 						avg = [u.mfsl{condIDs,scoreID}];
 					end
-					plots(freqID) = plot(x, avg*1000, 'color', col, ...
-						'linewidth',3);
+% 					plots(freqID) = plot(x, avg*1000, 'color', col, ...
+% 						'linewidth',3);
+					plots(freqID) = errorbar(x, avg*1000, err*1000, ...
+						'.-', 'color', col, 'linewidth', 2, ...
+						'markersize', 20);
 				end
 				
 				% push ribbons to the back of line plots
@@ -1451,11 +1480,15 @@ function refreshPlot(fig, d)
 				end
 				
 				axis square tight;
+				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
+				ylim([0, 100]);
 				xlabel(snrLabel);
 				ylabel('MFSL (ms)');
-				legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				if length(freqsStr) > 1
+					legend(plots, freqsStrHz, 'location', 'northeast');
+				end
 				title(u.label);
 
 				
@@ -1644,17 +1677,39 @@ function refreshPlot(fig, d)
 end
 
 
-function markTarget(a)
-	targetRectColor = [0 0 0 .1];
+function markTarget(u, markPoke)
+	if nargin < 2
+		markPoke = true;
+	end
+	
+	targetRectColor = [0 0 .4 .08];
+	targetRectColor2 = targetRectColor .* [1 1 1 .5];
+	pokeRectColor = [0 .8 0 .15];
+% 	pokeRectColor = [216 229 141 130]/255;
+
 	ylimits = ylim;
+	
+	% mark target without onset
 	rect = rectangle( ...
-		'position', [0 -100 a.targetDuration 200], ...
+		'position', [50e-3 -100 u.targetDuration-100e-3 500], ...
+		'facecolor', targetRectColor2, ...
+		'linestyle', 'none');
+	uistack(rect, 'bottom');
+	
+	% mark target duration
+	rect = rectangle( ...
+		'position', [0 -100 u.targetDuration 500], ...
 		'facecolor', targetRectColor, 'linestyle', 'none');
 	uistack(rect, 'bottom');
-	rect = rectangle( ...
-		'position', [50e-3 -100 a.targetDuration-100e-3 200], ...
-		'facecolor', targetRectColor, 'linestyle', 'none');
-	uistack(rect, 'bottom');
+	
+	if markPoke
+		% mark poke
+		rect = rectangle( ...
+			'position', [-.35 -100 .1 500], ...
+			'facecolor', pokeRectColor, 'linestyle', 'none');
+		uistack(rect, 'bottom');
+	end
+					
 	ylim(ylimits);
 end
 
