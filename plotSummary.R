@@ -1,96 +1,139 @@
 library(nlme) # lme
+library(lme4) # lmer
 library(xlsx) # read.xlsx
 library(tidyr) # gather
 library(dplyr) # recode
 library(ggplot2) # ggplot
 
-# gerbil = 'HE-All'
+gerbil = 'HE-All'
 # gerbil = 'HE-CMR05Fluffy'
 # gerbil = 'HE-CMR05Tail'
 # gerbil = 'HE-D2Right'
-gerbil = 'HE-E1Right'
-
+# gerbil = 'HE-E1Right'
+# 
 # gerbil = 'LE-All'
-# gerbil = 'LE-CMR08Tail'
 # gerbil = 'LE-CMR08Head'
+# gerbil = 'LE-CMR08Tail'
 
-summaryFile = paste('AnalysisNJIT/Summary-', gerbil, '-Sorted.xlsx', sep='')
-# summaryFile = 'AnalysisNJIT/Summary-ARO2020-CMR05Fluffy+CMR05Tail-Sorted.xlsx'
+# for (gerbil in c('HE-All', 'HE-CMR05Fluffy', 'HE-CMR05Tail','HE-D2Right', 'HE-E1Right', 'LE-All', 'LE-CMR08Tail', 'LE-CMR08Head')) {
+for (dp in c(.2, .3, .4, .42, .45, .5)) {
+
+# summaryFile = paste('results/Summary-', gerbil, '-Sorted.xlsx', sep='')
+summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 save_plot = function(plot, file) {
-  ggsave(plot, file=file, height=4, width=6, dpi=600)
+  # ggsave(plot, file=file, height=4, width=6, dpi=600)
 }
+
+# ggplot config
+dg = 0
+err_width = .2
+theme_my = theme_classic() +
+  theme(plot.title=element_text(hjust=0.5))  # align title to center
+grid_x = theme(panel.grid.major.x=element_line('grey85', .25, 'dashed'))
+grid_y = theme(panel.grid.major.y=element_line('grey85', .25, 'dashed'))
+grid_xy = grid_x + grid_y
+# no_grid_y = theme(panel.grid.major.y=element_blank(),
+#                   panel.grid.minor.y=element_blank())
+expand_x = scale_x_discrete(expand=expansion(mult=c(.2,.2)))
+expand_y = scale_y_continuous(expand=expansion(mult=c(.1,.1)))
+expand_y0 = scale_y_continuous(expand=expansion(mult=c(0,.1)))
+no_expand_x = scale_x_discrete(expand=expansion(mult=c(0,0)))
+no_expand_y = scale_y_continuous(expand=expansion(mult=c(0,0)))
+
+linetypes = c('solid', '11')
+shapes = c(16, 1)
+# active vs passive colors
+colors = c(rgb(0.9137,0.3882,0.4039), rgb(.3,.3,.3))
+color_manual = scale_color_manual(values=colors)
+fill_manual = scale_fill_manual(values=colors)
+
+mean_point = stat_summary(fun=mean, geom='point', size=3.5, #stroke=1.75,
+                          position=position_dodge(width=dg))
+mean_line = stat_summary(fun=mean, geom='line', size=1.5,
+                         position=position_dodge(width=dg))
+se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar', #linetype='solid',
+                           width=err_width, size=1.5, position=position_dodge(width=dg))
 
 #################
 # target evoked response
 
+gc()
 data = read.xlsx(summaryFile, 'DeltaPSTH')
-data2 = subset(data, is.na(Score))
+data2 = subset(data, Score=='All')
 data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$SNR = factor(data2$TargetLevel-50)
+data2$SNRn = data2$TargetLevel-50
 
-model = aov(DeltaPSTH ~ TargetLevel*RecMode + Error(factor(UnitID)), subset(data2, Type=='Phasic'))
-summary(model)
+# model = aov(DeltaPSTH ~ SNR*RecMode + Error(factor(UnitID)), subset(data2, Type=='Phasic'))
+# summary(model)
+# 
+# model2 = lm(DeltaPSTH ~ 1 + SNRn*RecMode, subset(data2, Type=='Phasic'))
+# summary(model2)
 
-dg = 0
-err_width = .2
 labs_xy = labs(x='SNR (dB)', y='Sound-evoked response')
-theme_my = theme_bw() + theme(plot.title=element_text(hjust=0.5))  # Center title
-no_y_grid = theme(panel.grid.major.y = element_blank(), panel.grid.minor.y = element_blank())
-yintercept = geom_hline(yintercept = 0, color='grey92')
-mean_point = stat_summary(fun.y=mean, geom='point', size=3,
-                          position=position_dodge(width=dg))
-mean_line = stat_summary(fun.y='mean', geom='line', size=1.5,
-                         position=position_dodge(width=dg))
-se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar',
-                           width=err_width, size=1.5, position=position_dodge(width=dg))
+xintercept = geom_vline(xintercept=2, color='grey85', size=.25, linetype='dashed')
+yintercept = geom_hline(yintercept=0, color='grey85', size=.25, linetype='dashed')
+ylim = coord_cartesian(ylim=c(-.3,.3))
 
-ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode, shape=Type)) +
-  geom_point(size=2, position=position_dodge(width=dg)) +
-  labs_xy + labs(color='Mode') +
+# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode, shape=Type)) +
+#   geom_point(size=2, position=position_dodge(width=dg)) +
+#   labs_xy + labs(color='Mode') +
+#   theme_my
+#
+# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode, shape=Type)) +
+#   se_errorbar + mean_point +
+#   labs_xy + labs(color='Mode') +
+#   theme_my
+#
+# ggplot(data2, aes(x=SNR, y=DeltaPSTH, shape=Type)) +
+#   se_errorbar + mean_point +
+#   labs_xy +
+#   theme_my
+#
+# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode)) +
+#   se_errorbar + mean_point +
+#   labs_xy + labs(color='Mode') +
+#   theme_my
+#
+# ggplot(data2, aes(x=SNR, y=DeltaPSTH)) +
+#   se_errorbar + mean_point +
+#   labs_xy +
+#   theme_my
+
+title = 'Phasic Units'
+title = paste('Phasic Units ', length(unique(subset(data2, Type=='Phasic')$UnitID)), ' (dp > ', dp, ')')
+
+p = ggplot(subset(data2, Type=='Phasic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
+  xintercept + yintercept +
+  se_errorbar + mean_line + mean_point +
+  labs_xy + labs(color='Mode', title=title) +
+  color_manual +
+  ylim + expand_x + expand_y +
   theme_my
+print(p)
+save_plot(p, file=paste('figs/Summary/delta-', gerbil, '.svg', sep=''))
 
-ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode, shape=Type)) +
-  se_errorbar + mean_point +
-  labs_xy + labs(color='Mode') +
-  theme_my
-
-ggplot(data2, aes(x=SNR, y=DeltaPSTH, shape=Type)) +
-  se_errorbar + mean_point +
-  labs_xy +
-  theme_my
-
-ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=RecMode)) +
-  se_errorbar + mean_point +
-  labs_xy + labs(color='Mode') +
-  theme_my
-
-ggplot(data2, aes(x=SNR, y=DeltaPSTH)) +
-  se_errorbar + mean_point +
-  labs_xy +
-  theme_my
+}
 
 
-ggplot(subset(data2, Type=='Phasic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
-  yintercept +
-  se_errorbar + mean_line + mean_point + 
-  labs_xy + labs(color='Mode', title='Phasic units') +
-  coord_cartesian(ylim=c(-1.5,1.5)) +
-  theme_my + no_y_grid
-
-ggplot(subset(data2, Type=='Tonic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
-  yintercept +
-  se_errorbar + mean_line + mean_point + 
+p = ggplot(subset(data2, Type=='Tonic'), aes(x=SNR, y=DeltaPSTH, color=RecMode, group=RecMode)) +
+  xintercept + yintercept +
+  se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Tonic units') +
-  coord_cartesian(ylim=c(-1,1)) +
-  theme_my + no_y_grid
+  color_manual +
+  ylim + expand_x + expand_y +
+  theme_my
+p
+save_plot(p, file=paste('figs/Summary/delta-tonic-', gerbil, '.svg', sep=''))
 
 
 #################
 # vector strength
 
+gc()
 data = read.xlsx(summaryFile, 'VectorStrength')
-data2 = subset(data, is.na(Score) & Phasic)
+data2 = subset(data, Score=='All' & Phasic)
 # data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$Bin = factor(data2$Bin, c('Pre','Peri','Post'), 1:3)
 # as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
@@ -101,46 +144,82 @@ model1 = lme(VectorStrength ~ SNR*RecMode*Bin, data2, random= ~ 1 | UnitID)
 summary(model1)
 anova(model1)
 
-model2 = aov(VectorStrength ~ TargetLevel*RecMode*Bin + Error(UnitID), subset(data2))
+model2 = aov(VectorStrength ~ SNR*RecMode*Bin + Error(UnitID), subset(data2))
 summary(model2)
 
 labs_xy = labs(x='SNR (dB)', y='Vector strength')
 
-ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, shape=Bin)) +
-  geom_point(size=2, position=position_dodge(width=dg)) +
-  labs_xy + labs(color='Mode') +
-  theme_my
+# ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, shape=Bin)) +
+#   geom_point(size=2, position=position_dodge(width=dg)) +
+#   labs_xy + labs(color='Mode') +
+#   theme_my
+# 
+# ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, shape=Bin)) +
+#   se_errorbar + mean_point +
+#   labs_xy + labs(color='Mode') +
+#   theme_my
+# 
+# ggplot(data2, aes(x=SNR, y=VectorStrength, shape=Bin)) +
+#   se_errorbar + mean_point +
+#   labs_xy +
+#   theme_my
 
-ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, shape=Bin)) +
-  se_errorbar + mean_point +
-  labs_xy + labs(color='Mode') +
-  theme_my
+# p = ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, group=RecMode)) +
+#   se_errorbar + mean_line + mean_point +
+#   labs_xy + labs(color='Mode', title='Phasic units') +
+#   coord_cartesian(ylim=c(0,.6)) +
+#   theme_my
+# p
+# save_plot(p, file=paste('figs/Summary/VSavg2-', gerbil, '.svg', sep=''))
 
-ggplot(data2, aes(x=SNR, y=VectorStrength, shape=Bin)) +
-  se_errorbar + mean_point +
-  labs_xy +
-  theme_my
-
-ggplot(data2, aes(x=SNR, y=VectorStrength, color=RecMode, group=RecMode)) +
+data3 = subset(data2, Bin==2)
+p = ggplot(data3, aes(x=SNR, y=VectorStrength, color=RecMode, group=RecMode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic units') +
-  theme_my
+  color_manual +
+  coord_cartesian(ylim=c(0,.3)) +
+  expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/VSperi-', gerbil, '.svg', sep=''))
 
-ggplot(data2, aes(x=SNR, y=VectorStrength)) +
-  se_errorbar + mean_point +
-  labs_xy +
-  theme_my
+# p = p + coord_cartesian(ylim=c(0,.6))
+# p
+# save_plot(p, file=paste('figs/Summary/VSperi2-', gerbil, '.svg', sep=''))
+
+# data3$SNR = as.factor(data3$SNR)
+p = ggplot(data3, aes(x=SNR, y=VectorStrength, fill=RecMode)) +
+  geom_violin(position=position_dodge(.5), alpha=.9, width=.8) +
+  labs_xy + labs(fill='Mode', title='Phasic units') +
+  fill_manual +
+  coord_cartesian(ylim=c(0,NaN)) +
+  expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/VSperi3-', gerbil, '.svg', sep=''))
+
+# ggplot(data2, aes(x=SNR, y=VectorStrength)) +
+#   se_errorbar + mean_point +
+#   labs_xy +
+#   theme_my
 
 
 #################
 # d prime
 
+gc()
 data = read.xlsx(summaryFile, 'dPrime')
-data2 = subset(data, is.na(Score) & 0<=Time & Time<=1, select=-c(Score))
+data2 = subset(data, Score=='All' & 0<=Time & Time<=1, select=-c(Score))
 data2$Type = factor(data2$Phasic, levels=c(T,F), labels=c('Phasic', 'Tonic'))
 data2$SNR = factor(data2$TargetLevel-50)
 
-model = aov(dPrime ~ TargetLevel*RecMode*Type + Error(UnitID), subset(data3))
+model = aov(dPrime ~ SNR*RecMode + Error(UnitID), subset(data2, Type=='Phasic'))
+summary(model)
+
+model = aov(dPrime ~ SNR*RecMode + Error(UnitID), subset(data2, Type=='Tonic'))
+summary(model)
+
+model = aov(dPrime ~ SNR*RecMode*Type + Error(UnitID), data2)
 summary(model)
 
 data3 = data2 %>%
@@ -148,13 +227,43 @@ data3 = data2 %>%
   summarize(dPrime=sqrt(mean(dPrime^2)))
 
 labs_xy = labs(x='SNR (dB)', y='d\'')
+ylim = coord_cartesian(ylim=c(0,.053))
 
-ggplot(subset(data3, Type=='Phasic'), aes(x=SNR, y=dPrime, color=RecMode, group=RecMode)) +
+p = ggplot(subset(data3, Type=='Phasic'),
+           aes(x=SNR, y=dPrime, color=RecMode, group=RecMode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic units') +
-  theme_my
+  color_manual +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-phasic-', gerbil, '.svg', sep=''))
 
-ggplot(subset(data3, Type=='Tonic'), aes(x=SNR, y=dPrime, color=RecMode, group=RecMode)) +
+p = ggplot(subset(data3, Type=='Tonic'),
+           aes(x=SNR, y=dPrime, color=RecMode, group=RecMode)) +
   se_errorbar + mean_line + mean_point +
+  color_manual +
+  scale_alpha(guide='none') +
   labs_xy + labs(color='Mode', title='Tonic units') +
-  theme_my
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-tonic-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data3),
+           aes(x=SNR, y=dPrime, color=RecMode,
+               alpha=Type,
+               # shape=Type,linetype=Type,
+               group=interaction(RecMode, Type))) +
+  se_errorbar + mean_line + mean_point +
+  # scale_linetype_manual(values=linetypes) +
+  # scale_shape_manual(values=shapes) +
+  color_manual +
+  scale_alpha_manual(values=c(1, .6)) +
+  labs_xy + labs(color='Mode', title='Phasic units') +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-', gerbil, '.svg', sep=''))
+
+# }
