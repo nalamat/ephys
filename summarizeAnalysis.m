@@ -22,7 +22,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.units = cell(s.unitCount, 1);
 	s.targetFreqs = [];
 	s.targetLevels = [];
-	s.maskerLevel = 50;
+% 	s.maskerLevel = 50;
 	s.animalNames = {};
 
 
@@ -144,7 +144,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.condCount = s.condCount;
 		u.targetFreqs = s.targetFreqs;
 		u.targetLevels = s.targetLevels;
-		u.maskerLevel = s.maskerLevel;
+		if modeID == 3
+			u.maskerLevel = 0;
+		else
+			u.maskerLevel = 50;
+		end
 		u.targetDuration = s.targetDuration;
 		u.viewBounds = s.viewBounds;
 
