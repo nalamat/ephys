@@ -269,7 +269,7 @@ function units = analyzeUnits(units)
 					mfsl = psthCentersPeri(locs(1));
 				else
 					warning('[analyzeUnits] no MFSL found for unit %s, cond %d, score %d', u.label, condID, scoreID);
-					mfsl = inf;
+					mfsl = nan;
 				end
 				u.mfsl{condID,scoreID} = mfsl;
 
