@@ -16,17 +16,23 @@ function exportSummary(summaryFile)
 	% prep table headers
 	headers = struct();
 	headers.DeltaPSTH = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'DeltaPSTH'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'DeltaPSTH'};
 	headers.dPrime = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'Time' 'dPrime'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'Bin' 'dPrime'};
 	headers.VectorStrength = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'Bin' 'VectorStrength'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'Bin' 'VectorStrength'};
 	headers.MeanFiring = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'MeanFiring'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'MeanFiring'};
 	headers.MaxFiring = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'MaxFiring'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'MaxFiring'};
 	headers.MFSL = ...
-		{'SubjectID' 'RecMode' 'UnitID' 'TargetLevel' 'Score' 'Phasic' 'MFSL'};
+		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
+		'Mode' 'TargetLevel' 'Score' 'MFSL'};
 
 	% prep tables as empty cells
 	tableNames = fieldnames(headers);
@@ -57,10 +63,10 @@ function exportSummary(summaryFile)
 			else
 				level = 0;
 			end
-
+			
 			for scoreID = 1:3
-	% 			if modeID==1 && scoreID==1; continue; end
-				if modeID==2 && scoreID>1; continue; end
+				% passive recordings don't have a score
+				if modeID~=1 && scoreID>1; continue; end
 
 				unitIDs = u.unitIDs{condID,scoreID};
 				if condID == 1
@@ -72,11 +78,17 @@ function exportSummary(summaryFile)
 				for i = 1:length(unitIDs)
 					unitID = unitIDs(i);
 					sID = u.animalNames{condID,scoreID}{i};
-					phasic = u.phasic{condID,scoreID}(i);
+					category = u.category{condID,scoreID}(i);
+					subCategory = u.subCategory{condID,scoreID}(i);
 
 					if condID~=1
 						peri = 0<=u.psthCenters & ...
 							u.psthCenters<=u.targetDuration;
+% 						if modeID==1
+% 							nogoScore = 2;
+% 						else
+% 							nogoScore = 1;
+% 						end
 						nogo = u.psth{1,1}(i,peri);
 						if any(isnan(u.psth{condID,scoreID}(i)))
 							continue;
@@ -86,20 +98,19 @@ function exportSummary(summaryFile)
 						delta = delta / mean(nogo); % normalize
 
 						tables.DeltaPSTH(end+1,:) = ...
-							{sID mode unitID level score phasic delta};
+							{sID unitID category subCategory ...
+							mode level score delta};
 					end
 
 					% dPrime
 					if condID~=1
-						dPrime = u.dPrimeCQMean{condID,scoreID}(i,:);
-
-						for t = time
-							d = dPrime(centers==t);
+						bins = {'Onset', 'Peri', 'PeriGap', 'Offset'};
+						for binID = 1:length(bins)
+							bin = bins{binID};
+							d = u.(['dPrime' bin]){condID,scoreID}(i);
 							tables.dPrime(end+1,:) = ...
-								{sID mode unitID level score phasic round(t,3) d};
-
-	% 						fprintf(f, '%s, %d, %g, %s, %.2f, %.20e\n', ...
-	% 							mode, unitID, level, score, t, d);
+								{sID unitID category subCategory ...
+								mode level score bin d};
 						end
 					end
 
@@ -110,23 +121,27 @@ function exportSummary(summaryFile)
 						vs = u.vectorStrength{...
 							condID,scoreID}{binID,baseFreq}(i);
 						tables.VectorStrength(end+1,:) = ...
-							{sID mode unitID level score phasic bin vs};
+							{sID unitID category subCategory ...
+							mode level score bin vs};
 					end
 
 					% mean firing rate
 					meanFiring = u.meanFiring{condID,scoreID}(i);
 					tables.MeanFiring(end+1,:) = ...
-							{sID mode unitID level score phasic meanFiring};
+							{sID unitID category subCategory ...
+							mode level score meanFiring};
 
 					% max firing rate
 					maxFiring = u.maxFiring{condID,scoreID}(i);
 					tables.MaxFiring(end+1,:) = ...
-							{sID mode unitID level score phasic maxFiring};
+							{sID unitID category subCategory ...
+							mode level score maxFiring};
 
 					% minimum first spike latency
 					mfsl = u.mfsl{condID,scoreID}(i);
 					tables.MFSL(end+1,:) = ...
-							{sID mode unitID level score phasic mfsl};
+							{sID unitID category subCategory ...
+							mode level score mfsl};
 				end
 			end
 		end
