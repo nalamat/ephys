@@ -26,14 +26,13 @@ function units = analyzeUnits(units)
 		u.psthEdges      = u.viewBounds(1)-u.psthBin/2 : u.psthBin : ...
 			u.viewBounds(2)+u.psthBin/2;
 		u.psthCenters    = u.psthEdges(1:end-1)+u.psthBin/2;
-		u.gap = 50e-3;
+		gap = 50e-3;
 		binCount = length(u.psthCenters);
-		onset = 0<=u.psthCenters & u.psthCenters<u.gap;
+		onset = 0<=u.psthCenters & u.psthCenters<gap*2;
 		peri = 0<=u.psthCenters & u.psthCenters<u.targetDuration;
-		periNoOnsetOffset = u.gap<=u.psthCenters & ...
-			u.psthCenters<u.targetDuration-u.gap;
-		offset = u.targetDuration-u.gap<=u.psthCenters & ...
-			u.psthCenters<u.targetDuration+u.gap;
+		periGap = gap*2<=u.psthCenters & u.psthCenters<u.targetDuration-gap;
+		offset = u.targetDuration-gap<=u.psthCenters & ...
+			u.psthCenters<u.targetDuration+gap;
 		
 		% convolution window for smoothing PSTH
 		u.psthWin        = 50e-3;            % convolution window size
@@ -44,8 +43,8 @@ function units = analyzeUnits(units)
 		% Skip the first 10 ms after tone onset/offset
 		u.baseFreqs      = 1:1:20;
 		u.vectorBins     = [u.viewBounds(1), 0;
-							u.gap, u.targetDuration-u.gap;
-							u.targetDuration, u.viewBounds(2)];
+							gap*2, u.targetDuration-gap;
+							u.targetDuration+gap, u.viewBounds(2)];
 		u.vectorBinNames = {'Pre','Peri','Post'};
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
@@ -61,7 +60,8 @@ function units = analyzeUnits(units)
 		u.dPrimeCQSum      = c;
 		u.dPrimeMQMean     = c;
 		u.dPrimeOnset      = c;
-		u.dPrimePeri       = c;
+		u.dPrimePeri       = c; % including onset/offset
+		u.dPrimePeriGap    = c; % excluding onset/offset
 		u.dPrimeOffset     = c;
 	% 	u.psthCum          = [];
 	% 	u.psthCumMean      = [];
@@ -123,8 +123,8 @@ function units = analyzeUnits(units)
 				u.psthSTD{condID,scoreID} = psthSTD;
 				
 
-				% calculate neurometric dprime for each PSTH bin in reference
-				% to Nogo (both CR and FA)
+				% calculate neurometric dprime for each PSTH bin in
+				% reference to Nogo (both CR and FA)
 				if condID==1
 					u.dPrime{condID,scoreID} = zeros(1, binCount);
 					u.dPrimeCQMean{condID,scoreID} = zeros(1, binCount);
@@ -155,11 +155,13 @@ function units = analyzeUnits(units)
 					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
 					u.dPrimeMQMean{condID,scoreID} = mqMean;
 
-					% use all scores
+					% quadratic mean for onset/peri/offset
 					u.dPrimeOnset{condID,scoreID}  = ...
 						sqrt(sum(dPrime(onset).^2) / sum(onset));
 					u.dPrimePeri{condID,scoreID} = ...
 						sqrt(sum(dPrime(peri).^2) / sum(peri));
+					u.dPrimePeriGap{condID,scoreID} = ...
+						sqrt(sum(dPrime(periGap).^2) / sum(periGap));
 					u.dPrimeOffset{condID,scoreID} = ...
 						sqrt(sum(dPrime(offset).^2) / sum(offset));
 
