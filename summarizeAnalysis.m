@@ -24,6 +24,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.targetLevels = [];
 % 	s.maskerLevel = 50;
 	s.animalNames = {};
+	s.targetResponseThresh = .3;
+	s.targetResponseThreshCount = 2;
+	s.phasicThresh = .001;
+	s.phasicThreshCount = 2;
 
 
 	%% select matching active and passive sessions from analysis
@@ -117,10 +121,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			s.targetLevels = [s.targetLevels, a.targetLevels];
 		end
 	end
-	s.animalName = unique(s.animalNames);
+	s.animalNames = unique(s.animalNames);
 	s.targetFreqs  = unique(s.targetFreqs);
 	s.targetLevels = unique(s.targetLevels);
-	s.targetFreqs = [1];
+% 	s.targetFreqs = [1];
 % 	s.targetLevels = [40 50 60];
 	% the `unique` function has a weird behavior that returns a 0x1 vectors
 	% when acting on empty vectors, next 2 lines fix this
@@ -151,6 +155,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		end
 		u.targetDuration = s.targetDuration;
 		u.viewBounds = s.viewBounds;
+		u.targetResponseThresh = s.targetResponseThresh;
+		u.targetResponseThreshCount = s.targetResponseThreshCount;
+		u.phasicThresh = s.phasicThresh;
+		u.phasicThreshCount = s.phasicThreshCount;
 
 		u.psthBin = u1.psthBin;
 		u.psthWin = u1.psthWin;
@@ -166,12 +174,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.animalNames = cc;
 		u.sessionIDs = cc;
 		u.unitIDs = cc;
-		u.unitTypes = cc;
-		u.tonic = cc;
+		u.unitTypes = cc; % single/multi
 		u.phasic = cc;
+		u.tonic = cc;
+		u.category = cc; % phasic/tonic
 		u.phasicSuppressing = cc;
 		u.phasicEnhancing = cc;
 		u.phasicNoChange = cc;
+		u.subCategory = cc; % suppressing/enhancing/no-change
 		u.psth = cc;
 		u.psthMean = cc;
 		u.psthSTD = cc;
@@ -219,12 +229,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.phasicSuppressingUnits = 0;
 	s.phasicEnhancingUnits = 0;
 	s.phasicNoChangeUnits = 0;
+	
 	for sessionID = 1:length(sessions)
 		for unitID = 1:sessions{sessionID}{1}.unitCount
-			% check if unit is auditory
+			%% check if unit responds to target and determine its category
+			% is it phasic or tonic?
 			targetResponse = 0;
 			phasic = 0;
 			% don't use passive quiet for categorizing units for now
+			% only use active mmr and passive mmr
 			for mode = 1:2 %length(sessions{sessionID})
 				a = sessions{sessionID}{mode};
 	% 			if isempty(a); continue; end
@@ -233,11 +246,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 					
-					if u.dPrimeOnset{uCondID,1} > .3
+					if u.dPrimeOnset{uCondID,1} > s.targetResponseThresh
 						targetResponse = targetResponse+1; end
-					if u.dPrimePeri{uCondID,1} > .3
+					if u.dPrimePeriGap{uCondID,1} > s.targetResponseThresh
 						targetResponse = targetResponse+1; end
-					if u.dPrimeOffset{uCondID,1} > .3
+					if u.dPrimeOffset{uCondID,1} > s.targetResponseThresh
 						targetResponse = targetResponse+1; end
 % 					if any(abs(u.dPrime{uCondID,1}(0<=u.psthCenters & ...
 % 							u.psthCenters<u.targetDuration+50e-3)) > 1)
@@ -258,7 +271,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 								'channel %d, %s\n'], uCondID, binID, ...
 								a.channels(unitID), u.dataFile);
 						end
-						if p<.001
+						if p < s.phasicThresh
 							phasic = phasic+1;
 						end
 					end
@@ -266,7 +279,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			end
 
 			% does unit respond to target?
-			if targetResponse < 2; continue; end
+			if targetResponse < s.targetResponseThreshCount; continue; end
 			
 			if isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
 					strcmpi(sessions{sessionID}{1}.spikeConfig, 'sorted')
@@ -299,13 +312,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				s.targetRespondingUnits2(unitType2) + 1;
 
 			% does unit respond to masker?
-			phasic = phasic>=2;
+			phasic = phasic >= s.phasicThreshCount;
 			if phasic
 				s.phasicUnits = s.phasicUnits + 1;
 				s.phasicUnits2(unitType2) = s.phasicUnits2(unitType2) + 1;
+				category = 'Phasic';
 			else
 				s.tonicUnits = s.tonicUnits + 1;
 				s.tonicUnits2(unitType2) = s.tonicUnits2(unitType2) + 1;
+				category = 'Tonic';
 			end
 
 			%% determine unit sub-category
@@ -355,16 +370,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			
 			if phasicSuppressing
 				s.phasicSuppressingUnits = s.phasicSuppressingUnits + 1;
+				subCategory = 'Phasic Suppressing';
 			elseif phasicEnhancing
 				s.phasicEnhancingUnits = s.phasicEnhancingUnits + 1;
+				subCategory = 'Phasic Enhancing';
 			elseif phasicNoChange
 				s.phasicNoChangeUnits = s.phasicNoChangeUnits + 1;
-			end
-			
-			if phasic
-				phasicOrTonic = 'phasic';
+				subCategory = 'Phasic No Change';
 			else
-				phasicOrTonic = 'tonic';
+				subCategory = 'None'; % for tonics
 			end
 			
 			if sorted
@@ -372,12 +386,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sessions{sessionID}{1}.units{unitID}.channel, ...
 					sessions{sessionID}{1}.units{unitID}.number, ...
 					sessions{sessionID}{1}.animalName, ...
-					sessions{sessionID}{1}.timeStr, phasicOrTonic);
+					sessions{sessionID}{1}.timeStr, category);
 			else
 				fprintf('Selecting channel %d from %s on %s as %s\n', ...
 					sessions{sessionID}{1}.channels(unitID), ...
 					sessions{sessionID}{1}.animalName, ...
-					sessions{sessionID}{1}.timeStr, phasicOrTonic);
+					sessions{sessionID}{1}.timeStr, category);
 			end
 
 			for mode = 1:length(sessions{sessionID})
@@ -416,12 +430,16 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							sCondID,scoreID}(end+1) = ~phasic;
 						s.units{mode}.phasic{ ...
 							sCondID,scoreID}(end+1) = phasic;
+						s.units{mode}.category{ ...
+							sCondID,scoreID}{end+1} = category;
 						s.units{mode}.phasicSuppressing{ ...
 							sCondID,scoreID}(end+1) = phasicSuppressing;
 						s.units{mode}.phasicEnhancing{ ...
 							sCondID,scoreID}(end+1) = phasicEnhancing;
 						s.units{mode}.phasicNoChange{ ...
 							sCondID,scoreID}(end+1) = phasicNoChange;
+						s.units{mode}.subCategory{ ...
+							sCondID,scoreID}{end+1} = subCategory;
 
 						% psth
 						c = size(s.units{mode}.psth{sCondID,scoreID}, 2);
