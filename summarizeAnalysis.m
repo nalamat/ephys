@@ -304,29 +304,49 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				s.tonicUnits2(unitType2) = s.tonicUnits2(unitType2) + 1;
 			end
 
-			% is unit masker suppressing?
+			%% determine unit sub-category
+			% is it phasic suppressing, enhancing, or no-change?
 			phasicSuppressing = false;
 			phasicEnhancing = false;
 			phasicNoChange = false;
-			if phasic
-				u1 = sessions{sessionID}{1}.units{unitID};
-				u2 = sessions{sessionID}{2}.units{unitID};
-				baseFreq = u.baseFreqs==10;
+			
+			% compare vector strength between passive and active
+% 			if phasic
+% 				u1 = sessions{sessionID}{1}.units{unitID};
+% 				u2 = sessions{sessionID}{2}.units{unitID};
+% 				baseFreq = u.baseFreqs==10;
+% 
+% 				for binID = 1:size(u.vectorBins,1)
+% 					vs1 = cellfun(@(c)c{binID,baseFreq}, ...
+% 						u1.vectorStrength(:,1));
+% 					vs2 = cellfun(@(c)c{binID,baseFreq}, ...
+% 						u2.vectorStrength(:,1));
+% 					if ttest(vs1, vs2)
+% 						if mean(vs1) < mean(vs2)
+% 							phasicSuppressing = true;
+% 						else
+% 							phasicEnhancing = true;
+% 						end
+% 					end
+% 				end
+% 				phasicNoChange = ~phasicSuppressing && ~phasicEnhancing;
+% 			end
 
-				for binID = 1:size(u.vectorBins,1)
-					vs1 = cellfun(@(c)c{binID,baseFreq}, ...
-						u1.vectorStrength(:,1));
-					vs2 = cellfun(@(c)c{binID,baseFreq}, ...
-						u2.vectorStrength(:,1));
-					if ttest(vs1, vs2)
-						if mean(vs1) < mean(vs2)
-							phasicSuppressing = true;
-						else
-							phasicEnhancing = true;
-						end
-					end
+			% compare VS of pre and peri in active at +10 dB SNR
+			if phasic
+				u = sessions{sessionID}{1}.units{unitID};
+				baseFreq = u.baseFreqs==10;
+				change = (u.vectorStrength{end,1}{2,baseFreq} ...
+						- u.vectorStrength{end,1}{1,baseFreq}) ...
+						/ u.vectorStrength{end,1}{1,baseFreq};
+				
+				if  change < -.2
+					phasicSuppressing = true;
+				elseif change > .2
+					phasicEnhancing = true;
+				else
+					phasicNoChange = true;
 				end
-				phasicNoChange = ~phasicSuppressing && ~phasicEnhancing;
 			end
 			
 			if phasicSuppressing
