@@ -179,6 +179,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.dPrimeCQMeanMean = cc;
 		u.dPrimeCQMeanErr = cc;
 		u.dPrimeCQSum = cc;
+		u.dPrimeOnset = cc;
+		u.dPrimePeri = cc;
+		u.dPrimePeriGap = cc;
+		u.dPrimeOffset = cc;
 		u.dPrimeBehavior = cell(s.condCount,1);
 		u.mfsl = cc;
 		u.mfslMean = cc;
@@ -459,6 +463,27 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
+						
+						% d' onset/peri/offset
+						dPrime = u.dPrimeOnset{uCondID,scoreID};
+						if isempty(dPrime); dPrime = nan; end
+						s.units{mode}.dPrimeOnset{sCondID,scoreID}( ...
+							end+1) = dPrime;
+						
+						dPrime = u.dPrimePeri{uCondID,scoreID};
+						if isempty(dPrime); dPrime = nan; end
+						s.units{mode}.dPrimePeri{sCondID,scoreID}( ...
+							end+1) = dPrime;
+						
+						dPrime = u.dPrimePeriGap{uCondID,scoreID};
+						if isempty(dPrime); dPrime = nan; end
+						s.units{mode}.dPrimePeriGap{sCondID,scoreID}( ...
+							end+1) = dPrime;
+						
+						dPrime = u.dPrimeOffset{uCondID,scoreID};
+						if isempty(dPrime); dPrime = nan; end
+						s.units{mode}.dPrimeOffset{sCondID,scoreID}( ...
+							end+1) = dPrime;
 
 						% vector strength
 						for binID = 1:size(u.vectorBins,1)
