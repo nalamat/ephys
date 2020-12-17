@@ -6,21 +6,21 @@ function viewAnalysis(analysis)
 	
 	if ~exist('analysis', 'var')
 		% set this before running
-% 		analysis = 'AnalysisNJIT/CMR04Tail.mat';
-% 		analysis = 'AnalysisNJIT/CMR02Head.mat';
-%  		analysis = 'AnalysisNJIT/CMR05Fluffy-nochew.mat';
-% 		analysis = 'AnalysisNJIT/CMR05Fluffy-chew.mat';
-% 		analysis = 'AnalysisNJIT/CMR05Tail.mat';
+% 		analysis = 'results/CMR04Tail.mat';
+% 		analysis = 'results/CMR02Head.mat';
+%  		analysis = 'results/CMR05Fluffy-nochew.mat';
+% 		analysis = 'results/CMR05Fluffy-chew.mat';
+% 		analysis = 'results/CMR05Tail.mat';
 
-% 		analysis = 'AnalysisNJIT/Aggregate-All-Unsorted.mat';
-% 		analysis = 'AnalysisNJIT/Aggregate-All-SortedJoint.mat';
-%  		analysis = 'AnalysisNJIT/Summary-All-Unsorted.mat';
-%		analysis = 'AnalysisNJIT/Summary-All-SortedJoint.mat';
+% 		analysis = 'results/Aggregate-All-Unsorted.mat';
+% 		analysis = 'results/Aggregate-All-SortedJoint.mat';
+%  		analysis = 'results/Summary-All-Unsorted.mat';
+%		analysis = 'results/Summary-All-SortedJoint.mat';
 
-%  		analysis = 'AnalysisNJIT/Summary-CMR05Fluffy-SortedJoint.mat';
- 		analysis = 'AnalysisNJIT/Summary-CMR05Fluffy-Sorted.mat';
+%  		analysis = 'results/Summary-CMR05Fluffy-SortedJoint.mat';
+ 		analysis = 'results/Summary-CMR05Fluffy-Sorted.mat';
 
-% 		analysis = 'AnalysisNJIT/IMold.mat';
+% 		analysis = 'results/IMold.mat';
 % 
 % 		analysis = 'AnalysisNYU/CMRphys.mat';
 	end
@@ -44,9 +44,12 @@ function viewAnalysis(analysis)
 		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
 		data.plotNames = {
-			'deltaPSTH'
+			'delta psth'
+			'dprime waterfall'
+			'vector waterfall 1'
+% 			'vector waterfall 2'
 			'psth'
-			'psth err'
+% 			'psth err'
 			'dprime cqmean'
 % 			'dprime cqsum'
 			'dprime neuro/behav'
@@ -97,8 +100,7 @@ function viewAnalysis(analysis)
 end
 
 
-
-%% key press event of the figure, navigate through analyses and plots
+% key press event of the figure, navigate through analyses and plots
 function figKeyPress(fig, e)
 	d          = guidata(fig);
 	
@@ -173,8 +175,9 @@ function figKeyPress(fig, e)
 end
 
 
-%% selected analyses
+% code for all plots
 function refreshPlot(fig, d)
+	%% init
 	figure(fig);
 	clf;
 	
@@ -255,6 +258,7 @@ function refreshPlot(fig, d)
 	end
 	snrLabel = 'SNR (dB)';
 	
+	%% plot selection
 	try
 % 		if a.unitCount > 16
 % 			error(['Number of units in each analysis struct ' ...
@@ -263,7 +267,7 @@ function refreshPlot(fig, d)
 
 		%% summary plots that use both active and passive analyses
 		% difference between PSTH of go and nogo
-		if strcmpi(plotName, 'deltaPSTH')
+		if strcmpi(plotName, 'delta psth')
 			plotTitle = 'Sound evoked response';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -274,7 +278,7 @@ function refreshPlot(fig, d)
 				error('Only for active and passive MMR');
 			end
 			
-			modeCount = 2;
+			modeCount = 3;
 			for modeID = 1:modeCount
 				u = a.units{modeID};
 				
@@ -347,9 +351,148 @@ function refreshPlot(fig, d)
 % 					msk = plots~=0;
 % 					legend(plots(msk), condsStr(msk), ...
 % 						'location', 'northeast');
-					legend([pltNogo pltGo], {'Nogo' condStr}, ...
-						'location', 'northeast');
+% 					legend([pltNogo pltGo], {'Nogo' condStr}, ...
+% 						'location', 'northeast');
 					title([u.label ', ' condStr2]);
+				end
+			end
+			
+			
+			% skip to the end
+			error('my:break', '');
+			
+		% waterfall plot of dprime of units per snr and onset/peri/offset
+		elseif strcmpi(plotName, 'dprime waterfall')
+			plotTitle = 'd'' waterfall';
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+			if a.unitCount<2 || ...
+					~strncmpi(a.units{1}.label, 'Active MMR', 10) || ...
+					~strcmpi(a.units{2}.label, 'Passive MMR')
+				error('Only for active and passive MMR');
+			end
+			
+			% sort according to active mode, peri, +10 dB SNR
+			dPrime = vertcat(a.units{1}.dPrimePeriGap{end,scoreID})';
+			if ~strcmpi(subset, 'all')
+				msk = a.units{1}.(subset){1,scoreID}==true;
+				dPrime = dPrime(msk);
+			end
+			[~, i] = sort(dPrime);
+			
+			modeCount = 2;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+				
+				binName = {'Onset', 'PeriGap', 'Offset'};
+				binCount = length(binName);
+				for binID = 1:binCount
+					dPrime = vertcat( ...
+						u.(['dPrime' binName{binID}]){2:end,scoreID})';
+					if ~strcmpi(subset, 'all')
+						msk = u.(subset){1,scoreID}==true;
+						dPrime = dPrime(msk, :);
+					end
+					
+% 					[~, i] = sort(dPrime(:, 3));
+					dPrime = dPrime(i, :);
+					
+					if u.maskerLevel
+						snrs = u.targetLevels - u.maskerLevel;
+					else
+						snrs = u.targetLevels;
+					end
+					units = 1:size(dPrime,1);
+					
+					subplot(modeCount, binCount, ...
+						(modeCount-modeID)*3 + binID);
+					
+					[x, y] = meshgrid(snrs, units);
+					waterfall(x, y, dPrime);
+	
+					xticks(snrs);
+					ylim([units(1) units(end)]);
+					zlim([0 1.2]);
+					if u.maskerLevel
+						xlabel('SNR [dB]');
+					else
+						xlabel('Target level [dB SPL]')
+					end
+					ylabel('Unit number');
+					zlabel('d''');
+
+					title([u.label ', ' binName{binID} ' d''']);
+				end
+			end
+			
+			
+			% skip to the end
+			error('my:break', '');
+			
+		% waterfall plot of vector strength of units at 10Hz per snr and
+		% pre/peri/post
+		elseif strcmpi(plotName, 'vector waterfall 1')
+			plotTitle = 'VS @ 10Hz waterfall';
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+			if a.unitCount<2 || ...
+					~strncmpi(a.units{1}.label, 'Active MMR', 10) || ...
+					~strcmpi(a.units{2}.label, 'Passive MMR')
+				error('Only for active and passive MMR');
+			end
+			
+			% sort according to active mode, peri, +10 dB SNR
+			freq = a.units{1}.baseFreqs == 10;
+			vs = vertcat(a.units{1}.vectorStrength{end,scoreID}{2,freq});
+			if ~strcmpi(subset, 'all')
+				msk = a.units{1}.(subset){1,scoreID}==true;
+				vs = vs(msk);
+			end
+			[~, i] = sort(vs);
+			
+			modeCount = 2;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+				
+				freq = u.baseFreqs == 10;
+				for snrID = 1:length(u.targetLevels)
+					if u.maskerLevel
+						snr = u.targetLevels(snrID) - u.maskerLevel;
+						condStr = num2str(snr, '%d dB SNR');
+					else
+						level = u.targetLevels(snrID);
+						condStr = num2str(level, '%d dB SPL');
+					end
+					
+					vs = vertcat( ...
+						u.vectorStrength{snrID+1,scoreID}{:,freq})';
+					if ~strcmpi(subset, 'all')
+						msk = u.(subset){1,scoreID}==true;
+						vs = vs(msk, :);
+					end
+					
+% 					[~, i] = sort(vs(:, 2));
+					vs = vs(i, :);
+					
+					bins = 1:size(vs,2);
+					units = 1:size(vs,1);
+					
+					subplot(modeCount, length(u.targetLevels), ...
+						(modeCount-modeID)*3 + snrID);
+					
+					[x, y] = meshgrid(bins, units);
+					waterfall(x, y, vs);
+	
+					xticks(bins);
+					xticklabels(u.vectorBinNames);
+					ylim([units(1) units(end)]);
+					zlim([0 1]);
+					ylabel('Unit number');
+					zlabel('VS @ 10Hz');
+
+					title([u.label ', ' condStr]);
 				end
 			end
 			
@@ -1052,7 +1195,7 @@ function refreshPlot(fig, d)
 % 				xticklabels(-1:.5:2);
 				if strcmpi(a.type, 'summary')
 					xlim([-.3, 1.3]);
-% 					ylim([0, 0.05]);
+% 					ylim([0, 0.15]);
 				else
 % 					xlim(u.viewBounds);
 					xlim([-.3, 2]);
@@ -1061,6 +1204,8 @@ function refreshPlot(fig, d)
 % 					ylim([0 .3]);
 				end
 				ylim([0 ylimits(2)]);
+				ylim([0, 0.15]);
+				sameYLim = false;
 				
 				ylabel('Sensitivity index (d'')');
 				xlabel('Time (s)');
@@ -1681,6 +1826,7 @@ function refreshPlot(fig, d)
 		end
 	end
 	
+	%% finalize plots and add master title
 	sameXYLim(subplots, sameXLim, sameYLim);
 	sameXYLim(subplots2, sameXLim, sameYLim);
 	
@@ -1774,7 +1920,7 @@ function refreshPlot(fig, d)
 	uistack(gca, 'bottom');
 end
 
-
+% helper functions
 function markTarget(u, markPoke)
 	if nargin < 2
 		markPoke = true;
