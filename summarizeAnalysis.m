@@ -167,6 +167,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.baseFreqs = u1.baseFreqs;
 		u.vectorBins = u1.vectorBins;
 		u.vectorBinNames = u1.vectorBinNames;
+		u.vs10Centers = u1.vs10Centers;
 		u.label = recordingModeLabels{modeID};
 
 		cc = cell(s.condCount, 5); % 5: scores
@@ -209,6 +210,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vectorStrength = cc;
 		u.vectorStrengthMean = cc;
 		u.vectorStrengthErr = cc;
+		u.vs10 = cc;
+		u.vs10p = cc;
+		u.vs10Mean = cc;
+		u.vs10Err = cc;
 		for condID = 1:u.condCount
 			for scoreID = 1:5
 				u.vectorStrength{condID,scoreID} = ...
@@ -519,6 +524,23 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 									end+1) = vec;
 							end
 						end
+						
+						% running vs at 10 Hz
+						vs = u.vs10{uCondID,scoreID};
+						pval = u.vs10p{uCondID,scoreID};
+						if isempty(vs); vs = nan; end
+						if isempty(pval); pval = nan; end
+						c = size(s.units{mode}.vs10{sCondID,scoreID}, 2);
+						if c && c<size(vs,2) % fix for nan entries
+							s.units{mode}.vs10{sCondID,scoreID} ...
+								(:,c+1:size(vs, 2)) = nan;
+						end
+						if c && c<size(pval,2) % fix for nan entries
+							s.units{mode}.vs10p{sCondID,scoreID} ...
+								(:,c+1:size(pval, 2)) = nan;
+						end
+						s.units{mode}.vs10{sCondID,scoreID}(end+1,:) = vs;
+						s.units{mode}.vs10p{sCondID,scoreID}(end+1,:)=pval;
 
 						% mfsl (minimum first spike latency)
 						mfsl = u.mfsl{uCondID,scoreID};
@@ -574,23 +596,21 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	end
 
 
-	%% calculate mean and std of psth and d'
+	%% calculate mean and sem of psth, d', etc
 	for modeID = 1:s.unitCount
 		for condID = 1:s.condCount
 			for scoreID = 1:5
 				% psth
 				psth = s.units{modeID}.psth{condID,scoreID};
-				s.units{modeID}.psthMean{condID,scoreID} = ...
-					mean(psth, 1);
-				s.units{modeID}.psthSTD{condID,scoreID} = ...
-					std(psth, 0, 1) / sqrt(size(psth, 1));    % sem
+				s.units{modeID}.psthMean{condID,scoreID} = nanmean(psth, 1);
+				s.units{modeID}.psthSTD{condID,scoreID} = nansem(psth, 1);
 
 				% cumulative quadratic mean of d'
 				dPrime = s.units{modeID}.dPrimeCQMean{condID,scoreID};
 				s.units{modeID}.dPrimeCQMeanMean{condID,scoreID} = ...
-					mean(dPrime, 1);
+					nanmean(dPrime, 1);
 				s.units{modeID}.dPrimeCQMeanErr{condID,scoreID} = ...
-					std(dPrime, 0,1) / sqrt(size(dPrime,1));    % sem
+					nansem(dPrime, 1);
 
 				% vector strength
 				for binID = 1:size(s.units{modeID}.vectorBins,1)
@@ -599,18 +619,23 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							condID,scoreID}{binID,baseFreqID};
 						s.units{modeID}.vectorStrengthMean{ ...
 							condID,scoreID}{binID,baseFreqID} = ...
-							mean(vec);
+							nanmean(vec);
 						s.units{modeID}.vectorStrengthErr{ ...
 							condID,scoreID}{binID,baseFreqID} = ...
-							std(vec) / sqrt(length(vec));    % sem
+							nansem(vec);
 					end
 				end
+				
+				% running vs at 10 hz
+				vs = s.units{modeID}.vs10{condID,scoreID};
+				s.units{modeID}.vs10Mean{condID,scoreID} = nanmean(vs, 1);
+				s.units{modeID}.vs10Err{condID,scoreID} = nansem(vs, 1);
 
 				% mfsl (minimum first spike latency)
 				mfsl = s.units{modeID}.mfsl{condID,scoreID};
-				s.units{modeID}.mfslMean{condID,scoreID} = ...
-					mean(mfsl);
-				s.units{modeID}.mfslErr{condID,scoreID} = ...
+				s.units{modeID}.mfslMean{condID,scoreID} = nanmean(mfsl);
+				s.units{modeID}.mfslErr{condID,scoreID} = nansem(mfsl);
+
 				% mfsl phase
 				phase = s.units{modeID}.mfslPhase{condID,scoreID};
 				s.units{modeID}.mfslPhaseMean{condID,scoreID} = ...
@@ -621,16 +646,16 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				% max firing rate
 				maxFiring = s.units{modeID}.maxFiring{condID,scoreID};
 				s.units{modeID}.maxFiringMean{condID,scoreID} = ...
-					mean(maxFiring);
+					nanmean(maxFiring);
 				s.units{modeID}.maxFiringErr{condID,scoreID} = ...
-					std(maxFiring, 0) / sqrt(length(maxFiring));    % sem
+					nansem(maxFiring);
 
 				% mean firing rate
 				meanFiring = s.units{modeID}.meanFiring{condID,scoreID};
 				s.units{modeID}.meanFiringMean{condID,scoreID} = ...
-					mean(meanFiring);
+					nanmean(meanFiring);
 				s.units{modeID}.meanFiringErr{condID,scoreID} = ...
-					std(meanFiring, 0) / sqrt(length(meanFiring));    % sem
+					nansem(meanFiring);
 			end
 		end
 	end

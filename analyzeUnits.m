@@ -40,12 +40,17 @@ function units = analyzeUnits(units)
 		win = rectwin(u.psthWin/u.psthBin);  % rectangular window
 		win = win / u.psthWin;               % normalize window
 		
-		% Skip the first 10 ms after tone onset/offset
+		% Skip the first 100 ms after tone onset/offset
 		u.baseFreqs      = 1:1:20;
 		u.vectorBins     = [u.viewBounds(1), 0;
 							gap*2, u.targetDuration-gap;
 							u.targetDuration+gap, u.viewBounds(2)];
 		u.vectorBinNames = {'Pre','Peri','Post'};
+		
+		u.vs10Window     = 300e-3;
+		u.vs10Centers    = u.psthCenters( ...
+			u.viewBounds(1) <= u.psthCenters & ...
+			u.psthCenters <= u.viewBounds(2)-u.vs10Window);
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
 % 		u.svmScores      = [];
@@ -77,10 +82,12 @@ function units = analyzeUnits(units)
 		u.maxFiring        = c;
 		u.meanFiring       = c;
 		u.stdFiring        = c;
-		u.vectorStrength   = c;
-		u.vectorPhase      = c;
-		u.vectorPVal       = c;
+		u.vectorStrength   = c; % vector strength for pre/peri/post stim
+		u.vectorPhase      = c; % phase
+		u.vectorPVal       = c; % p values
 	% 	u.vectorZScore     = c;
+		u.vs10             = c; % running vector strength at 10 hz
+		u.vs10p            = c; % p values
 		u.mtfF             = c;
 		u.mtfS             = c;
 		% {conds x scores}[bands x bins]
@@ -352,6 +359,42 @@ function units = analyzeUnits(units)
 					% masker response z-score across all base frequencies
 	% 				z = zscore([u.vectorStrength{condID,scoreID}{binID,:}]);
 	% 				u.vectorZScore{condID,scoreID}{binID,:} = num2cell(z);
+				end
+				
+				% running vector strength at 10Hz as a function of time
+				baseFreq = 10;
+				spikeTimes = u.spikeTimes{condID,scoreID};
+				spikeTimesAll = [spikeTimes{:}];
+				u.vs10{condID,scoreID} = zeros(size(u.vs10Centers));
+				u.vs10p{condID,scoreID} = ones(size(u.vs10Centers));
+				
+				for centerID = 1:length(u.vs10Centers)
+					center = u.vs10Centers(centerID);
+					spikeTimesBin = spikeTimesAll( ...
+						center<=spikeTimesAll & ...
+						spikeTimesAll<center+u.vs10Window);
+
+					% calculate VS using spikes from all trials
+					if isempty(spikeTimesBin)
+						n = 0;
+						vs = 0;
+% 						theta = 0;
+					else
+						n = length(spikeTimesBin);
+						X = spikeTimesBin * baseFreq;
+						theta = (X-floor(X))*(2*pi);
+						xl = cos(theta);
+						yl = sin(theta);
+						vs = sqrt((sum(xl).^2)+(sum(yl).^2)) / n;
+% 						c = xl + 1i.*yl;
+% 						vs2 = abs(mean(c));
+% 						theta2 = angle(mean(c));
+					end
+
+					pval = rayleighsz(vs, n);
+
+					u.vs10{condID,scoreID}(centerID) = vs;
+					u.vs10p{condID,scoreID}(centerID) = pval;
 				end
 
 				% power at the modulation frequency peri-stimulus
