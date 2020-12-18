@@ -174,12 +174,7 @@ function btnCallback(btn, ~)
 	d.fig.Pointer = 'watch';
 	drawnow;
 	
-	if strcmpi(d.radioDataGroup.SelectedObject.String, 'sessions')
-		sessionIDs = d.sessionList.UserData(d.sessionList.Value);
-		if any(sessionIDs == 0) % select all
-			sessionIDs = d.sessionList.UserData(2:end);
-		end
-	end
+	sessionIDs = getSelectedSessionIDs(d);
 	
 	try
 		
@@ -359,11 +354,6 @@ function btnCallback(btn, ~)
 				error('my:break', 'Mark not defined for summaries');
 			end
 			
-			sessionIDs = d.sessionList.UserData(d.sessionList.Value);
-			if any(sessionIDs == 0) % select all
-				sessionIDs = d.sessionList.UserData(2:end);
-			end
-			
 			for i = 1:length(sessionIDs)
 				sessionID = sessionIDs(i);
 				fprintf('Session %d/%d\n', i, length(sessionIDs));
@@ -511,10 +501,7 @@ function btnButtonDownFcn(btn, e)
 				'Yes', 'No', 'No');
 			
 			if strcmpi(ans, 'yes')
-				sessionIDs = d.sessionList.UserData(d.sessionList.Value);
-				if any(sessionIDs == 0) % select all
-					sessionIDs = d.sessionList.UserData(2:end);
-				end
+				sessionIDs = getSelectedSessionIDs(d);
 				
 				d.fig.Pointer = 'watch';
 				drawnow;
@@ -965,8 +952,8 @@ function d = updateSessionList(d)
 		d.header.String = sprintf(fmt, colNames{:});
 
 		bool = {'-','x'};
-		sessionIDs = [0];
-		sessionRows = {'All'};
+		sessionIDs = {'all', 'marked'};
+		sessionRows = {'All', 'Marked'};
 		for i = 1:length(d.sessions)
 			row = cell(length(cols),1);
 			if ~any(strcmpi('all', animalNames)) && ...
@@ -985,7 +972,7 @@ function d = updateSessionList(d)
 					row{j} = val;
 				end
 			end
-			sessionIDs(end+1) = i;
+			sessionIDs{end+1} = i;
 			sessionRows{end+1} = sprintf(fmt, row{:});
 		end
 
@@ -1043,6 +1030,26 @@ function d = refreshLists(d)
 	d.fig.Pointer = 'arrow';
 end
 
+function sessionIDs = getSelectedSessionIDs(d)
+	if strcmpi(d.radioDataGroup.SelectedObject.String, 'sessions')
+		sessionIDs = d.sessionList.UserData(d.sessionList.Value);
+		if any(strcmpi(sessionIDs, 'all')) % select all
+			sessionIDs = d.sessionList.UserData(3:end);
+			sessionIDs = [sessionIDs{:}];
+		elseif any(strcmpi(sessionIDs, 'marked')) % select marked
+			sessionIDs = d.sessionList.UserData(3:end);
+			sessionIDs = [sessionIDs{:}];
+			marked = cellfun(@(c) c.(['marked' d.spikeConfig]), ...
+				d.sessions(sessionIDs));
+			sessionIDs = sessionIDs(marked);
+		else
+			sessionIDs = [sessionIDs{:}];
+		end
+	else
+		sessionIDs = [];
+	end
+end
+
 
 function analysis = loadSelectedAnalysis(d)
 	analysis = {};
@@ -1070,10 +1077,7 @@ function analysis = loadSelectedAnalysis(d)
 
 	% sessions
 	else
-		sessionIDs = d.sessionList.UserData(d.sessionList.Value);
-		if any(sessionIDs == 0) % select all
-			sessionIDs = d.sessionList.UserData(2:end);
-		end
+		sessionIDs = getSelectedSessionIDs(d);
 		
 		for i = 1:length(sessionIDs)
 			sessionID = sessionIDs(i);
