@@ -133,6 +133,8 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 			u.targetLevels      = a.targetLevels;
 			u.condCount         = a.condCount;
 % 			u.trialCountPerCond = a.trialCountPerCond;
+			u.phaseDelay        = a.trialLog(1).phaseDelay;
+			u.maskerFrequency   = a.trialLog(1).maskerFrequency;
 			if strcmpi(spikeConfig, 'unsorted')
 				u.type          = 'Channel';
 				u.channel       = a.channels(unitID);

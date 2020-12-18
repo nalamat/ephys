@@ -73,6 +73,7 @@ function units = analyzeUnits(units)
 		u.lambda           = c;
 		u.mutualInfo       = c;
 		u.mfsl             = c; % minimum first spike latency
+		u.mfslPhase        = c; % phase of MFSL relative to masker
 		u.maxFiring        = c;
 		u.meanFiring       = c;
 		u.stdFiring        = c;
@@ -274,6 +275,10 @@ function units = analyzeUnits(units)
 					mfsl = nan;
 				end
 				u.mfsl{condID,scoreID} = mfsl;
+				
+				% phase of MFSL relative to masker
+				phase = mfsl * u.maskerFrequency * 360 + u.phaseDelay;
+				u.mfslPhase{condID,scoreID} = phase;
 
 				% maximum firing rate peri-stimulus
 				u.maxFiring {condID,scoreID} = ...

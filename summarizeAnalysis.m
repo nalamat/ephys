@@ -197,6 +197,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.mfsl = cc;
 		u.mfslMean = cc;
 		u.mfslErr = cc;
+		u.mfslPhase = cc;
+		u.mfslPhaseMean = cc;
+		u.mfslPhaseErr = cc;
 		u.maxFiring = cc;
 		u.maxFiringMean = cc;
 		u.maxFiringErr = cc;
@@ -522,6 +525,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						if isempty(mfsl); mfsl = nan; end
 						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = mfsl;
 
+						% mfsl phase
+						phase = u.mfslPhase{uCondID,scoreID};
+						if isempty(phase); phase = nan; end
+						s.units{mode}.mfslPhase{sCondID,scoreID}(end+1) ...
+							= phase;
+
 						% max firing rate
 						maxFiring = u.maxFiring{uCondID,scoreID};
 						if isempty(maxFiring); maxFiring = nan; end
@@ -602,7 +611,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				s.units{modeID}.mfslMean{condID,scoreID} = ...
 					mean(mfsl);
 				s.units{modeID}.mfslErr{condID,scoreID} = ...
-					std(mfsl, 0) / sqrt(length(mfsl));    % sem
+				% mfsl phase
+				phase = s.units{modeID}.mfslPhase{condID,scoreID};
+				s.units{modeID}.mfslPhaseMean{condID,scoreID} = ...
+					nanmean(phase);
+				s.units{modeID}.mfslPhaseErr{condID,scoreID} = ...
+					nansem(phase);
 
 				% max firing rate
 				maxFiring = s.units{modeID}.maxFiring{condID,scoreID};
@@ -648,4 +662,11 @@ function res = recordingMode(a)
 			isequal(a.targetFreqs, 1)
 		res = 3;
 	end
+end
+
+function sem = nansem(x, dim)
+	if nargin<2
+		dim = 1;
+	end
+	sem = nanstd(x, 0, dim) ./ sqrt(sum(~isnan(x), dim));
 end
