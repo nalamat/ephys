@@ -55,25 +55,41 @@ function viewAnalysis(analysis)
 			'dprime neuro/behav'
 			'dprime behavior'
 			'vector 10'
+			'vector 10 running'
 			'vector peri'
 % 			'max firing'
 % 			'mean firing'
 			'deltaAP'
 			'deltaAP/behav'
 			'mfsl'
-			'mfsl-violin'
+			'mfsl phase'
+			'mfsl violin'
 			};
 	else
-		data.plotNames = {'raster', 'psth', ...
-			... 'dprime cqmean', ...
-			... 'dprime cqsum', ...
-			... 'dprime mqmean', ...
-			... 'dprime', ...
-			... 'lfp alpha', 'lfp beta', 'lfp gamma', ...
-			'vector 10', 'vector pre', 'vector peri', 'vector post', ...
-			'rlf', 'mtf', 'mtf 10', 'max firing', 'mfsl', ...
-			'mutual info', ...
-			'psth err', 'psth heatmap'};
+		data.plotNames = {
+			'raster'
+			'psth'
+% 			'dprime cqmean'
+% 			'dprime cqsum'
+% 			'dprime mqmean'
+% 			'dprime'
+% 			'lfp alpha'
+% 			'lfp beta'
+% 			'lfp gamma'
+			'vector 10'
+			'vector 10 running'
+			'vector pre'
+			'vector peri'
+			'vector post'
+			'rlf'
+			'mtf'
+			'mtf 10'
+			'max firing'
+			'mfsl'
+			'mfsl phase'
+			'mutual info'
+			'psth err'
+			'psth heatmap'};
 	end
 	
 	% subset the analysis based on any criteria
@@ -1418,8 +1434,85 @@ function refreshPlot(fig, d)
 				xticklabels(u.vectorBinNames);
 				ylim([0,vectorUL]);
 				ylabel('Vector strength at 10 Hz');
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
 				msk = plots~=0;
-				legend(plots(msk), condsStr(msk), 'location', 'northeast');
+				legend(plots(msk), condsStr(msk), 'location', loc);
+				title(u.label);
+
+				
+			% Vector strength as a function of level at 10 Hz
+			elseif strcmpi(plotName, 'vector 10 running')
+				plotTitle = 'Running vector strength at 10 Hz';
+				
+				plots = zeros(u.condCount,1);
+				patches = zeros(u.condCount,1);
+				centers = u.vs10Centers;
+				for condID = 1:u.condCount
+					if strcmpi(a.type, 'summary')
+						vs = vertcat(u.vs10{condID,scoreID});
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){condID,scoreID}==true;
+							vs = vs(msk,:);
+						end
+						avg = mean(vs, 1);
+						err = std(vs, 0, 1) / sqrt(size(vs, 2));
+						
+						if isempty(avg); continue; end
+						
+						col = getColor(condID);
+						plots(condID) = plot(centers, avg, ...
+							'color', col, 'linewidth', 2);
+						patches(condID) = patch( ...
+							[centers fliplr(centers)], ...
+							[avg+err fliplr(avg-err)], ...
+							col, 'edgecolor', 'none');
+						alpha(patches(condID), .2);
+					else
+						if isempty(u.vs10{condID,scoreID})
+							vs = nan(size(centers));
+							pval = nan(size(centers));
+						else
+							vs = u.vs10{condID,scoreID};
+							pval = u.vs10p{condID,scoreID};
+						end
+						sig = pval < .001;
+						plots(condID) = plot(centers, vs, ...
+							'color', getColor(condID), ...
+							'linewidth', 2);
+						plot(centers(sig), vs(sig), '*', ...
+							'color', getColor(condID));
+					end
+				end
+				
+				% push ribbons to the back of line plots
+				for condID = u.condCount:-1:1
+					if patches(condID)
+						uistack(patches(condID),'bottom');
+					end
+				end
+				
+				markTarget(u);
+				
+				axis square tight;
+% 				xlim([.9, bins(end)+.1]);
+% 				xticks(bins);
+% 				if strcmp(u.vectorBinNames{2}, 'Intra')
+% 					u.vectorBinNames{2} = 'Peri';
+% 				end
+% 				xticklabels(u.vectorBinNames);
+				ylim([0,vectorUL]);
+				ylabel('Vector strength at 10 Hz');
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
+				msk = plots~=0;
+				legend(plots(msk), condsStr(msk), 'location', loc);
 				title(u.label);
 
 				
@@ -1699,20 +1792,16 @@ function refreshPlot(fig, d)
 							avg(i) = mean(mfsl);
 							err(i) = std(mfsl) / sqrt(length(mfsl));
 						end
-						
-% 						patches(freqID) = patch([x fliplr(x)], ...
-% 							[avg+err fliplr(avg-err)]*1000, ...
-% 							col, 'edgecolor', 'none');
-% 						alpha(patches(freqID), .2);
+						plots(freqID) = errorbar(x, avg, err, ...
+							'.-', 'color', col, 'linewidth', 2, ...
+							'markersize', 20);
 					else
 						col = getColor(freqID);
-						avg = [u.mfsl{condIDs,scoreID}];
+						avg = [u.mfslPhase{condIDs,scoreID}];
+						plots(freqID) = plot(x, avg, ...
+							'.-', 'color', col, 'linewidth', 2, ...
+							'markersize', 20);
 					end
-% 					plots(freqID) = plot(x, avg*1000, 'color', col, ...
-% 						'linewidth',3);
-					plots(freqID) = errorbar(x, avg*1000, err*1000, ...
-						'.-', 'color', col, 'linewidth', 2, ...
-						'markersize', 20);
 				end
 				
 				% push ribbons to the back of line plots
@@ -1726,7 +1815,8 @@ function refreshPlot(fig, d)
 				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
-				ylim([0, 100]);
+				ylimits = ylim();
+				ylim([0, ylimits(2)]);
 				xlabel(snrLabel);
 				ylabel('MFSL (ms)');
 				if length(freqsStr) > 1
@@ -1735,8 +1825,64 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 				
-			% Plot MFSL
-			elseif strcmpi(plotName, 'mfsl-violin')
+			% plot MFSL phase
+			elseif strcmpi(plotName, 'mfsl phase')
+				plotTitle = 'MFSL Phase';
+				sameYLim = true;
+				
+				plots = zeros(length(u.targetFreqs),1);
+				patches = zeros(length(u.targetFreqs),1);
+				
+				for freqID = 1:length(u.targetFreqs)
+					levelIDs = 1:length(u.targetLevels);
+					% Add nogo
+					condIDs = [1, (freqID-1)*length(u.targetLevels) + ...
+						levelIDs+1];
+					x = snrNogo;
+					if strcmpi(a.type,'summary')
+						col = colors2{unitID,end};
+						avg = zeros(size(condIDs));
+						err = zeros(size(condIDs));
+						for i = 1:length(condIDs)
+							condID = condIDs(i);
+							phase = u.mfslPhase{condID,scoreID};
+							if ~strcmpi(subset, 'all')
+								msk = u.(subset){condID,scoreID}==true;
+								phase = phase(msk);
+							end
+							phase(~isfinite(phase)) = [];
+							avg(i) = mean(phase);
+							err(i) = std(phase) / sqrt(length(phase));
+						end
+						plots(freqID) = errorbar(x, avg, err, ...
+							'.-', 'color', col, 'linewidth', 2, ...
+							'markersize', 20);
+					else
+						col = getColor(freqID);
+						avg = [u.mfslPhase{condIDs,scoreID}];
+						plots(freqID) = plot(x, avg, ...
+							'.-', 'color', col, 'linewidth', 2, ...
+							'markersize', 20);
+					end
+				end
+				
+				axis square tight;
+				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
+% 				ylimits = ylim();
+% 				ylim([0, ylimits(2)]);
+				ylim([0 360]);
+				xlabel(snrLabel);
+				ylabel('MFSL Phase [\circ]');
+				if length(freqsStr) > 1
+					legend(plots, freqsStrHz, 'location', 'northeast');
+				end
+				title(u.label);
+
+				
+			% violin plot of MFSL
+			elseif strcmpi(plotName, 'mfsl violin')
 				plotTitle = 'MFSL Violin';
 				if ~strcmpi(a.type, 'summary')
 					error('Only for summary analysis');
