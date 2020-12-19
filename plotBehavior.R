@@ -4,6 +4,9 @@ library(tidyr) # gather
 library(dplyr) # recode
 library(ggplot2) # ggplot
 
+save_plot = function(plot, file) {
+  ggsave(plot, file=file, height=4, width=6, dpi=600)
+}
 
 #### Load ####
 
@@ -21,9 +24,25 @@ if (rove == 'TargetDuration')
   data2$Rove = data2$TargetDuration
 
 # combine different scores
+erfinv <- function(x) qnorm((1 + x)/2)/sqrt(2)
+clip <- function(x) max(.05, min(.95, x))
+zScore <- function(x) erfinv(1-2*(1-clip(x)))*sqrt(2)
 data3 = data2 %>%
   group_by_at(vars(-c(ResponseDuration, Score))) %>%
-  summarise(ResponseDuration=mean(ResponseDuration))
+  summarise(ResponseDuration=mean(ResponseDuration),
+            HitRate=mean(Score=='HIT+FA'),
+            zScore=zScore(HitRate),
+            dPrime=NaN)
+
+
+for (session in unique(data3$Session)) {
+  zScoreNogo = subset(data3, Session==session & Rove==0)$zScore
+  for (rove in unique(data3$Rove)) {
+    zScoreGo = subset(data3, Session==session & Rove==rove)$zScore
+    dPrime = zScoreGo - zScoreNogo
+    data3[data3$Session==session & data3$Rove==rove,]$dPrime = dPrime
+  }
+}
 
 # group different scores
 data4 = data2 %>%
@@ -65,17 +84,58 @@ mean_line = stat_summary(fun.y=mean, geom='line', size=1.5)
 mean_bar = stat_summary(fun.y=mean, geom='bar', size=.8)
 se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar',
                            width=errwidth, size=1.5)
+data3$ResponseDuration2 = data3$ResponseDuration - data3$Rove
+data4$ResponseDuration2 = data4$ResponseDuration - data4$Rove
 
-ggplot(data3, aes(x=Rove, y=ResponseDuration, group=1)) +
+p = ggplot(data3, aes(x=Rove, y=ResponseDuration2, group=1)) +
+  se_errorbar + mean_line + mean_point +
+  labs(x=label, y='Response duration', title=title) +
+  theme_my
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-response-all.svg')
+p = ggplot(data3, aes(x=Rove, y=ResponseDuration2, color=Subject)) +
+  se_errorbar + mean_line + mean_point +
+  labs(x=label, y='Response duration', title=title) +
+  theme_my
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-response-each.svg')
+
+ggplot(data4, aes(x=Rove, y=ResponseDuration2, color=Score, group=Score)) +
   se_errorbar + mean_line + mean_point +
   labs(x=label, y='Response duration', title=title) +
   theme_my
 
-ggplot(data4, aes(x=Rove, y=ResponseDuration, color=Score, group=Score)) +
+# Hit rate
+p = ggplot(subset(data3, Rove>0), aes(x=Rove, y=HitRate)) +
   se_errorbar + mean_line + mean_point +
-  labs(x=label, y='Response duration', title=title) +
+  labs(x=label, y='Hit rate', title=title) +
+  coord_cartesian(ylim=c(0,1)) +
   theme_my
+p
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-hitrate-all.svg')
 
+p = ggplot(subset(data3, Rove>0), aes(x=Rove, y=HitRate, color=Subject)) +
+  se_errorbar + mean_line + mean_point +
+  labs(x=label, y='Hit rate', title=title) +
+  coord_cartesian(ylim=c(0,1)) +
+  theme_my
+p
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-hitrate-each.svg')
+
+# Behavioral d'
+p = ggplot(subset(data3, Rove>0), aes(x=Rove, y=dPrime)) +
+  se_errorbar + mean_line + mean_point +
+  labs(x=label, y='Behavioral d\'', title=title) +
+  coord_cartesian(ylim=c(0,2.25)) +
+  theme_my
+p
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-dprime-all.svg')
+
+p = ggplot(subset(data3, Rove>0), aes(x=Rove, y=dPrime, color=Subject)) +
+  se_errorbar + mean_line + mean_point +
+  labs(x=label, y='Behavioral d\'', title=title) +
+  coord_cartesian(ylim=c(0,2.25)) +
+  theme_my
+p
+save_plot(p, file='figs/Temporal-Integration/temporal-integration-dprime-each.svg')
 
 ggplot(data2, aes(x=Rove)) +
   stat_summary(aes(y=ScoreFit, group=1), fun.data=mean_se, geom='ribbon',
