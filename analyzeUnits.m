@@ -51,6 +51,15 @@ function units = analyzeUnits(units)
 		u.vs10Centers    = u.psthCenters( ...
 			u.viewBounds(1) <= u.psthCenters & ...
 			u.psthCenters <= u.viewBounds(2)-u.vs10Window);
+		
+		u.mtfParams.Fs = u.fs;      % sampling frequency
+		u.mtfParams.fpass = [5 50]; % band of frequencies to be kept
+		u.mtfParams.tapers = [3 5]; % taper parameters
+		u.mtfParams.pad = 2;        % pad factor for FFT
+		u.mtfParams.err = [2 0.05];
+		u.mtfParams.trialave = 1;
+		[~, u.mtfFreqs] = mtspectrumpt(rand(1,50), u.mtfParams);
+		
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
 % 		u.svmScores      = [];
@@ -68,13 +77,6 @@ function units = analyzeUnits(units)
 		u.dPrimePeri       = c; % including onset/offset
 		u.dPrimePeriGap    = c; % excluding onset/offset
 		u.dPrimeOffset     = c;
-	% 	u.psthCum          = [];
-	% 	u.psthCumMean      = [];
-	% 	u.psthCumSTD       = [];
-	% 	u.psthCumDPrime    = [];
-	% 	u.pvalPeri         = [];
-	% 	u.zscoreOnset      = [];
-	% 	u.zscoreOffset     = [];
 		u.lambda           = c;
 		u.mutualInfo       = c;
 		u.mfsl             = c; % minimum first spike latency
@@ -88,8 +90,7 @@ function units = analyzeUnits(units)
 	% 	u.vectorZScore     = c;
 		u.vs10             = c; % running vector strength at 10 hz
 		u.vs10p            = c; % p values
-		u.mtfF             = c;
-		u.mtfS             = c;
+		u.mtf              = c;
 		% {conds x scores}[bands x bins]
 		u.lfpMean          = c;
 		u.lfpSTD           = c;
@@ -401,23 +402,14 @@ function units = analyzeUnits(units)
 				spikeTimesPeri = spikeTimesAll( ...
 					u.vectorBins(2,1)<=spikeTimesAll & ...
 					spikeTimesAll<u.vectorBins(2,2));
-				if length(spikeTimesPeri)>6
-					mtfParams.Fs = u.fs;      % sampling frequency
-					mtfParams.fpass = [5 50]; % band of frequencies to be kept
-					mtfParams.tapers = [3 5]; % taper parameters
-					mtfParams.pad = 2;        % pad factor for FFT
-					mtfParams.err = [2 0.05];
-					mtfParams.trialave = 1;
-					data = spikeTimesPeri;
-					[mtfS,mtfF] = mtspectrumpt(data, mtfParams);
-					% figure; plot(mtfF,10*log10(mtfS));
-				else
-					mtfF = [];
-					mtfS = [];
+				mtf = [];
+				if length(spikeTimesPeri)>10
+					mtf = mtspectrumpt(spikeTimesPeri, u.mtfParams)';
 				end
-				u.mtfF{condID,scoreID} = mtfF;
-				u.mtfS{condID,scoreID} = mtfS;
-				
+				if length(mtf) ~= length(u.mtfFreqs)
+					mtf = nan(size(u.mtfFreqs));
+				end
+				u.mtf{condID,scoreID} = mtf;
 				
 				
 				% LFP
