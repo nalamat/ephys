@@ -323,8 +323,8 @@ function refreshPlot(fig, d)
 					pltNogo = plot(u.psthCenters, nogoAvg, ...
 						'color', colors2{modeID, 1}, ...
 						'linewidth', 1.5);
-					pltGo = plot(u.psthCenters, goAvg, 'color', ...
-						colors2{modeID, 1+snrID}, ...
+					pltGo = plot(u.psthCenters, goAvg, ...
+						'color', colors2{modeID, 1+snrID}, ...
 						'linewidth', 1.5);
 
 					peri = 0 <= u.psthCenters & u.psthCenters < 1;
@@ -379,7 +379,7 @@ function refreshPlot(fig, d)
 
 		% running cross-correlation between go and nogo
 		elseif strcmpi(plotName, 'psth xcorr')
-			plotTitle = 'PSTH cross correlation';
+			plotTitle = 'PSTH correlation';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
 			end
@@ -412,15 +412,17 @@ function refreshPlot(fig, d)
 					goAvg = mean(go, 1);
 					goErr = std(go, 0, 1) / sqrt(size(go, 1));
 
-					time_window = 100e-3;
-					time_step = 30e-3;
+					
+					
+% 					time_window = 100e-3;
+% 					time_step = 30e-3;
+% 
+% 					peri = 0<=u.psthCenters;
+% 					goAvgPeri = goAvg;
+% 					nogoAvgPeri = nogoAvg;
 
-					peri = 0<=u.psthCenters;
-					goAvgPeri = goAvg;
-					nogoAvgPeri = nogoAvg;
-
-					[lag_time, twin, xcl] = timewindow_xcorr(nogoAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), ...
-						goAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), 1/u.psthBin, time_window, time_step, time_window, 0);
+% 					[lag_time, twin, xcl] = timewindow_xcorr(nogoAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), ...
+% 						goAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), 1/u.psthBin, time_window, time_step, time_window, 0);
 
 					% plot go and nogo
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
@@ -430,18 +432,46 @@ function refreshPlot(fig, d)
 % 						pk(ii) = min(find(abs(tmp)==max(abs(tmp))));
 % 					end
 % 					plot(twin - u.targetDuration,pk);% sum(xcl'))
-					imagesc(twin, lag_time, xcl');%./sum(xcl'));
+% 					imagesc(twin, lag_time, xcl');%./sum(xcl'));
 
 % 					plot(u.psthCenters, movmean((goAvg - nogoAvg) ./ (goErr/2 + nogoErr/2), 10));
 
-% 					markTarget(u, modeID==1);
 
-% 					xticks(u.viewBounds(1):1:u.viewBounds(2));
+
+					win = 200e-3;
+% 					centers = u.psthCenters;
+% 					centers = centers(centers <= max(centers)-win);
+					centers = u.viewBounds(1):win:u.viewBounds(2)-win;
+					R = zeros(size(centers));
+					P = ones(size(centers));
+					for centerID = 1:length(centers)
+						center = centers(centerID);
+						nogo = nogoAvg(center <= u.psthCenters & ...
+							u.psthCenters < center + win);
+						go = goAvg(center <= u.psthCenters & ...
+							u.psthCenters < center + win);
+						[r, p] = corrcoef(nogo, go);
+						R(centerID) = r(1,2);
+% 						R(centerID) = dot(zscor
+						P(centerID) = p(1,2);
+					end
+					plot(centers, R, ...
+						'color', colors2{modeID, 1+snrID}, ...
+						'linewidth', 1.5);
+					hold on;
+					sig = P<.05;
+					plot(centers(sig), R(sig), '.', 'markersize', 6, ...
+						'color', [.6 .6 1]);
+					
+
+					markTarget(u, modeID==1);
+
+					xticks(u.viewBounds(1):1:u.viewBounds(2));
 	% 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
-	% 				xticklabels(-1:.5:2);
-	% 				xlim([-.3, 1.3]);
+					xticklabels(-1:1:2);
+					xlim([u.viewBounds(1), max(centers)]);
 % 					xlim(u.viewBounds);
-% 					ylim([-6,3.5]);
+					ylim([-1,1]);
 % 					ylabel('Firing rate (1/s)');
 % 					xlabel('Time (s)');
 	% 				grid on;
