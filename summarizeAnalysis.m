@@ -168,6 +168,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vectorBins = u1.vectorBins;
 		u.vectorBinNames = u1.vectorBinNames;
 		u.vs10Centers = u1.vs10Centers;
+		u.mtfFreqs = u1.mtfFreqs;
 		u.label = recordingModeLabels{modeID};
 
 		cc = cell(s.condCount, 5); % 5: scores
@@ -214,6 +215,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vs10p = cc;
 		u.vs10Mean = cc;
 		u.vs10Err = cc;
+		u.mtf = cc;
+		u.mtfMean = cc;
+		u.mtfErr = cc;
 		for condID = 1:u.condCount
 			for scoreID = 1:5
 				u.vectorStrength{condID,scoreID} = ...
@@ -541,6 +545,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						s.units{mode}.vs10{sCondID,scoreID}(end+1,:) = vs;
 						s.units{mode}.vs10p{sCondID,scoreID}(end+1,:)=pval;
+						
+						% modulation transfer function
+						mtf = u.mtf{uCondID,scoreID};
+						if isempty(mtf); mtf = nan; end
+						if c && c<size(mtf,2) % fix for nan entries
+							s.units{mode}.mtf{sCondID,scoreID} ...
+								(:,c+1:size(mtf, 2)) = nan;
+						end
+						s.units{mode}.mtf{sCondID,scoreID}(end+1,:) = mtf;
 
 						% mfsl (minimum first spike latency)
 						mfsl = u.mfsl{uCondID,scoreID};
@@ -630,6 +643,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				vs = s.units{modeID}.vs10{condID,scoreID};
 				s.units{modeID}.vs10Mean{condID,scoreID} = nanmean(vs, 1);
 				s.units{modeID}.vs10Err{condID,scoreID} = nansem(vs, 1);
+				
+				mtf = s.units{modeID}.mtf{condID,scoreID};
+				s.units{modeID}.mtfMean{condID,scoreID} = nanmean(mtf, 1);
+				s.units{modeID}.mtfErr{condID,scoreID} = nansem(mtf, 1);
 
 				% mfsl (minimum first spike latency)
 				mfsl = s.units{modeID}.mfsl{condID,scoreID};
