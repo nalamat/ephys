@@ -57,6 +57,7 @@ function viewAnalysis(analysis)
 			'vector 10'
 			'vector 10 running'
 			'vector peri'
+			'mtf'
 			'max firing'
 % 			'mean firing'
 % 			'deltaAP'
@@ -81,9 +82,9 @@ function viewAnalysis(analysis)
 			'vector pre'
 			'vector peri'
 			'vector post'
-			'rlf'
 			'mtf'
 			'mtf 10'
+			'rlf'
 			'max firing'
 			'mfsl'
 			'mfsl phase'
@@ -1219,13 +1220,18 @@ function refreshPlot(fig, d)
 				xlabel('Time (s)');
 % 				grid on;
 
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
 				msk = plots~=0;
 				legend(plots(msk), condsStr(msk), ...
-					'location', 'northeast');
+					'location', loc);
 				title(u.label);
 
 
-			% Vector strength
+			% local field potential
 			elseif strcmpi(plotName(1:min(3, length(plotName))), 'lfp')
 				bandName = plotName(5:end);
 				bandName = [upper(bandName(1)) bandName(2:end)];
@@ -1255,7 +1261,12 @@ function refreshPlot(fig, d)
 				xticklabels({'Pre', 'Peri', 'Post'});
 				xlabel('');
 				ylabel(['RMS of ' bandName]);
-				legend(plots, condsStr, 'location', 'northeastoutside');
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
+				legend(plots, condsStr, 'location', loc);
 				title(u.label);
 
 
@@ -1728,7 +1739,12 @@ function refreshPlot(fig, d)
 				ylim([0,vectorUL]);
 				xlabel('Base frequency (Hz)');
 				ylabel(['Vector strength (' binName ')']);
-				legend(plots, condsStr, 'location', 'northeast');
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
+				legend(plots, condsStr, 'location', loc);
 				title(u.label);
 
 
@@ -1756,53 +1772,79 @@ function refreshPlot(fig, d)
 			% MTF
 			elseif strcmpi(plotName, 'mtf')
 				plotTitle = 'Peri-stimulus MTF';
-
+				
+				plots = zeros(u.condCount, 1);
+				patches = zeros(u.condCount, 1);
+				axis square tight;
+% 				sameYLim = true;
+				
 				for condID = 1:u.condCount
-					plot(u.mtfF{condID,scoreID}, ...
-						10*log10(u.mtfS{condID,scoreID}), ...
-						'color', getColor(condID));
+					if strcmpi(a.type, 'summary')
+						mtf = vertcat(u.mtf{condID,scoreID});
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){condID,scoreID}==true;
+							mtf = mtf(msk, :);
+						end
+						mtf = 10*log10(mtf);
+						avg = nanmean(mtf, 1);
+						err = nansem(mtf, 1);
+					else
+						avg = 10*log10(u.mtf{condID,scoreID});
+					end
+					col = getColor(condID);
+					freqs = u.mtfFreqs;
+					plots(condID) = plot(freqs, avg, ...
+						'color', col, ...
+						'linewidth', 1.5);
+					if strcmpi(a.type, 'summary')
+						patches(condID) = patch([freqs fliplr(freqs)], ...
+							[avg+err fliplr(avg-err)], ...
+							col, 'edgecolor', 'none');
+						alpha(patches(condID), .2);
+					end
 				end
 
-				axis square tight;
+				% push ribbons to the back of line plots
+				for condID = u.condCount:-1:1
+					if patches(condID)
+						uistack(patches(condID),'bottom');
+					end
+				end
+
+% 				axis square tight;
 				xlabel('Frequency');
 				ylabel('MTF power (Peri)');
-				legend(condsStr, 'location', 'northeastoutside');
+				xticks(10:10:40);
+				ylim([14 28]);
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
+				end
+				legend(plots, condsStr, 'location', loc);
 				title(u.label);
 
 
 			% MTF at 10Hz as a function of level
 			elseif strcmpi(plotName, 'mtf 10')
 				plotTitle = 'Peri-stimulus MTF at 10 Hz';
-
-				mtfF = u.mtfF{1,scoreID};    % Nogo
-				if ~isempty(mtfF)
-					fRange = 9.5<=mtfF & mtfF<=10.5;
-					mtfS_nogo = mean(u.mtfS{1,scoreID}(fRange)); % Nogo
-				else
-					mtfS_nogo = nan;
-				end
+				
+				freqs = 9.5<=u.mtfFreqs & u.mtfFreqs<=10.5;
 
 				for freqID = 1:length(u.targetFreqs)
-					arr = [mtfS_nogo];
-					for levelID = 1:length(u.targetLevels)
-						condID = (freqID-1)*length(u.targetLevels) + ...
-							levelID+1;
-						mtfF = u.mtfF{condID,scoreID};
-						if ~isempty(mtfF)
-							fRange = 9.5<=mtfF & mtfF<=10.5;
-							mtfS = mean(u.mtfS{condID,scoreID}(fRange));
-						else
-							mtfS = nan;
-						end
-						arr(end+1) = mean(mtfS);
-					end
-					plot(snrNogo, 10*log10(arr), ...
+					condIDs = [1, ... % nogo
+						(freqID-1)*length(u.targetLevels) + ...
+						(1:length(u.targetLevels))+1];
+					mtf = vertcat(u.mtf{condIDs,scoreID});
+					mtf = mean(mtf(:,freqs),2);
+					plot(snrNogo, 10*log10(mtf), ...
 						'color', getColor(freqID));
 				end
 
 				axis square tight;
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
+				xlim([snrNogo(1) snrNogo(end)]);
 				xlabel(snrLabel);
 				ylabel('MTF power at 10 Hz (Peri)');
 				if length(freqsStr) > 1
@@ -2251,4 +2293,11 @@ function sameXYLim(subplots, sameXLim, sameYLim)
 		if sameXLim; ax.XLim = xLim; end
 		if sameYLim; ax.YLim = yLim; end
 	end
+end
+
+function sem = nansem(x, dim)
+	if nargin<2
+		dim = 1;
+	end
+	sem = nanstd(x, 0, dim) ./ sqrt(sum(~isnan(x), dim));
 end
