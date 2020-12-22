@@ -47,19 +47,19 @@ function viewAnalysis(analysis)
 			'psth alt'
 			'psth corr alt'
 			'dprime waterfall alt'
-			'vector waterfall alt'
+			'vs waterfall alt'
 			'psth'
 % 			'psth err'
 			'dprime cqmean'
 % 			'dprime cqsum'
 			'dprime neuro/behav'
 			'dprime behavior'
-			'vector 10'
-			'vector 10 running'
-			'vector peri'
+			'vs 10'
+			'vs 10 running'
+			'vs peri'
 			'mts'
-			'max firing'
-% 			'mean firing'
+			'firing max'
+% 			'firing mean'
 % 			'deltaAP'
 			'deltaAP/behav'
 			'mfsl'
@@ -78,15 +78,15 @@ function viewAnalysis(analysis)
 % 			'lfp alpha'
 % 			'lfp beta'
 % 			'lfp gamma'
-			'vector 10'
-			'vector 10 running'
-			'vector pre'
-			'vector peri'
-			'vector post'
+			'vs 10'
+			'vs 10 running'
+			'vs pre'
+			'vs peri'
+			'vs post'
 			'mts'
 			'mts 10'
 			'rlf'
-			'max firing'
+			'firing max'
 			'mfsl'
 			'mfsl phase'
 			'mutual info'
@@ -306,7 +306,7 @@ function refreshPlot(fig, d)
 					msk = u.(subset){1,scoreID}==true;
 					nogo = nogo(msk, :);
 				end
-				nogoAvg = mean(nogo, 1);
+				nogoMean = mean(nogo, 1);
 				nogoErr = std(nogo, 0, 1) / sqrt(size(nogo, 1));
 
 				for snrID = 1:3
@@ -316,16 +316,16 @@ function refreshPlot(fig, d)
 						msk = u.(subset){1,scoreID}==true;
 						go = go(msk, :);
 					end
-					goAvg = mean(go, 1);
+					goMean = mean(go, 1);
 					goErr = std(go, 0, 1) / sqrt(size(go, 1));
 
 					% plot go and nogo
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
 					hold on;
-					pltNogo = plot(u.psthCenters, nogoAvg, ...
+					pltNogo = plot(u.psthCenters, nogoMean, ...
 						'color', colors2{modeID, 1}, ...
 						'linewidth', 1.5);
-					pltGo = plot(u.psthCenters, goAvg, ...
+					pltGo = plot(u.psthCenters, goMean, ...
 						'color', colors2{modeID, 1+snrID}, ...
 						'linewidth', 1.5);
 
@@ -333,7 +333,7 @@ function refreshPlot(fig, d)
 					periCenters = u.psthCenters(peri);
 
 					pltDelta = patch([periCenters fliplr(periCenters)], ...
-						[goAvg(peri) fliplr(nogoAvg(peri))], ...
+						[goMean(peri) fliplr(nogoMean(peri))], ...
 						[1 1 0], 'edgecolor', 'none');
 					alpha(pltDelta, .4);
 					uistack(pltDelta, 'bottom');
@@ -400,7 +400,7 @@ function refreshPlot(fig, d)
 					msk = u.(subset){1,scoreID}==true;
 					nogo = nogo(msk, :);
 				end
-				nogoAvg = mean(nogo, 1);
+				nogoMean = mean(nogo, 1);
 				nogoErr = std(nogo, 0, 1) / sqrt(size(nogo, 1));
 
 				for snrID = 1:3
@@ -410,7 +410,7 @@ function refreshPlot(fig, d)
 						msk = u.(subset){1,scoreID}==true;
 						go = go(msk, :);
 					end
-					goAvg = mean(go, 1);
+					goMean = mean(go, 1);
 					goErr = std(go, 0, 1) / sqrt(size(go, 1));
 
 
@@ -419,11 +419,11 @@ function refreshPlot(fig, d)
 % 					time_step = 30e-3;
 %
 % 					peri = 0<=u.psthCenters;
-% 					goAvgPeri = goAvg;
-% 					nogoAvgPeri = nogoAvg;
+% 					goMeanPeri = goMean;
+% 					nogoMeanPeri = nogoMean;
 
-% 					[lag_time, twin, xcl] = timewindow_xcorr(nogoAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), ...
-% 						goAvgPeri-mean((nogoAvgPeri+goAvgPeri)/2), 1/u.psthBin, time_window, time_step, time_window, 0);
+% 					[lag_time, twin, xcl] = timewindow_xcorr(nogoMeanPeri-mean((nogoMeanPeri+goMeanPeri)/2), ...
+% 						goMeanPeri-mean((nogoMeanPeri+goMeanPeri)/2), 1/u.psthBin, time_window, time_step, time_window, 0);
 
 					% plot go and nogo
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
@@ -435,7 +435,7 @@ function refreshPlot(fig, d)
 % 					plot(twin - u.targetDuration,pk);% sum(xcl'))
 % 					imagesc(twin, lag_time, xcl');%./sum(xcl'));
 
-% 					plot(u.psthCenters, movmean((goAvg - nogoAvg) ./ (goErr/2 + nogoErr/2), 10));
+% 					plot(u.psthCenters, movmean((goMean - nogoMean) ./ (goErr/2 + nogoErr/2), 10));
 
 
 					% running pearson's correlation
@@ -447,9 +447,9 @@ function refreshPlot(fig, d)
 					P = ones(size(centers));
 					for centerID = 1:length(centers)
 						center = centers(centerID);
-						nogo = nogoAvg(center <= u.psthCenters & ...
+						nogo = nogoMean(center <= u.psthCenters & ...
 							u.psthCenters < center + win);
-						go = goAvg(center <= u.psthCenters & ...
+						go = goMean(center <= u.psthCenters & ...
 							u.psthCenters < center + win);
 						[r, p] = corrcoef(nogo, go);
 						R(centerID) = r(1,2);
@@ -572,7 +572,7 @@ function refreshPlot(fig, d)
 
 		% waterfall plot of vector strength of units at 10Hz per snr and
 		% pre/peri/post
-		elseif strcmpi(plotName, 'vector waterfall alt')
+		elseif strcmpi(plotName, 'vs waterfall alt')
 			plotTitle = 'VS @ 10Hz waterfall';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -584,8 +584,8 @@ function refreshPlot(fig, d)
 			end
 
 			% sort according to active mode, peri, +10 dB SNR
-			freq = a.units{1}.baseFreqs == 10;
-			vs = vertcat(a.units{1}.vectorStrength{end,scoreID}{2,freq});
+			freq = a.units{1}.vsFreqs == 10;
+			vs = vertcat(a.units{1}.vs{end,scoreID}{2,freq});
 			if ~strcmpi(subset, 'all')
 				msk = a.units{1}.(subset){1,scoreID}==true;
 				vs = vs(msk);
@@ -596,7 +596,7 @@ function refreshPlot(fig, d)
 			for modeID = 1:modeCount
 				u = a.units{modeID};
 
-				freq = u.baseFreqs == 10;
+				freq = u.vsFreqs == 10;
 				for snrID = 1:length(u.targetLevels)
 					if u.maskerLevel
 						snr = u.targetLevels(snrID) - u.maskerLevel;
@@ -607,7 +607,7 @@ function refreshPlot(fig, d)
 					end
 
 					vs = vertcat( ...
-						u.vectorStrength{snrID+1,scoreID}{:,freq})';
+						u.vs{snrID+1,scoreID}{:,freq})';
 					if ~strcmpi(subset, 'all')
 						msk = u.(subset){1,scoreID}==true;
 						vs = vs(msk, :);
@@ -626,7 +626,7 @@ function refreshPlot(fig, d)
 					waterfall(x, y, vs);
 
 					xticks(bins);
-					xticklabels(u.vectorBinNames);
+					xticklabels(u.vsBinNames);
 					ylim([units(1) units(end)]);
 					zlim([0 1]);
 					ylabel('Unit number');
@@ -1496,18 +1496,18 @@ function refreshPlot(fig, d)
 
 
 			% Vector strength as a function of level at 10 Hz
-			elseif strcmpi(plotName, 'vector 10')
+			elseif strcmpi(plotName, 'vs 10')
 				plotTitle = 'Vector strength at 10 Hz';
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
-				bins = 1:size(u.vectorBins,1);
-				baseFreq = u.baseFreqs==10;
+				bins = 1:size(u.vsBins,1);
+				vsFreq = u.vsFreqs==10;
 				for condID = 1:u.condCount
 % 					if condID >= u.condCount-2; continue; end
 					if strcmpi(a.type, 'summary')
-						vs = vertcat(u.vectorStrength{ ...
-							condID,scoreID}{:,baseFreq});
+						vs = vertcat(u.vs{ ...
+							condID,scoreID}{:,vsFreq});
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(:,msk);
@@ -1529,17 +1529,17 @@ function refreshPlot(fig, d)
 						p = plots(condID);
 						set(p, 'markerfacecolor', get(p, 'color'));
 					else
-						if isempty(u.vectorStrength{condID,scoreID})
+						if isempty(u.vs{condID,scoreID})
 							strength = nan(size(bins));
 							pval = nan(size(bins));
 						else
-							strength = [u.vectorStrength{ ...
-								condID,scoreID}{:,baseFreq}];
-							pval = [u.vectorPVal{ ...
-								condID,scoreID}{:,baseFreq}];
+							strength = [u.vs{ ...
+								condID,scoreID}{:,vsFreq}];
+							pval = [u.vsPVal{ ...
+								condID,scoreID}{:,vsFreq}];
 						end
-% 						zscore = [u.vectorZScore{ ...
-% 							condID,scoreID}{:,baseFreq}];
+% 						zscore = [u.vsZScore{ ...
+% 							condID,scoreID}{:,vsFreq}];
 						sig = pval < .001;
 % 						thr = abs(zscore) > 1;
 						plots(condID) = plot(bins, strength, ...
@@ -1562,10 +1562,10 @@ function refreshPlot(fig, d)
 				axis square tight;
 				xlim([.9, bins(end)+.1]);
 				xticks(bins);
-				if strcmp(u.vectorBinNames{2}, 'Intra')
-					u.vectorBinNames{2} = 'Peri';
+				if strcmp(u.vsBinNames{2}, 'Intra')
+					u.vsBinNames{2} = 'Peri';
 				end
-				xticklabels(u.vectorBinNames);
+				xticklabels(u.vsBinNames);
 				ylim([0,vectorUL]);
 				ylabel('Vector strength at 10 Hz');
 				if strcmpi(a.type, 'summary')
@@ -1579,7 +1579,7 @@ function refreshPlot(fig, d)
 
 
 			% Vector strength as a function of level at 10 Hz
-			elseif strcmpi(plotName, 'vector 10 running')
+			elseif strcmpi(plotName, 'vs 10 running')
 				plotTitle = 'Running vector strength at 10 Hz';
 
 				plots = zeros(u.condCount,1);
@@ -1611,7 +1611,7 @@ function refreshPlot(fig, d)
 							pval = nan(size(centers));
 						else
 							vs = u.vs10{condID,scoreID};
-							pval = u.vs10p{condID,scoreID};
+							pval = u.vs10PVal{condID,scoreID};
 						end
 						sig = pval < .001;
 						plots(condID) = plot(centers, vs, ...
@@ -1634,10 +1634,10 @@ function refreshPlot(fig, d)
 				axis square tight;
 % 				xlim([.9, bins(end)+.1]);
 % 				xticks(bins);
-% 				if strcmp(u.vectorBinNames{2}, 'Intra')
-% 					u.vectorBinNames{2} = 'Peri';
+% 				if strcmp(u.vsBinNames{2}, 'Intra')
+% 					u.vsBinNames{2} = 'Peri';
 % 				end
-% 				xticklabels(u.vectorBinNames);
+% 				xticklabels(u.vsBinNames);
 				ylim([0,vectorUL]);
 				ylabel('Vector strength at 10 Hz');
 				if strcmpi(a.type, 'summary')
@@ -1653,17 +1653,17 @@ function refreshPlot(fig, d)
 % 			Vector strength as a function of level at 10 Hz
 % 			elseif data.plotID==3 || data.plotID==4 || data.plotID==5
 % 				binID = data.plotID - 2;
-% 				plotName = [u.vectorBinNames{binID} ...
+% 				plotName = [u.vsBinNames{binID} ...
 % 					'-stimulus vector strength at 10 Hz'];
 %
 % 				for freqID = 1:length(p.targetFreqs)
-% 					arr = [u.vectorStrength{1}{ ...
-% 						binID}{u.baseFreqs==10}];    % Nogo
+% 					arr = [u.vs{1}{ ...
+% 						binID}{u.vsFreqs==10}];    % Nogo
 % 					for levelID = 1:length(p.targetLevels)
 % 						condID = (freqID-1)*length(p.targetLevels) + ...
 % 							levelID+1;
-% 						arr(end+1) = u.vectorStrength{condID}{ ...
-% 							binID}{u.baseFreqs==10};
+% 						arr(end+1) = u.vs{condID}{ ...
+% 							binID}{u.vsFreqs==10};
 % 					end
 % 					plot(levelsNogo, arr);
 % 				end
@@ -1681,14 +1681,14 @@ function refreshPlot(fig, d)
 
 
 			% Vector strength
-			elseif strcmpi( plotName(1:min(length('vector'), ...
-					length(plotName))), 'vector')
-				if strcmp(u.vectorBinNames{2}, 'Intra')
-					u.vectorBinNames{2} = 'Peri';
+			elseif strcmpi( plotName(1:min(length('vs'), ...
+					length(plotName))), 'vs')
+				if strcmp(u.vsBinNames{2}, 'Intra')
+					u.vsBinNames{2} = 'Peri';
 				end
-				binID = find(strcmpi(u.vectorBinNames, ...
-					plotName(length('vector')+2:end)));
-				binName = u.vectorBinNames{binID};
+				binID = find(strcmpi(u.vsBinNames, ...
+					plotName(length('vs')+2:end)));
+				binName = u.vsBinNames{binID};
 
 				plotTitle = [binName '-stimulus vector strength'];
 
@@ -1697,11 +1697,11 @@ function refreshPlot(fig, d)
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
 						% hack: showing average of all bins
-						vs_pre = vertcat(u.vectorStrength{ ...
+						vs_pre = vertcat(u.vs{ ...
 							condID,scoreID}{1,:});
-						vs_peri = vertcat(u.vectorStrength{ ...
+						vs_peri = vertcat(u.vs{ ...
 							condID,scoreID}{2,:});
-						vs_post = vertcat(u.vectorStrength{ ...
+						vs_post = vertcat(u.vs{ ...
 							condID,scoreID}{3,:});
 						vs = (vs_pre + vs_peri + vs_post) / 3;
 						if ~strcmpi(subset, 'all')
@@ -1714,25 +1714,25 @@ function refreshPlot(fig, d)
 						if isempty(avg); continue; end
 
 						col = getColor(condID);
-						plots(condID) = plot(u.baseFreqs, avg, ...
+						plots(condID) = plot(u.vsFreqs, avg, ...
 							'color', col, 'linewidth', 1.5);
 % 						patches(condID) = patch( ...
-% 							[u.baseFreqs fliplr(u.baseFreqs)], ...
+% 							[u.vsFreqs fliplr(u.vsFreqs)], ...
 % 							[avg+err fliplr(avg-err)], ...
 % 							col, 'edgecolor', 'none');
 % 						alpha(patches(condID), .2);
 
 					else
-						strength = [u.vectorStrength{condID,scoreID}{binID,:}];
-						pval     = [u.vectorPVal{condID,scoreID}{binID,:}];
-	% 					zscore   = [u.vectorZScore{condID,scoreID}{binID,:}];
+						strength = [u.vs{condID,scoreID}{binID,:}];
+						pval     = [u.vsPVal{condID,scoreID}{binID,:}];
+	% 					zscore   = [u.vsZScore{condID,scoreID}{binID,:}];
 						sig      = pval < .001;
 	% 					thr      = abs(zscore) > 1;
-						plots(condID) = plot(u.baseFreqs, strength, ...
+						plots(condID) = plot(u.vsFreqs, strength, ...
 							'color', getColor(condID), 'linewidth',1.5);
-	% 					plot(u.baseFreqs(sig & ~thr), strength(sig & ~thr), ...
+	% 					plot(u.vsFreqs(sig & ~thr), strength(sig & ~thr), ...
 	% 						'x', 'color', getColor(condID));
-						plot(u.baseFreqs(sig), strength(sig), ...
+						plot(u.vsFreqs(sig), strength(sig), ...
 							'*', 'color', getColor(condID));
 					end
 				end
@@ -1756,7 +1756,7 @@ function refreshPlot(fig, d)
 
 				for freqID = 1:length(u.targetFreqs)
 					rlf = u.rlf{freqID,scoreID};
-					rlf = [u.meanFiring{1,scoreID}, rlf]; % Add nogo
+					rlf = [u.firingMean{1,scoreID}, rlf]; % Add nogo
 					plot(snrNogo, rlf, 'color', getColor(freqID));
 				end
 
@@ -1856,13 +1856,13 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% Plot mean and max firing rate
-			elseif strcmpi(plotName, 'max firing') || ...
-					strcmpi(plotName, 'mean firing')
-				if strcmpi(plotName, 'max firing')
+			% Plot mean and max of firing rate
+			elseif strcmpi(plotName, 'firing max') || ...
+					strcmpi(plotName, 'firing mean')
+				if strcmpi(plotName, 'firing max')
 					plotTitle = 'Maximum firing rate';
-				elseif strcmpi(plotName, 'mean firing')
-					plotTitle = 'Mean firing rate';
+				elseif strcmpi(plotName, 'firing mean')
+					plotTitle = 'Average firing rate';
 				end
 				sameYLim = true;
 
@@ -1881,10 +1881,10 @@ function refreshPlot(fig, d)
 						err = zeros(size(condIDs));
 						for i = 1:length(condIDs)
 							condID = condIDs(i);
-							if strcmpi(plotName, 'max firing')
-								firing = u.maxFiring{condID,scoreID};
-							elseif strcmpi(plotName, 'mean firing')
-								firing = u.meanFiring{condID,scoreID};
+							if strcmpi(plotName, 'firing max')
+								firing = u.firingMax{condID,scoreID};
+							elseif strcmpi(plotName, 'firing mean')
+								firing = u.firingMean{condID,scoreID};
 							end
 
 							if ~strcmpi(subset, 'all')
@@ -1900,10 +1900,10 @@ function refreshPlot(fig, d)
 							col, 'edgecolor', 'none');
 						alpha(patches(freqID), .2);
 					else
-						if strcmpi(plotName, 'max firing')
-							avg = [u.maxFiring{condIDs,scoreID}];
-						elseif strcmpi(plotName, 'mean firing')
-							avg = [u.meanFiring{condIDs,scoreID}];
+						if strcmpi(plotName, 'firing max')
+							avg = [u.firingMax{condIDs,scoreID}];
+						elseif strcmpi(plotName, 'firing mean')
+							avg = [u.firingMean{condIDs,scoreID}];
 						end
 					end
 					plots(freqID) = plot(x, avg, 'color', col, ...

@@ -41,11 +41,11 @@ function units = analyzeUnits(units)
 		win = win / u.psthWin;               % normalize window
 
 		% Skip the first 100 ms after tone onset/offset
-		u.baseFreqs      = 1:1:20;
-		u.vectorBins     = [u.viewBounds(1), 0;
+		u.vsFreqs      = 1:1:20;
+		u.vsBins     = [u.viewBounds(1), 0;
 							gap*2, u.targetDuration-gap;
 							u.targetDuration+gap, u.viewBounds(2)];
-		u.vectorBinNames = {'Pre','Peri','Post'};
+		u.vsBinNames = {'Pre','Peri','Post'};
 
 		u.vs10Window     = 300e-3;
 		u.vs10Centers    = u.psthCenters( ...
@@ -81,15 +81,15 @@ function units = analyzeUnits(units)
 		u.mutualInfo       = c;
 		u.mfsl             = c; % minimum first spike latency
 		u.mfslPhase        = c; % phase of MFSL relative to masker
-		u.maxFiring        = c;
-		u.meanFiring       = c;
-		u.stdFiring        = c;
-		u.vectorStrength   = c; % vector strength for pre/peri/post stim
-		u.vectorPhase      = c; % phase
-		u.vectorPVal       = c; % p values
-	% 	u.vectorZScore     = c;
+		u.firingMax        = c;
+		u.firingMean       = c;
+		u.firingSTD        = c;
+		u.vs               = c; % vector strength for pre/peri/post stim
+		u.vsPhase          = c; % phase
+		u.vsPVal           = c; % p values
+%		u.vsZScore         = c;
 		u.vs10             = c; % running vector strength at 10 hz
-		u.vs10p            = c; % p values
+		u.vs10PVal         = c; % p values
 		u.mts              = c;
 		% {conds x scores}[bands x bins]
 		u.lfpMean          = c;
@@ -121,6 +121,8 @@ function units = analyzeUnits(units)
 				psth = zeros(trials, binCount);
 				for trialID = 1:trials
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
+					% this smoothing filter is non-causal and may cause the
+					% neural response to spread backwards before an event
 					psth(trialID, :) = conv(hist, win, 'same');
 				end
 
@@ -289,20 +291,20 @@ function units = analyzeUnits(units)
 				u.mfslPhase{condID,scoreID} = phase;
 
 				% maximum firing rate peri-stimulus
-				u.maxFiring {condID,scoreID} = ...
+				u.firingMax {condID,scoreID} = ...
 					max (u.psthMean{condID,scoreID}(peri));
-				u.meanFiring{condID,scoreID} = ...
+				u.firingMean{condID,scoreID} = ...
 					mean(u.psthMean{condID,scoreID}(peri));
-				u.stdFiring {condID,scoreID} = ...
+				u.firingSTD {condID,scoreID} = ...
 					std (u.psthMean{condID,scoreID}(peri));
 
 				% vector strength pre/peri/post-stimulus
 % 				spikeTimes = [u.spikeTimes{condID,scoreID}{:}];
 				spikeTimes = u.spikeTimes{condID,scoreID};
 				spikeTimesAll = [spikeTimes{:}];
-				for binID = 1:size(u.vectorBins,1)
-					bin = u.vectorBins(binID,:);
-					for baseFreqID = 1:length(u.baseFreqs)
+				for binID = 1:size(u.vsBins,1)
+					bin = u.vsBins(binID,:);
+					for vsFreqID = 1:length(u.vsFreqs)
 
 						% calculate VS trial by trial
 % 						vs = zeros(1,length(spikeTimes));
@@ -315,7 +317,7 @@ function units = analyzeUnits(units)
 % 								vs(trialID) = 0;
 % 							else
 % 								X = spikeTimesBin * ...
-% 									u.baseFreqs(baseFreqID);
+% 									u.vsFreqs(vsFreqID);
 % 								theta = (X-floor(X))*(2*pi);
 % 								xl = cos(theta);
 % 								yl = sin(theta);
@@ -335,7 +337,7 @@ function units = analyzeUnits(units)
 							vs = 0;
 							theta2 = 0;
 						else
-							X = spikeTimesBin * u.baseFreqs(baseFreqID);
+							X = spikeTimesBin * u.vsFreqs(vsFreqID);
 							theta = (X-floor(X))*(2*pi);
 							xl = cos(theta);
 							yl = sin(theta);
@@ -349,25 +351,25 @@ function units = analyzeUnits(units)
 						n = length(spikeTimesBin);
 						pval = rayleighsz(vs, n);
 
-						u.vectorStrength{condID,scoreID} ...
-							{binID,baseFreqID} = vs;
-						u.vectorPhase{condID,scoreID} ...
-							{binID,baseFreqID} = theta2;
-						u.vectorPVal{condID,scoreID} ...
-							{binID,baseFreqID} = pval;
+						u.vs{condID,scoreID} ...
+							{binID,vsFreqID} = vs;
+						u.vsPhase{condID,scoreID} ...
+							{binID,vsFreqID} = theta2;
+						u.vsPVal{condID,scoreID} ...
+							{binID,vsFreqID} = pval;
 					end
 
 					% masker response z-score across all base frequencies
-	% 				z = zscore([u.vectorStrength{condID,scoreID}{binID,:}]);
-	% 				u.vectorZScore{condID,scoreID}{binID,:} = num2cell(z);
+	% 				z = zscore([u.vs{condID,scoreID}{binID,:}]);
+	% 				u.vsZScore{condID,scoreID}{binID,:} = num2cell(z);
 				end
 
 				% running vector strength at 10Hz as a function of time
-				baseFreq = 10;
+				vsFreq = 10;
 				spikeTimes = u.spikeTimes{condID,scoreID};
 				spikeTimesAll = [spikeTimes{:}];
 				u.vs10{condID,scoreID} = zeros(size(u.vs10Centers));
-				u.vs10p{condID,scoreID} = ones(size(u.vs10Centers));
+				u.vs10PVal{condID,scoreID} = ones(size(u.vs10Centers));
 
 				for centerID = 1:length(u.vs10Centers)
 					center = u.vs10Centers(centerID);
@@ -382,7 +384,7 @@ function units = analyzeUnits(units)
 % 						theta = 0;
 					else
 						n = length(spikeTimesBin);
-						X = spikeTimesBin * baseFreq;
+						X = spikeTimesBin * vsFreq;
 						theta = (X-floor(X))*(2*pi);
 						xl = cos(theta);
 						yl = sin(theta);
@@ -395,13 +397,13 @@ function units = analyzeUnits(units)
 					pval = rayleighsz(vs, n);
 
 					u.vs10{condID,scoreID}(centerID) = vs;
-					u.vs10p{condID,scoreID}(centerID) = pval;
+					u.vs10PVal{condID,scoreID}(centerID) = pval;
 				end
 
 				% multi-taper spectrum peri-stimulus
 				spikeTimesPeri = spikeTimesAll( ...
-					u.vectorBins(2,1)<=spikeTimesAll & ...
-					spikeTimesAll<u.vectorBins(2,2));
+					u.vsBins(2,1)<=spikeTimesAll & ...
+					spikeTimesAll<u.vsBins(2,2));
 				mts = [];
 				if length(spikeTimesPeri)>10
 					mts = mtspectrumpt(spikeTimesPeri, u.mtsParams)';
@@ -434,7 +436,7 @@ function units = analyzeUnits(units)
 
 			for scoreID = 1:5
 				% rate-level function (RLF) peri-stimulus
-				rlf = [u.meanFiring{condID,scoreID}];
+				rlf = [u.firingMean{condID,scoreID}];
 				if length(rlf) ~= length(condID); continue; end
 				u.rlf{freqID,scoreID} = rlf;
 

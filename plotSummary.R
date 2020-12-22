@@ -10,12 +10,13 @@ gerbil = 'HE-All'
 # gerbil = 'HE-CMR05Tail'
 # gerbil = 'HE-D2Right'
 # gerbil = 'HE-E1Right'
-# 
+#
 gerbil = 'LE-All'
 # gerbil = 'LE-CMR08Head'
 # gerbil = 'LE-CMR08Tail'
 
-# for (gerbil in c('HE-All', 'HE-CMR05Fluffy', 'HE-CMR05Tail','HE-D2Right', 'HE-E1Right', 'LE-All', 'LE-CMR08Tail', 'LE-CMR08Head')) {
+# for (gerbil in c('HE-All', 'HE-CMR05Fluffy', 'HE-CMR05Tail','HE-D2Right',
+#   'HE-E1Right', 'LE-All', 'LE-CMR08Tail', 'LE-CMR08Head')) {
 
 summaryFile = paste('results/Summary-', gerbil, '-Sorted.xlsx', sep='')
 
@@ -54,19 +55,19 @@ se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar', #linetype='solid',
                            width=err_width, size=1.5, position=position_dodge(width=dg))
 
 #################
-# target evoked response
+# target-evoked response
 
 # for (dp in c(.2, .3, .4, .42, .45, .5)) {
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 gc()
-data = read.xlsx(summaryFile, 'DeltaPSTH')
+data = read.xlsx(summaryFile, 'TER')
 data2 = subset(data, Score=='All')
 data2$SubjectID = factor(data2$SubjectID)
 data2$UnitID = factor(data2$UnitID)
 data2$SNR = factor(data2$TargetLevel-50)
 data2$SNRn = data2$TargetLevel-50
-data2$DeltaPSTH = data2$DeltaPSTH * 100   # as percentage
+data2$TER = data2$TER * 100   # as percentage
 
 
 # unit category count
@@ -84,38 +85,39 @@ data2 %>%
 
 summary(subset(data2, SubCategory=='Phasic Enhancing', select=c(SubjectID, UnitID)))
 
-model = aov(DeltaPSTH ~ SNR*Mode*SubCategory + Error(factor(UnitID)), subset(data2, Category=='Phasic'))
+model = aov(TER ~ SNR*Mode*SubCategory + Error(factor(UnitID)),
+  subset(data2, Category=='Phasic'))
 summary(model)
 
-model2 = lm(DeltaPSTH ~ 1 + SNRn*Mode, subset(data2, Category=='Phasic'))
+model2 = lm(TER ~ 1 + SNRn*Mode, subset(data2, Category=='Phasic'))
 summary(model2)
 
-labs_xy = labs(x='SNR [dB]', y='Sound-evoked response [%]')
+labs_xy = labs(x='SNR [dB]', y='Target-evoked response [%]')
 xintercept = geom_vline(xintercept=2, color='grey85', size=.25, linetype='dashed')
 yintercept = geom_hline(yintercept=0, color='grey85', size=.25, linetype='dashed')
 ylim = coord_cartesian(ylim=c(-30,30))
 
-# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=Mode, shape=Category)) +
+# ggplot(data2, aes(x=SNR, y=TER, color=Mode, shape=Category)) +
 #   geom_point(size=2, position=position_dodge(width=dg)) +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=Mode, shape=Category)) +
+# ggplot(data2, aes(x=SNR, y=TER, color=Mode, shape=Category)) +
 #   se_errorbar + mean_point +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=DeltaPSTH, shape=Category)) +
+# ggplot(data2, aes(x=SNR, y=TER, shape=Category)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=DeltaPSTH, color=Mode)) +
+# ggplot(data2, aes(x=SNR, y=TER, color=Mode)) +
 #   se_errorbar + mean_point +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=DeltaPSTH)) +
+# ggplot(data2, aes(x=SNR, y=TER)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
@@ -123,7 +125,7 @@ ylim = coord_cartesian(ylim=c(-30,30))
 # title = paste('Phasic Units ', length(unique(subset(data2, Category=='Phasic')$UnitID)), ' (dp > ', dp, ')')
 
 p = ggplot(subset(data2, Category=='Phasic'),
-           aes(x=SNR, y=DeltaPSTH, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Units') +
@@ -131,12 +133,12 @@ p = ggplot(subset(data2, Category=='Phasic'),
   ylim + expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/delta-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
 
 # }
 
 p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
-           aes(x=SNR, y=DeltaPSTH, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Enhancing Units') +
@@ -144,10 +146,10 @@ p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
   ylim + expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/delta-phasic-enhancing-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste('figs/Summary/ter-phasic-enhancing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, SubCategory=='Phasic Suppressing'),
-           aes(x=SNR, y=DeltaPSTH, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Suppressing Units') +
@@ -155,10 +157,10 @@ p = ggplot(subset(data2, SubCategory=='Phasic Suppressing'),
   ylim + expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/delta-phasic-suppressing-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste('figs/Summary/ter-phasic-suppressing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, SubCategory=='Phasic No Change'),
-           aes(x=SNR, y=DeltaPSTH, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic No Change Units') +
@@ -166,11 +168,11 @@ p = ggplot(subset(data2, SubCategory=='Phasic No Change'),
   ylim + expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/delta-phasic-nochange-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste('figs/Summary/ter-phasic-nochange-', gerbil, '.svg', sep=''))
 
 
 p = ggplot(subset(data2, Category=='Tonic'),
-           aes(x=SNR, y=DeltaPSTH, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Tonic units') +
@@ -178,7 +180,7 @@ p = ggplot(subset(data2, Category=='Tonic'),
   ylim + expand_x + expand_y +
   theme_my
 p
-save_plot(p, file=paste('figs/Summary/delta-tonic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste('figs/Summary/ter-tonic-', gerbil, '.svg', sep=''))
 
 
 #################
@@ -186,41 +188,41 @@ save_plot(p, file=paste('figs/Summary/delta-tonic-', gerbil, '.svg', sep=''))
 
 # for (dp in c(.2, .3, .4, .42, .45, .5)) {
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
-  
+
 gc()
-data = read.xlsx(summaryFile, 'VectorStrength')
+data = read.xlsx(summaryFile, 'VS10')
 data2 = subset(data, Score=='All' & Category=='Phasic')
 data2$Bin = factor(data2$Bin, c('Pre','Peri','Post'), 1:3)
 # as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 # data2$Bin = as.numeric.factor(data2$Bin)
 data2$SNR = factor(data2$TargetLevel-50, c(-50,-10,0,10), c('Nogo', -10, 0, 10))
 
-model1 = lme(VectorStrength ~ SNR*Mode*Bin, data2, random= ~ 1 | UnitID)
+model1 = lme(VS ~ SNR*Mode*Bin, data2, random= ~ 1 | UnitID)
 summary(model1)
 anova(model1)
 
-model2 = aov(VectorStrength ~ SNR*Mode*Bin + Error(UnitID), subset(data2))
+model2 = aov(VS ~ SNR*Mode*Bin + Error(UnitID), subset(data2))
 summary(model2)
 
 labs_xy = labs(x='SNR [dB]', y='Vector strength')
 ylim = coord_cartesian(ylim=c(0,.45))
 
-# ggplot(data2, aes(x=SNR, y=VectorStrength, color=Mode, shape=Bin)) +
+# ggplot(data2, aes(x=SNR, y=VS, color=Mode, shape=Bin)) +
 #   geom_point(size=2, position=position_dodge(width=dg)) +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
-# 
-# ggplot(data2, aes(x=SNR, y=VectorStrength, color=Mode, shape=Bin)) +
+#
+# ggplot(data2, aes(x=SNR, y=VS, color=Mode, shape=Bin)) +
 #   se_errorbar + mean_point +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
-# 
-# ggplot(data2, aes(x=SNR, y=VectorStrength, shape=Bin)) +
+#
+# ggplot(data2, aes(x=SNR, y=VS, shape=Bin)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
 
-# p = ggplot(data2, aes(x=SNR, y=VectorStrength, color=Mode, group=Mode)) +
+# p = ggplot(data2, aes(x=SNR, y=VS, color=Mode, group=Mode)) +
 #   se_errorbar + mean_line + mean_point +
 #   labs_xy + labs(color='Mode', title='Phasic units') +
 #   coord_cartesian(ylim=c(0,.6)) +
@@ -231,7 +233,7 @@ ylim = coord_cartesian(ylim=c(0,.45))
 # title = paste('Phasic Units ', length(unique(subset(data2)$UnitID)), ' (dp > ', dp, ')')
 
 p = ggplot(subset(data2, Bin==2),
-           aes(x=SNR, y=VectorStrength, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Units') +
   color_manual +
@@ -243,7 +245,7 @@ save_plot(p, file=paste('figs/Summary/VSperi-', gerbil, '.svg', sep=''))
 # }
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Enhancing'),
-           aes(x=SNR, y=VectorStrength, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Enhancing Units') +
   color_manual +
@@ -253,7 +255,7 @@ print(p)
 save_plot(p, file=paste('figs/Summary/VSperi-enhancing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Suppressing'),
-           aes(x=SNR, y=VectorStrength, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Suppressing Units') +
   color_manual +
@@ -263,7 +265,7 @@ print(p)
 save_plot(p, file=paste('figs/Summary/VSperi-suppressing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic No Change'),
-           aes(x=SNR, y=VectorStrength, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic No Change Units') +
   color_manual +
@@ -275,7 +277,7 @@ save_plot(p, file=paste('figs/Summary/VSperi-nochange-', gerbil, '.svg', sep='')
 
 # violin plot
 p = ggplot(subset(data2, Bin==2),
-           aes(x=SNR, y=VectorStrength, fill=Mode)) +
+           aes(x=SNR, y=VS, fill=Mode)) +
   geom_violin(position=position_dodge(.5), alpha=.9, width=.8) +
   labs_xy + labs(fill='Mode', title='Phasic units') +
   fill_manual +
@@ -285,7 +287,7 @@ p = ggplot(subset(data2, Bin==2),
 p
 save_plot(p, file=paste('figs/Summary/VSperi3-', gerbil, '.svg', sep=''))
 
-# ggplot(data2, aes(x=SNR, y=VectorStrength)) +
+# ggplot(data2, aes(x=SNR, y=VS)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
@@ -301,10 +303,10 @@ data2$SNR = factor(data2$TargetLevel-50)
 
 # model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Phasic'))
 # summary(model)
-# 
+#
 # model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Tonic'))
 # summary(model)
-# 
+#
 # model = aov(dPrime ~ SNR*Mode*Category + Error(UnitID), data2)
 # summary(model)
 

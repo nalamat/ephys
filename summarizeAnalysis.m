@@ -164,9 +164,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.psthWin = u1.psthWin;
 		u.psthEdges = u1.psthEdges;
 		u.psthCenters = u1.psthCenters;
-		u.baseFreqs = u1.baseFreqs;
-		u.vectorBins = u1.vectorBins;
-		u.vectorBinNames = u1.vectorBinNames;
+		u.vsFreqs = u1.vsFreqs;
+		u.vsBins = u1.vsBins;
+		u.vsBinNames = u1.vsBinNames;
 		u.vs10Centers = u1.vs10Centers;
 		u.mtsFreqs = u1.mtsFreqs;
 		u.label = recordingModeLabels{modeID};
@@ -186,10 +186,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.subCategory = cc; % suppressing/enhancing/no-change
 		u.psth = cc;
 		u.psthMean = cc;
-		u.psthSTD = cc;
+		u.psthSEM = cc;
 		u.dPrimeCQMean = cc;
 		u.dPrimeCQMeanMean = cc;
-		u.dPrimeCQMeanErr = cc;
+		u.dPrimeCQMeanSEM = cc;
 		u.dPrimeCQSum = cc;
 		u.dPrimeOnset = cc;
 		u.dPrimePeri = cc;
@@ -198,30 +198,30 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.dPrimeBehavior = cell(s.condCount,1);
 		u.mfsl = cc;
 		u.mfslMean = cc;
-		u.mfslErr = cc;
+		u.mfslSEM = cc;
 		u.mfslPhase = cc;
 		u.mfslPhaseMean = cc;
-		u.mfslPhaseErr = cc;
-		u.maxFiring = cc;
-		u.maxFiringMean = cc;
-		u.maxFiringErr = cc;
-		u.meanFiring = cc;
-		u.meanFiringMean = cc;
-		u.meanFiringErr = cc;
-		u.vectorStrength = cc;
-		u.vectorStrengthMean = cc;
-		u.vectorStrengthErr = cc;
+		u.mfslPhaseSEM = cc;
+		u.firingMax = cc;
+		u.firingMaxMean = cc;
+		u.firingMaxSEM = cc;
+		u.firingMean = cc;
+		u.firingMeanMean = cc;
+		u.firingMeanSEM = cc;
+		u.vs = cc;
+		u.vsMean = cc;
+		u.vsSEM = cc;
 		u.vs10 = cc;
-		u.vs10p = cc;
+		u.vs10PVal = cc;
 		u.vs10Mean = cc;
-		u.vs10Err = cc;
+		u.vs10SEM = cc;
 		u.mts = cc;
 		u.mtsMean = cc;
-		u.mtsErr = cc;
+		u.mtsSEM = cc;
 		for condID = 1:u.condCount
 			for scoreID = 1:5
-				u.vectorStrength{condID,scoreID} = ...
-					cell(size(u.vectorBins,1), length(u.baseFreqs));
+				u.vs{condID,scoreID} = ...
+					cell(size(u.vsBins,1), length(u.vsFreqs));
 			end
 		end
 
@@ -270,14 +270,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 					end
 				end
 
-				baseFreq = u.baseFreqs==10;
+				vsFreq = u.vsFreqs==10;
 				for uCondID = 1:u.condCount
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					for binID = 1:size(u.vectorBins,1)
-						vs = u.vectorStrength{uCondID,1}{binID,baseFreq};
-						p = u.vectorPVal{uCondID,1}{binID,baseFreq};
+					for binID = 1:size(u.vsBins,1)
+						vs = u.vs{uCondID,1}{binID,vsFreq};
+						p = u.vsPVal{uCondID,1}{binID,vsFreq};
 						if isnan(vs)
 							fprintf(['NAN: cond %d, bin %d, ' ...
 								'channel %d, %s\n'], uCondID, binID, ...
@@ -345,13 +345,13 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 			if phasic
 % 				u1 = sessions{sessionID}{1}.units{unitID};
 % 				u2 = sessions{sessionID}{2}.units{unitID};
-% 				baseFreq = u.baseFreqs==10;
+% 				vsFreq = u.vsFreqs==10;
 %
-% 				for binID = 1:size(u.vectorBins,1)
-% 					vs1 = cellfun(@(c)c{binID,baseFreq}, ...
-% 						u1.vectorStrength(:,1));
-% 					vs2 = cellfun(@(c)c{binID,baseFreq}, ...
-% 						u2.vectorStrength(:,1));
+% 				for binID = 1:size(u.vsBins,1)
+% 					vs1 = cellfun(@(c)c{binID,vsFreq}, ...
+% 						u1.vs(:,1));
+% 					vs2 = cellfun(@(c)c{binID,vsFreq}, ...
+% 						u2.vs(:,1));
 % 					if ttest(vs1, vs2)
 % 						if mean(vs1) < mean(vs2)
 % 							phasicSuppressing = true;
@@ -366,10 +366,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			% compare VS of pre and peri in active at +10 dB SNR
 			if phasic
 				u = sessions{sessionID}{1}.units{unitID};
-				baseFreq = u.baseFreqs==10;
-				change = (u.vectorStrength{end,1}{2,baseFreq} ...
-						- u.vectorStrength{end,1}{1,baseFreq}) ...
-						/ u.vectorStrength{end,1}{1,baseFreq};
+				vsFreq = u.vsFreqs==10;
+				change = (u.vs{end,1}{2,vsFreq} ...
+						- u.vs{end,1}{1,vsFreq}) ...
+						/ u.vs{end,1}{1,vsFreq};
 
 				if  change < -.2
 					phasicSuppressing = true;
@@ -516,22 +516,22 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							end+1) = dPrime;
 
 						% vector strength
-						for binID = 1:size(u.vectorBins,1)
-							for baseFreqID = 1:length(u.baseFreqs)
-								vec = u.vectorStrength{uCondID,scoreID};
+						for binID = 1:size(u.vsBins,1)
+							for vsFreqID = 1:length(u.vsFreqs)
+								vec = u.vs{uCondID,scoreID};
 								if isempty(vec); vec = nan;
 								else
-									vec = vec{binID,baseFreqID};
+									vec = vec{binID,vsFreqID};
 								end
-								s.units{mode}.vectorStrength{ ...
-									sCondID,scoreID}{binID,baseFreqID}( ...
+								s.units{mode}.vs{ ...
+									sCondID,scoreID}{binID,vsFreqID}( ...
 									end+1) = vec;
 							end
 						end
 
 						% running vs at 10 Hz
 						vs = u.vs10{uCondID,scoreID};
-						pval = u.vs10p{uCondID,scoreID};
+						pval = u.vs10PVal{uCondID,scoreID};
 						if isempty(vs); vs = nan; end
 						if isempty(pval); pval = nan; end
 						c = size(s.units{mode}.vs10{sCondID,scoreID}, 2);
@@ -540,11 +540,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 								(:,c+1:size(vs, 2)) = nan;
 						end
 						if c && c<size(pval,2) % fix for nan entries
-							s.units{mode}.vs10p{sCondID,scoreID} ...
+							s.units{mode}.vs10PVal{sCondID,scoreID} ...
 								(:,c+1:size(pval, 2)) = nan;
 						end
 						s.units{mode}.vs10{sCondID,scoreID}(end+1,:) = vs;
-						s.units{mode}.vs10p{sCondID,scoreID}(end+1,:)=pval;
+						s.units{mode}.vs10PVal{sCondID,scoreID}(end+1,:)=pval;
 
 						% multi-taper spectrum peri-stimulus
 						mts = u.mts{uCondID,scoreID};
@@ -567,16 +567,16 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							= phase;
 
 						% max firing rate
-						maxFiring = u.maxFiring{uCondID,scoreID};
-						if isempty(maxFiring); maxFiring = nan; end
-						s.units{mode}.maxFiring{sCondID,scoreID}(end+1) ...
-							= maxFiring;
+						firingMax = u.firingMax{uCondID,scoreID};
+						if isempty(firingMax); firingMax = nan; end
+						s.units{mode}.firingMax{sCondID,scoreID}(end+1) ...
+							= firingMax;
 
 						% max firing rate
-						meanFiring = u.meanFiring{uCondID,scoreID};
-						if isempty(meanFiring); meanFiring = nan; end
-						s.units{mode}.meanFiring{sCondID,scoreID}(end+1)...
-							= meanFiring;
+						firingMean = u.firingMean{uCondID,scoreID};
+						if isempty(firingMean); firingMean = nan; end
+						s.units{mode}.firingMean{sCondID,scoreID}(end+1)...
+							= firingMean;
 					end
 
 					if isempty(u.psthMean{uCondID,1}); continue; end
@@ -616,25 +616,25 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				% psth
 				psth = s.units{modeID}.psth{condID,scoreID};
 				s.units{modeID}.psthMean{condID,scoreID} = nanmean(psth, 1);
-				s.units{modeID}.psthSTD{condID,scoreID} = nansem(psth, 1);
+				s.units{modeID}.psthSEM{condID,scoreID} = nansem(psth, 1);
 
 				% cumulative quadratic mean of d'
 				dPrime = s.units{modeID}.dPrimeCQMean{condID,scoreID};
 				s.units{modeID}.dPrimeCQMeanMean{condID,scoreID} = ...
 					nanmean(dPrime, 1);
-				s.units{modeID}.dPrimeCQMeanErr{condID,scoreID} = ...
+				s.units{modeID}.dPrimeCQMeanSEM{condID,scoreID} = ...
 					nansem(dPrime, 1);
 
 				% vector strength
-				for binID = 1:size(s.units{modeID}.vectorBins,1)
-					for baseFreqID = 1:length(s.units{modeID}.baseFreqs)
-						vec = s.units{modeID}.vectorStrength{ ...
-							condID,scoreID}{binID,baseFreqID};
+				for binID = 1:size(s.units{modeID}.vsBins,1)
+					for vsFreqID = 1:length(s.units{modeID}.vsFreqs)
+						vec = s.units{modeID}.vs{ ...
+							condID,scoreID}{binID,vsFreqID};
 						s.units{modeID}.vectorStrengthMean{ ...
-							condID,scoreID}{binID,baseFreqID} = ...
+							condID,scoreID}{binID,vsFreqID} = ...
 							nanmean(vec);
-						s.units{modeID}.vectorStrengthErr{ ...
-							condID,scoreID}{binID,baseFreqID} = ...
+						s.units{modeID}.vectorStrengthSEM{ ...
+							condID,scoreID}{binID,vsFreqID} = ...
 							nansem(vec);
 					end
 				end
@@ -642,37 +642,37 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				% running vs at 10 hz
 				vs = s.units{modeID}.vs10{condID,scoreID};
 				s.units{modeID}.vs10Mean{condID,scoreID} = nanmean(vs, 1);
-				s.units{modeID}.vs10Err{condID,scoreID} = nansem(vs, 1);
+				s.units{modeID}.vs10SEM{condID,scoreID} = nansem(vs, 1);
 
 				mts = s.units{modeID}.mts{condID,scoreID};
 				s.units{modeID}.mtsMean{condID,scoreID} = nanmean(mts, 1);
-				s.units{modeID}.mtsErr{condID,scoreID} = nansem(mts, 1);
+				s.units{modeID}.mtsSEM{condID,scoreID} = nansem(mts, 1);
 
 				% mfsl (minimum first spike latency)
 				mfsl = s.units{modeID}.mfsl{condID,scoreID};
 				s.units{modeID}.mfslMean{condID,scoreID} = nanmean(mfsl);
-				s.units{modeID}.mfslErr{condID,scoreID} = nansem(mfsl);
+				s.units{modeID}.mfslSEM{condID,scoreID} = nansem(mfsl);
 
 				% mfsl phase
 				phase = s.units{modeID}.mfslPhase{condID,scoreID};
 				s.units{modeID}.mfslPhaseMean{condID,scoreID} = ...
 					nanmean(phase);
-				s.units{modeID}.mfslPhaseErr{condID,scoreID} = ...
+				s.units{modeID}.mfslPhaseSEM{condID,scoreID} = ...
 					nansem(phase);
 
 				% max firing rate
-				maxFiring = s.units{modeID}.maxFiring{condID,scoreID};
-				s.units{modeID}.maxFiringMean{condID,scoreID} = ...
-					nanmean(maxFiring);
-				s.units{modeID}.maxFiringErr{condID,scoreID} = ...
-					nansem(maxFiring);
+				firingMax = s.units{modeID}.firingMax{condID,scoreID};
+				s.units{modeID}.firingMaxMean{condID,scoreID} = ...
+					nanmean(firingMax);
+				s.units{modeID}.firingMaxSEM{condID,scoreID} = ...
+					nansem(firingMax);
 
 				% mean firing rate
-				meanFiring = s.units{modeID}.meanFiring{condID,scoreID};
-				s.units{modeID}.meanFiringMean{condID,scoreID} = ...
-					nanmean(meanFiring);
-				s.units{modeID}.meanFiringErr{condID,scoreID} = ...
-					nansem(meanFiring);
+				firingMean = s.units{modeID}.firingMean{condID,scoreID};
+				s.units{modeID}.firingMeanMean{condID,scoreID} = ...
+					nanmean(firingMean);
+				s.units{modeID}.firingMeanSEM{condID,scoreID} = ...
+					nansem(firingMean);
 			end
 		end
 	end
