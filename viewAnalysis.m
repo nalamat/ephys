@@ -44,10 +44,10 @@ function viewAnalysis(analysis)
 		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
 		data.plotNames = {
-			'delta psth'
-			'psth xcorr'
-			'dprime waterfall'
-			'vector waterfall'
+			'psth alt'
+			'psth corr alt'
+			'dprime waterfall alt'
+			'vector waterfall alt'
 			'psth'
 % 			'psth err'
 			'dprime cqmean'
@@ -57,7 +57,7 @@ function viewAnalysis(analysis)
 			'vector 10'
 			'vector 10 running'
 			'vector peri'
-			'mtf'
+			'mts'
 			'max firing'
 % 			'mean firing'
 % 			'deltaAP'
@@ -70,6 +70,7 @@ function viewAnalysis(analysis)
 		data.plotNames = {
 			'raster'
 			'psth'
+			'mts'
 % 			'dprime cqmean'
 % 			'dprime cqsum'
 % 			'dprime mqmean'
@@ -82,8 +83,8 @@ function viewAnalysis(analysis)
 			'vector pre'
 			'vector peri'
 			'vector post'
-			'mtf'
-			'mtf 10'
+			'mts'
+			'mts 10'
 			'rlf'
 			'max firing'
 			'mfsl'
@@ -284,7 +285,7 @@ function refreshPlot(fig, d)
 
 		%% summary plots that use both active and passive analyses
 		% difference between PSTH of go and nogo
-		if strcmpi(plotName, 'delta psth')
+		if strcmpi(plotName, 'psth alt')
 			plotTitle = 'Sound evoked response';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -374,12 +375,11 @@ function refreshPlot(fig, d)
 				end
 			end
 
-
 			% skip to the end
 			error('my:break', '');
 
-		% running cross-correlation between go and nogo
-		elseif strcmpi(plotName, 'psth xcorr')
+		% running correlation between go and nogo
+		elseif strcmpi(plotName, 'psth corr alt')
 			plotTitle = 'PSTH correlation';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -390,7 +390,7 @@ function refreshPlot(fig, d)
 				error('Only for active and passive MMR');
 			end
 
-			modeCount = 3;
+			modeCount = 2;
 			for modeID = 1:modeCount
 				u = a.units{modeID};
 
@@ -413,11 +413,11 @@ function refreshPlot(fig, d)
 					goAvg = mean(go, 1);
 					goErr = std(go, 0, 1) / sqrt(size(go, 1));
 
-					
-					
+
+					% running cross correlation
 % 					time_window = 100e-3;
 % 					time_step = 30e-3;
-% 
+%
 % 					peri = 0<=u.psthCenters;
 % 					goAvgPeri = goAvg;
 % 					nogoAvgPeri = nogoAvg;
@@ -438,11 +438,11 @@ function refreshPlot(fig, d)
 % 					plot(u.psthCenters, movmean((goAvg - nogoAvg) ./ (goErr/2 + nogoErr/2), 10));
 
 
-
+					% running pearson's correlation
 					win = 200e-3;
-% 					centers = u.psthCenters;
-% 					centers = centers(centers <= max(centers)-win);
-					centers = u.viewBounds(1):win:u.viewBounds(2)-win;
+					centers = u.psthCenters;
+					centers = centers(centers <= max(centers)-win);
+% 					centers = u.viewBounds(1):win:u.viewBounds(2)-win;
 					R = zeros(size(centers));
 					P = ones(size(centers));
 					for centerID = 1:length(centers)
@@ -453,29 +453,31 @@ function refreshPlot(fig, d)
 							u.psthCenters < center + win);
 						[r, p] = corrcoef(nogo, go);
 						R(centerID) = r(1,2);
-% 						R(centerID) = dot(zscor
 						P(centerID) = p(1,2);
 					end
 					plot(centers, R, ...
 						'color', colors2{modeID, 1+snrID}, ...
 						'linewidth', 1.5);
-					hold on;
-					sig = P<.05;
-					plot(centers(sig), R(sig), '.', 'markersize', 6, ...
-						'color', [.6 .6 1]);
-					
+					% mark significant p-values
+% 					hold on;
+% 					sig = P<.05;
+% 					plot(centers(sig), R(sig), '.', 'markersize', 12, ...
+% 						'color', [.6 .6 1]);
+
 
 					markTarget(u, modeID==1);
 
+					axis tight square;
 					xticks(u.viewBounds(1):1:u.viewBounds(2));
 	% 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
 					xticklabels(-1:1:2);
 					xlim([u.viewBounds(1), max(centers)]);
 % 					xlim(u.viewBounds);
+					yticks(-1:.5:1);
 					ylim([-1,1]);
 % 					ylabel('Firing rate (1/s)');
 % 					xlabel('Time (s)');
-	% 				grid on;
+					grid on;
 
 					if u.maskerLevel
 						snr = u.targetLevels(snrID) - u.maskerLevel;
@@ -500,7 +502,7 @@ function refreshPlot(fig, d)
 			error('my:break', '');
 
 		% waterfall plot of dprime of units per snr and onset/peri/offset
-		elseif strcmpi(plotName, 'dprime waterfall')
+		elseif strcmpi(plotName, 'dprime waterfall alt')
 			plotTitle = 'd'' waterfall';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -570,7 +572,7 @@ function refreshPlot(fig, d)
 
 		% waterfall plot of vector strength of units at 10Hz per snr and
 		% pre/peri/post
-		elseif strcmpi(plotName, 'vector waterfall')
+		elseif strcmpi(plotName, 'vector waterfall alt')
 			plotTitle = 'VS @ 10Hz waterfall';
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
@@ -1769,30 +1771,31 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% MTF
-			elseif strcmpi(plotName, 'mtf')
-				plotTitle = 'Peri-stimulus MTF';
-				
+			% multi-taper spectrum
+			elseif strcmpi(plotName, 'mts')
+				plotTitle = 'Peri-stimulus MTS';
+
 				plots = zeros(u.condCount, 1);
 				patches = zeros(u.condCount, 1);
 				axis square tight;
-% 				sameYLim = true;
-				
+				sameYLim = true;
+
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mtf = vertcat(u.mtf{condID,scoreID});
+						mts = vertcat(u.mts{condID,scoreID});
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
-							mtf = mtf(msk, :);
+							mts = mts(msk, :);
 						end
-						mtf = 10*log10(mtf);
-						avg = nanmean(mtf, 1);
-						err = nansem(mtf, 1);
+						mts = 10*log10(mts);
+						avg = nanmean(mts, 1);
+						err = nansem(mts, 1);
 					else
-						avg = 10*log10(u.mtf{condID,scoreID});
+						avg = 10*log10(u.mts{condID,scoreID});
 					end
+					avg = avg - median(avg(20<u.mtsFreqs));
 					col = getColor(condID);
-					freqs = u.mtfFreqs;
+					freqs = u.mtsFreqs;
 					plots(condID) = plot(freqs, avg, ...
 						'color', col, ...
 						'linewidth', 1.5);
@@ -1813,9 +1816,9 @@ function refreshPlot(fig, d)
 
 % 				axis square tight;
 				xlabel('Frequency');
-				ylabel('MTF power (Peri)');
+				ylabel('MTS power (Peri)');
 				xticks(10:10:40);
-				ylim([14 28]);
+				ylim([-2 7]);
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else
@@ -1825,19 +1828,19 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% MTF at 10Hz as a function of level
-			elseif strcmpi(plotName, 'mtf 10')
-				plotTitle = 'Peri-stimulus MTF at 10 Hz';
-				
-				freqs = 9.5<=u.mtfFreqs & u.mtfFreqs<=10.5;
+			% MTS at 10Hz as a function of level
+			elseif strcmpi(plotName, 'mts 10')
+				plotTitle = 'Peri-stimulus MTS at 10 Hz';
+
+				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
 
 				for freqID = 1:length(u.targetFreqs)
 					condIDs = [1, ... % nogo
 						(freqID-1)*length(u.targetLevels) + ...
 						(1:length(u.targetLevels))+1];
-					mtf = vertcat(u.mtf{condIDs,scoreID});
-					mtf = mean(mtf(:,freqs),2);
-					plot(snrNogo, 10*log10(mtf), ...
+					mts = vertcat(u.mts{condIDs,scoreID});
+					mts = mean(mts(:,freqs),2);
+					plot(snrNogo, 10*log10(mts), ...
 						'color', getColor(freqID));
 				end
 
@@ -1846,7 +1849,7 @@ function refreshPlot(fig, d)
 				xticklabels(snrNogoStr);
 				xlim([snrNogo(1) snrNogo(end)]);
 				xlabel(snrLabel);
-				ylabel('MTF power at 10 Hz (Peri)');
+				ylabel('MTS power at 10 Hz (Peri)');
 				if length(freqsStr) > 1
 					legend(freqsStrHz, 'location', 'northeastoutside');
 				end
@@ -2167,10 +2170,12 @@ function refreshPlot(fig, d)
 			d.analysisID, length(d.analysis), ...
 			d.plotID, length(d.plotNames), ...
 			d.pageID, ceil(a.unitCount/16), d.scores{scoreID});
+		figtitle = sprintf('%s for %s', plotTitle, dataFile);
 
 	elseif strcmp(a.type, 'units')
 		mtitle = sprintf('Analysis %d/%d, Units', ...
 			d.analysisID, length(d.analysis));
+		figtitle = mtitle;
 
 	elseif strcmpi(a.type, 'summary')
 		sessionCount = length(unique(a.units{1}.sessionIDs{1}));
@@ -2213,15 +2218,17 @@ function refreshPlot(fig, d)
 			a.phasicEnhancingUnits, a.phasicNoChangeUnits, ...
 			unitCount, d.plotID, length(d.plotNames), ...
 			subsetInfo, d.scores{scoreID});
+		figtitle = sprintf('%s for %s, %s units', plotTitle, animalInfo, subset);
 	else
 		mtitle = 'Unknown analysis type';
+		figtitle = mtitle;
 	end
 
 % 	mtitle = sprintf(strtrim(mtitle));
 	mtitle = strtrim(mtitle);
 % 	disp(mtitle);
 
-	set(gcf, 'name', strrep(mtitle, newline, ', '));
+	set(gcf, 'name', figtitle);
 	axes('Position',[0 0 1 1],'Visible','off');
 	text(.5,1, strrep(mtitle, '_', '\_'), 'horizontalalignment', 'center', ...
 		'verticalalignment', 'top', ...

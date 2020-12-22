@@ -1,8 +1,8 @@
 function summarizeAnalysis(analysis, summaryFile, effort)
 	%% summarize active MMR vs. passive MMR (+ passive quiet)
-	
+
 	fprintf('Summarizing analysis\n');
-	
+
 	effort = [' ' effort];
 
 	recordingModeLabels = {
@@ -168,7 +168,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vectorBins = u1.vectorBins;
 		u.vectorBinNames = u1.vectorBinNames;
 		u.vs10Centers = u1.vs10Centers;
-		u.mtfFreqs = u1.mtfFreqs;
+		u.mtsFreqs = u1.mtsFreqs;
 		u.label = recordingModeLabels{modeID};
 
 		cc = cell(s.condCount, 5); % 5: scores
@@ -215,9 +215,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vs10p = cc;
 		u.vs10Mean = cc;
 		u.vs10Err = cc;
-		u.mtf = cc;
-		u.mtfMean = cc;
-		u.mtfErr = cc;
+		u.mts = cc;
+		u.mtsMean = cc;
+		u.mtsErr = cc;
 		for condID = 1:u.condCount
 			for scoreID = 1:5
 				u.vectorStrength{condID,scoreID} = ...
@@ -241,7 +241,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.phasicSuppressingUnits = 0;
 	s.phasicEnhancingUnits = 0;
 	s.phasicNoChangeUnits = 0;
-	
+
 	for sessionID = 1:length(sessions)
 		for unitID = 1:sessions{sessionID}{1}.unitCount
 			%% check if unit responds to target and determine its category
@@ -257,7 +257,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				for uCondID = 2:u.condCount
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
-					
+
 					if u.dPrimeOnset{uCondID,1} > s.targetResponseThresh
 						targetResponse = targetResponse+1; end
 					if u.dPrimePeriGap{uCondID,1} > s.targetResponseThresh
@@ -269,12 +269,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 						targetResponse = targetResponse+1;
 % 					end
 				end
-				
+
 				baseFreq = u.baseFreqs==10;
 				for uCondID = 1:u.condCount
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
-					
+
 					for binID = 1:size(u.vectorBins,1)
 						vs = u.vectorStrength{uCondID,1}{binID,baseFreq};
 						p = u.vectorPVal{uCondID,1}{binID,baseFreq};
@@ -292,7 +292,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 			% does unit respond to target?
 			if targetResponse < s.targetResponseThreshCount; continue; end
-			
+
 			if isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
 					strcmpi(sessions{sessionID}{1}.spikeConfig, 'sorted')
 				unitType = sessions{sessionID}{1}.units{unitID}.type;
@@ -308,7 +308,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				unitType2 = 2;
 				s.multiUnits = s.multiUnits + 1;
 			end
-			
+
 			% for backwards compatibility
 			sorted = isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
 				any(strcmpi(sessions{sessionID}{1}.spikeConfig, ...
@@ -318,7 +318,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				{'sorted', 'sortedjoint'})) || ...
 				strcmpi(sessions{sessionID}{1}.units{unitID}.type, ...
 				'single');
-			
+
 			s.targetRespondingUnits = s.targetRespondingUnits + 1;
 			s.targetRespondingUnits2(unitType2) = ...
 				s.targetRespondingUnits2(unitType2) + 1;
@@ -340,13 +340,13 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			phasicSuppressing = false;
 			phasicEnhancing = false;
 			phasicNoChange = false;
-			
+
 			% compare vector strength between passive and active
 % 			if phasic
 % 				u1 = sessions{sessionID}{1}.units{unitID};
 % 				u2 = sessions{sessionID}{2}.units{unitID};
 % 				baseFreq = u.baseFreqs==10;
-% 
+%
 % 				for binID = 1:size(u.vectorBins,1)
 % 					vs1 = cellfun(@(c)c{binID,baseFreq}, ...
 % 						u1.vectorStrength(:,1));
@@ -370,7 +370,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				change = (u.vectorStrength{end,1}{2,baseFreq} ...
 						- u.vectorStrength{end,1}{1,baseFreq}) ...
 						/ u.vectorStrength{end,1}{1,baseFreq};
-				
+
 				if  change < -.2
 					phasicSuppressing = true;
 				elseif change > .2
@@ -379,7 +379,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					phasicNoChange = true;
 				end
 			end
-			
+
 			if phasicSuppressing
 				s.phasicSuppressingUnits = s.phasicSuppressingUnits + 1;
 				subCategory = 'Phasic Suppressing';
@@ -392,7 +392,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			else
 				subCategory = 'None'; % for tonics
 			end
-			
+
 			if sorted
 				fprintf('Selecting unit %d.%d from %s on %s as %s\n', ...
 					sessions{sessionID}{1}.units{unitID}.channel, ...
@@ -414,7 +414,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				for uCondID = 1:u.condCount
 					% map condition ID from unit to summary
 					sCondID = mapCondID(uCondID, u, s);
-					
+
 					% skip if a particular condition is not included in the
 					% summary analysis
 					if sCondID==0; continue; end
@@ -426,17 +426,17 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						if isempty(psth); psth = nan; end
 
 						% keep a list of summarized animal names & unit IDs
-						% (different unit numbering scheme) 
+						% (different unit numbering scheme)
 						s.units{mode}.animalNames{sCondID,scoreID}{end+1} ...
 							= a.animalName;
 						s.units{mode}.sessionIDs{sCondID,scoreID}(end+1) ...
 							= sessionID;
 						s.units{mode}.unitIDs{sCondID,scoreID}(end+1) ...
 							= s.targetRespondingUnits;
-						
+
 						s.units{mode}.unitTypes{sCondID,scoreID}{end+1} ...
 							= u.type;
-					
+
 						% does unit respond to masker?
 						s.units{mode}.tonic{ ...
 							sCondID,scoreID}(end+1) = ~phasic;
@@ -477,7 +477,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						s.units{mode}.dPrimeCQMean{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
-						
+
 						dPrime = u.dPrimeCQSum{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan;
 						else
@@ -493,23 +493,23 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
-						
+
 						% d' onset/peri/offset
 						dPrime = u.dPrimeOnset{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan; end
 						s.units{mode}.dPrimeOnset{sCondID,scoreID}( ...
 							end+1) = dPrime;
-						
+
 						dPrime = u.dPrimePeri{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan; end
 						s.units{mode}.dPrimePeri{sCondID,scoreID}( ...
 							end+1) = dPrime;
-						
+
 						dPrime = u.dPrimePeriGap{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan; end
 						s.units{mode}.dPrimePeriGap{sCondID,scoreID}( ...
 							end+1) = dPrime;
-						
+
 						dPrime = u.dPrimeOffset{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan; end
 						s.units{mode}.dPrimeOffset{sCondID,scoreID}( ...
@@ -528,7 +528,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 									end+1) = vec;
 							end
 						end
-						
+
 						% running vs at 10 Hz
 						vs = u.vs10{uCondID,scoreID};
 						pval = u.vs10p{uCondID,scoreID};
@@ -545,15 +545,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						s.units{mode}.vs10{sCondID,scoreID}(end+1,:) = vs;
 						s.units{mode}.vs10p{sCondID,scoreID}(end+1,:)=pval;
-						
-						% modulation transfer function
-						mtf = u.mtf{uCondID,scoreID};
-						if isempty(mtf); mtf = nan; end
-						if c && c<size(mtf,2) % fix for nan entries
-							s.units{mode}.mtf{sCondID,scoreID} ...
-								(:,c+1:size(mtf, 2)) = nan;
+
+						% multi-taper spectrum peri-stimulus
+						mts = u.mts{uCondID,scoreID};
+						if isempty(mts); mts = nan; end
+						if c && c<size(mts,2) % fix for nan entries
+							s.units{mode}.mts{sCondID,scoreID} ...
+								(:,c+1:size(mts, 2)) = nan;
 						end
-						s.units{mode}.mtf{sCondID,scoreID}(end+1,:) = mtf;
+						s.units{mode}.mts{sCondID,scoreID}(end+1,:) = mts;
 
 						% mfsl (minimum first spike latency)
 						mfsl = u.mfsl{uCondID,scoreID};
@@ -578,14 +578,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						s.units{mode}.meanFiring{sCondID,scoreID}(end+1)...
 							= meanFiring;
 					end
-					
+
 					if isempty(u.psthMean{uCondID,1}); continue; end
-					
+
 					if mode==1
 						s.unitCountPerCond{sCondID} = ...
 							s.unitCountPerCond{sCondID} + 1;
 					end
-					
+
 					s.units{mode}.dPrimeBehavior{sCondID}(end+1) = ...
 						a.dPrimeBehavior{uCondID};
 				end
@@ -599,7 +599,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		s.targetRespondingUnits, s.tonicUnits, s.phasicUnits, ...
 		s.phasicSuppressingUnits, s.phasicEnhancingUnits, ...
 		s.phasicNoChangeUnits);
-	
+
 	% display counts for single/multi-units separately
 	if sorted
 		fprintf('       Single  Multi\n');
@@ -638,15 +638,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							nansem(vec);
 					end
 				end
-				
+
 				% running vs at 10 hz
 				vs = s.units{modeID}.vs10{condID,scoreID};
 				s.units{modeID}.vs10Mean{condID,scoreID} = nanmean(vs, 1);
 				s.units{modeID}.vs10Err{condID,scoreID} = nansem(vs, 1);
-				
-				mtf = s.units{modeID}.mtf{condID,scoreID};
-				s.units{modeID}.mtfMean{condID,scoreID} = nanmean(mtf, 1);
-				s.units{modeID}.mtfErr{condID,scoreID} = nansem(mtf, 1);
+
+				mts = s.units{modeID}.mts{condID,scoreID};
+				s.units{modeID}.mtsMean{condID,scoreID} = nanmean(mts, 1);
+				s.units{modeID}.mtsErr{condID,scoreID} = nansem(mts, 1);
 
 				% mfsl (minimum first spike latency)
 				mfsl = s.units{modeID}.mfsl{condID,scoreID};

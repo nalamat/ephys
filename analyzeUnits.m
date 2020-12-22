@@ -19,7 +19,7 @@ function units = analyzeUnits(units)
 
 	for unitID = 1:length(units)
 		u = units{unitID};   % unpack
-		
+
 		% few basic parameters for analysis
 		u.psthBin        = 10e-3; % bin size for calculating PSTH
 		% -1s before onset and +1s after offset of tone
@@ -33,33 +33,33 @@ function units = analyzeUnits(units)
 		periGap = gap*2<=u.psthCenters & u.psthCenters<u.targetDuration-gap;
 		offset = u.targetDuration-gap<=u.psthCenters & ...
 			u.psthCenters<u.targetDuration+gap;
-		
+
 		% convolution window for smoothing PSTH
 		u.psthWin        = 50e-3;            % convolution window size
 % 		win = gausswin(u.psthWin/u.psthBin); % gaussian window
 		win = rectwin(u.psthWin/u.psthBin);  % rectangular window
 		win = win / u.psthWin;               % normalize window
-		
+
 		% Skip the first 100 ms after tone onset/offset
 		u.baseFreqs      = 1:1:20;
 		u.vectorBins     = [u.viewBounds(1), 0;
 							gap*2, u.targetDuration-gap;
 							u.targetDuration+gap, u.viewBounds(2)];
 		u.vectorBinNames = {'Pre','Peri','Post'};
-		
+
 		u.vs10Window     = 300e-3;
 		u.vs10Centers    = u.psthCenters( ...
 			u.viewBounds(1) <= u.psthCenters & ...
 			u.psthCenters <= u.viewBounds(2)-u.vs10Window);
-		
-		u.mtfParams.Fs = u.fs;      % sampling frequency
-		u.mtfParams.fpass = [5 50]; % band of frequencies to be kept
-		u.mtfParams.tapers = [3 5]; % taper parameters
-		u.mtfParams.pad = 2;        % pad factor for FFT
-		u.mtfParams.err = [2 0.05];
-		u.mtfParams.trialave = 1;
-		[~, u.mtfFreqs] = mtspectrumpt(rand(1,50), u.mtfParams);
-		
+
+		u.mtsParams.Fs = u.fs;      % sampling frequency
+		u.mtsParams.fpass = [1 50]; % band of frequencies to be kept
+		u.mtsParams.tapers = [2 3]; % taper parameters
+		u.mtsParams.pad = 2;        % pad factor for FFT
+		u.mtsParams.err = [2 0.05];
+		u.mtsParams.trialave = 1;
+		[~, u.mtsFreqs] = mtspectrumpt(rand(1,50), u.mtsParams);
+
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
 % 		u.svmScores      = [];
@@ -90,7 +90,7 @@ function units = analyzeUnits(units)
 	% 	u.vectorZScore     = c;
 		u.vs10             = c; % running vector strength at 10 hz
 		u.vs10p            = c; % p values
-		u.mtf              = c;
+		u.mts              = c;
 		% {conds x scores}[bands x bins]
 		u.lfpMean          = c;
 		u.lfpSTD           = c;
@@ -117,7 +117,7 @@ function units = analyzeUnits(units)
 				trials = length(spikeTimes);
 
 				if trials == 0; continue; end
-				
+
 				psth = zeros(trials, binCount);
 				for trialID = 1:trials
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
@@ -130,7 +130,7 @@ function units = analyzeUnits(units)
 				u.psth{condID,scoreID} = psth;
 				u.psthMean{condID,scoreID} = psthMean;
 				u.psthSTD{condID,scoreID} = psthSTD;
-				
+
 
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
@@ -153,13 +153,13 @@ function units = analyzeUnits(units)
 					pre = find(u.psthCenters < 0);
 					cqMean = cqMean - cqMean(pre(end));
 					u.dPrimeCQMean{condID,scoreID} = cqMean;
-					
+
 					% cumulative sum of squares
 					cqSum = sqrt(cumsum(dPrime.^2));
 					pre = find(u.psthCenters < 0);
 					cqSum = cqSum - cqSum(pre(end));
 					u.dPrimeCQSum{condID,scoreID} = cqSum;
-					
+
 					% quadratic mean of d' in 50ms bins
 					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
 					u.dPrimeMQMean{condID,scoreID} = mqMean;
@@ -283,7 +283,7 @@ function units = analyzeUnits(units)
 					mfsl = nan;
 				end
 				u.mfsl{condID,scoreID} = mfsl;
-				
+
 				% phase of MFSL relative to masker
 				phase = mfsl * u.maskerFrequency * 360 + u.phaseDelay;
 				u.mfslPhase{condID,scoreID} = phase;
@@ -303,7 +303,7 @@ function units = analyzeUnits(units)
 				for binID = 1:size(u.vectorBins,1)
 					bin = u.vectorBins(binID,:);
 					for baseFreqID = 1:length(u.baseFreqs)
-						
+
 						% calculate VS trial by trial
 % 						vs = zeros(1,length(spikeTimes));
 % 						for trialID = 1:length(spikeTimes)
@@ -325,11 +325,11 @@ function units = analyzeUnits(units)
 % 							end
 % 						end
 % 						vs = mean(vs);
-						
+
 						spikeTimesBin = spikeTimesAll( ...
 							bin(1)<=spikeTimesAll & ...
 							spikeTimesAll<bin(2));
-						
+
 						% calculate VS using spikes from all trials
 						if isempty(spikeTimesBin)
 							vs = 0;
@@ -345,11 +345,11 @@ function units = analyzeUnits(units)
 % 							vs2 = abs(mean(c));
 							theta2 = angle(mean(c));
 						end
-						
+
 						n = length(spikeTimesBin);
 						pval = rayleighsz(vs, n);
 
-						u.vectorStrength{condID,scoreID} ... 
+						u.vectorStrength{condID,scoreID} ...
 							{binID,baseFreqID} = vs;
 						u.vectorPhase{condID,scoreID} ...
 							{binID,baseFreqID} = theta2;
@@ -361,14 +361,14 @@ function units = analyzeUnits(units)
 	% 				z = zscore([u.vectorStrength{condID,scoreID}{binID,:}]);
 	% 				u.vectorZScore{condID,scoreID}{binID,:} = num2cell(z);
 				end
-				
+
 				% running vector strength at 10Hz as a function of time
 				baseFreq = 10;
 				spikeTimes = u.spikeTimes{condID,scoreID};
 				spikeTimesAll = [spikeTimes{:}];
 				u.vs10{condID,scoreID} = zeros(size(u.vs10Centers));
 				u.vs10p{condID,scoreID} = ones(size(u.vs10Centers));
-				
+
 				for centerID = 1:length(u.vs10Centers)
 					center = u.vs10Centers(centerID);
 					spikeTimesBin = spikeTimesAll( ...
@@ -398,20 +398,20 @@ function units = analyzeUnits(units)
 					u.vs10p{condID,scoreID}(centerID) = pval;
 				end
 
-				% power at the modulation frequency peri-stimulus
+				% multi-taper spectrum peri-stimulus
 				spikeTimesPeri = spikeTimesAll( ...
 					u.vectorBins(2,1)<=spikeTimesAll & ...
 					spikeTimesAll<u.vectorBins(2,2));
-				mtf = [];
+				mts = [];
 				if length(spikeTimesPeri)>10
-					mtf = mtspectrumpt(spikeTimesPeri, u.mtfParams)';
+					mts = mtspectrumpt(spikeTimesPeri, u.mtsParams)';
 				end
-				if length(mtf) ~= length(u.mtfFreqs)
-					mtf = nan(size(u.mtfFreqs));
+				if length(mts) ~= length(u.mtsFreqs)
+					mts = nan(size(u.mtsFreqs));
 				end
-				u.mtf{condID,scoreID} = mtf;
-				
-				
+				u.mts{condID,scoreID} = mts;
+
+
 				% LFP
 				% dimensions: {conds x scores}[bands x bins x trials]
 				% bins are: pre/peri/post-stim
@@ -420,7 +420,7 @@ function units = analyzeUnits(units)
 				u.lfpSTD{condID, scoreID} = std(lfp, [], 3);
 				u.lfpSEM{condID, scoreID} = u.lfpSTD{condID, scoreID} ...
 					/ sqrt(size(lfp, 3));
-				
+
 			end % scoreID
 
 		end % condID
@@ -460,11 +460,11 @@ function units = analyzeUnits(units)
 			end % unitID
 
 		end % freqID
-		
+
 		units{unitID} = u; % pack
-		
+
 	end % unitID
-	
+
 	if single
 		units = units{1};
 	end
