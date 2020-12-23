@@ -61,13 +61,14 @@ se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar', #linetype='solid',
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 gc()
-data = read.xlsx(summaryFile, 'TER')
-data2 = subset(data, Score=='All')
+data = read.xlsx(summaryFile, 'TargetEvoked')
+data2 = subset(data, Score=='All' & Interval=='Peri')
 data2$SubjectID = factor(data2$SubjectID)
 data2$UnitID = factor(data2$UnitID)
 data2$SNR = factor(data2$TargetLevel-50)
 data2$SNRn = data2$TargetLevel-50
 data2$TER = data2$TER * 100   # as percentage
+data2$TEP = data2$TEP * 100   # as percentage
 
 
 # unit category count
@@ -130,7 +131,8 @@ p = ggplot(subset(data2, Category=='Phasic'),
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Units') +
   color_manual +
-  ylim + expand_x + expand_y +
+  # ylim +
+  expand_x + expand_y +
   theme_my
 print(p)
 save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
@@ -143,7 +145,8 @@ p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Enhancing Units') +
   color_manual +
-  ylim + expand_x + expand_y +
+  # ylim +
+  expand_x + expand_y +
   theme_my
 print(p)
 save_plot(p, file=paste('figs/Summary/ter-phasic-enhancing-', gerbil, '.svg', sep=''))
@@ -154,7 +157,8 @@ p = ggplot(subset(data2, SubCategory=='Phasic Suppressing'),
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Suppressing Units') +
   color_manual +
-  ylim + expand_x + expand_y +
+  # ylim +
+  expand_x + expand_y +
   theme_my
 print(p)
 save_plot(p, file=paste('figs/Summary/ter-phasic-suppressing-', gerbil, '.svg', sep=''))
@@ -181,6 +185,89 @@ p = ggplot(subset(data2, Category=='Tonic'),
   theme_my
 p
 save_plot(p, file=paste('figs/Summary/ter-tonic-', gerbil, '.svg', sep=''))
+
+
+#################
+# d prime
+
+model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Phasic'))
+summary(model)
+
+model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Tonic'))
+summary(model)
+
+model = aov(dPrime ~ SNR*Mode*Category + Error(UnitID), data2)
+summary(model)
+
+labs_xy = labs(x='SNR [dB]', y='d\'')
+ylim = coord_cartesian(ylim=c(0,.39999))
+
+p = ggplot(subset(data2, Category=='Phasic'),
+           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+  se_errorbar + mean_line + mean_point +
+  labs_xy + labs(color='Mode', title='Phasic units') +
+  color_manual +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-phasic-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
+           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+  se_errorbar + mean_line + mean_point +
+  labs_xy + labs(color='Mode', title='Phasic Enhancing units') +
+  color_manual +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-phasic-enhancing-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data2, SubCategory=='Phasic Suppressing'),
+           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+  se_errorbar + mean_line + mean_point +
+  labs_xy + labs(color='Mode', title='Phasic Suppressing units') +
+  color_manual +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-phasic-suppressing-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data2, SubCategory=='Phasic No Change'),
+           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+  se_errorbar + mean_line + mean_point +
+  labs_xy + labs(color='Mode', title='Phasic No Change units') +
+  color_manual +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-phasic-nochange-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data2, Category=='Tonic'),
+           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+  se_errorbar + mean_line + mean_point +
+  color_manual +
+  scale_alpha(guide='none') +
+  labs_xy + labs(color='Mode', title='Tonic units') +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-tonic-', gerbil, '.svg', sep=''))
+
+p = ggplot(subset(data2),
+           aes(x=SNR, y=dPrime, color=Mode,
+               # alpha=Category,
+               shape=Category,linetype=Category,
+               group=interaction(Mode, Category))) +
+  se_errorbar + mean_line + mean_point +
+  scale_linetype_manual(values=linetypes) +
+  scale_shape_manual(values=shapes) +
+  color_manual +
+  # scale_alpha_manual(values=c(1, .5)) +
+  labs_xy + labs(color='Mode', title='Phasic and tonic units') +
+  ylim + expand_x + no_expand_y +
+  theme_my + grid_xy
+p
+save_plot(p, file=paste('figs/Summary/dp-', gerbil, '.svg', sep=''))
 
 
 #################
@@ -291,97 +378,5 @@ save_plot(p, file=paste('figs/Summary/VSperi3-', gerbil, '.svg', sep=''))
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
-
-
-#################
-# d prime
-
-gc()
-data = read.xlsx(summaryFile, 'dPrime')
-data2 = subset(data, Score=='All' & Bin=='Peri', select=-c(Score, Bin))
-data2$SNR = factor(data2$TargetLevel-50)
-
-# model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Phasic'))
-# summary(model)
-#
-# model = aov(dPrime ~ SNR*Mode + Error(UnitID), subset(data2, Category=='Tonic'))
-# summary(model)
-#
-# model = aov(dPrime ~ SNR*Mode*Category + Error(UnitID), data2)
-# summary(model)
-
-# data3 = data2 %>%
-#   group_by_at(vars(-c(dPrime))) %>%
-#   summarize(dPrime=sqrt(mean(dPrime^2)))
-
-labs_xy = labs(x='SNR [dB]', y='d\'')
-ylim = coord_cartesian(ylim=c(0,.39999))
-
-p = ggplot(subset(data2, Category=='Phasic'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
-  se_errorbar + mean_line + mean_point +
-  labs_xy + labs(color='Mode', title='Phasic units') +
-  color_manual +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-phasic-', gerbil, '.svg', sep=''))
-
-p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
-  se_errorbar + mean_line + mean_point +
-  labs_xy + labs(color='Mode', title='Phasic Enhancing units') +
-  color_manual +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-phasic-enhancing-', gerbil, '.svg', sep=''))
-
-p = ggplot(subset(data2, SubCategory=='Phasic Suppressing'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
-  se_errorbar + mean_line + mean_point +
-  labs_xy + labs(color='Mode', title='Phasic Suppressing units') +
-  color_manual +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-phasic-suppressing-', gerbil, '.svg', sep=''))
-
-p = ggplot(subset(data2, SubCategory=='Phasic No Change'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
-  se_errorbar + mean_line + mean_point +
-  labs_xy + labs(color='Mode', title='Phasic No Change units') +
-  color_manual +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-phasic-nochange-', gerbil, '.svg', sep=''))
-
-p = ggplot(subset(data2, Category=='Tonic'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
-  se_errorbar + mean_line + mean_point +
-  color_manual +
-  scale_alpha(guide='none') +
-  labs_xy + labs(color='Mode', title='Tonic units') +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-tonic-', gerbil, '.svg', sep=''))
-
-p = ggplot(subset(data2),
-           aes(x=SNR, y=dPrime, color=Mode,
-               # alpha=Category,
-               shape=Category,linetype=Category,
-               group=interaction(Mode, Category))) +
-  se_errorbar + mean_line + mean_point +
-  scale_linetype_manual(values=linetypes) +
-  scale_shape_manual(values=shapes) +
-  color_manual +
-  # scale_alpha_manual(values=c(1, .5)) +
-  labs_xy + labs(color='Mode', title='Phasic and tonic units') +
-  ylim + expand_x + no_expand_y +
-  theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-', gerbil, '.svg', sep=''))
 
 # }

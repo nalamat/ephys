@@ -15,12 +15,9 @@ function exportSummary(summaryFile)
 
 	% prep table headers
 	headers = struct();
-	headers.TER = ...      % target-evoked response
+	headers.TargetEvoked = ...  % target-evoked response
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'TER'};
-	headers.dPrime = ...   % neurometric d'
-		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'Bin' 'dPrime'};
+		'Mode' 'TargetLevel' 'Score' 'Interval' 'TER', 'TEP', 'dPrime'};
 	headers.VS10 = ...     % vector strength at 10Hz pre/peri/post stim
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Bin' 'VS10'};
@@ -77,39 +74,26 @@ function exportSummary(summaryFile)
 
 				for i = 1:length(unitIDs)
 					unitID = unitIDs(i);
-					sID = u.animalNames{condID,scoreID}{i};
+					sessionID = u.animalNames{condID,scoreID}{i}; % sessionID
 					category = u.category{condID,scoreID}(i);
 					subCategory = u.subCategory{condID,scoreID}(i);
 
 					if condID~=1
-						peri = 0<=u.psthCenters & ...
-							u.psthCenters<=u.targetDuration;
-% 						if modeID==1
-% 							nogoScore = 2;
-% 						else
-% 							nogoScore = 1;
-% 						end
-						nogo = u.psth{1,1}(i,peri);
-						if any(isnan(u.psth{condID,scoreID}(i)))
-							continue;
-						end
-						go = u.psth{condID,scoreID}(i,peri);
-						ter = trapz(u.psthCenters(peri), go-nogo);
-						ter = ter / mean(nogo); % normalize
-
-						tables.TER(end+1,:) = ...
-							{sID unitID category subCategory ...
-							mode level score ter};
-					end
-
-					% dPrime
-					if condID~=1
 						for intervalID = 1:length(u.intervals)
-							intervalName = u.intervalNames{intervalID};
+							interval = u.intervalNames{intervalID};
+							
+							% target-evoked response
+							ter = u.ter{condID,scoreID}(i,intervalID);
+							
+							% target-evoked peak
+							tep = u.tep{condID,scoreID}(i,intervalID);
+							
+							% dPrime
 							dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
-							tables.dPrime(end+1,:) = ...
-								{sID unitID category subCategory ...
-								mode level score intervalName dp};
+							
+							tables.TargetEvoked(end+1,:) = ...
+								{sessionID unitID category subCategory ...
+								mode level score interval ter tep dp};
 						end
 					end
 
@@ -120,26 +104,26 @@ function exportSummary(summaryFile)
 						vs = u.vs{...
 							condID,scoreID}{binID,vsFreq}(i);
 						tables.VS10(end+1,:) = ...
-							{sID unitID category subCategory ...
+							{sessionID unitID category subCategory ...
 							mode level score bin vs};
 					end
 
 					% mean firing rate
 					firingMean = u.firingMean{condID,scoreID}(i);
 					tables.FiringMean(end+1,:) = ...
-							{sID unitID category subCategory ...
+							{sessionID unitID category subCategory ...
 							mode level score firingMean};
 
 					% max firing rate
 					firingMax = u.firingMax{condID,scoreID}(i);
 					tables.FiringMax(end+1,:) = ...
-							{sID unitID category subCategory ...
+							{sessionID unitID category subCategory ...
 							mode level score firingMax};
 
 					% minimum first spike latency
 					mfsl = u.mfsl{condID,scoreID}(i);
 					tables.MFSL(end+1,:) = ...
-							{sID unitID category subCategory ...
+							{sessionID unitID category subCategory ...
 							mode level score mfsl};
 				end
 			end
