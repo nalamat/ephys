@@ -192,26 +192,26 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.phasicNoChange = cc;
 		u.subCategory = cc; % suppressing/enhancing/no-change
 		u.psth = cc;
-		u.psthMean = cc;
-		u.psthSEM = cc;
+% 		u.psthMean = cc;
+% 		u.psthSEM = cc;
 		u.dPrimeCQMean = cc;
-		u.dPrimeCQMeanMean = cc;
-		u.dPrimeCQMeanSEM = cc;
+% 		u.dPrimeCQMeanMean = cc;
+% 		u.dPrimeCQMeanSEM = cc;
 		u.dPrimeCQSum = cc;
 		u.dPrimeIntervals = cc;
 		u.dPrimeBehavior = cell(s.condCount,1);
 		u.mfsl = cc;
-		u.mfslMean = cc;
-		u.mfslSEM = cc;
+% 		u.mfslMean = cc;
+% 		u.mfslSEM = cc;
 		u.mfslPhase = cc;
-		u.mfslPhaseMean = cc;
-		u.mfslPhaseSEM = cc;
+% 		u.mfslPhaseMean = cc;
+% 		u.mfslPhaseSEM = cc;
 		u.firingMax = cc;
-		u.firingMaxMean = cc;
-		u.firingMaxSEM = cc;
+% 		u.firingMaxMean = cc;
+% 		u.firingMaxSEM = cc;
 		u.firingMean = cc;
-		u.firingMeanMean = cc;
-		u.firingMeanSEM = cc;
+% 		u.firingMeanMean = cc;
+% 		u.firingMeanSEM = cc;
 		u.vs = cc;
 		u.vsMean = cc;
 		u.vsSEM = cc;
@@ -459,7 +459,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							s.units{mode}.psth{sCondID, ...
 								scoreID}(:,c+1:size(psth, 2)) = nan;
 						end
-						s.units{mode}.psth{sCondID,scoreID}(end+1,:) =psth;
+						s.units{mode}.psth{sCondID,scoreID}(end+1,:) = psth;
 
 						% d'
 						dPrime = u.dPrimeCQMean{uCondID,scoreID};
@@ -600,69 +600,69 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 
 	%% calculate mean and sem of psth, d', etc
-	for modeID = 1:s.unitCount
-		for condID = 1:s.condCount
-			for scoreID = 1:5
-				% unpack
-				u = s.units{modeID};
-
-				% psth
-				psth = u.psth{condID,scoreID};
-				u.psthMean{condID,scoreID} = nanmean(psth);
-				u.psthSEM{condID,scoreID} = nansem(psth);
-
-				% cumulative quadratic mean of d'
-				dPrime = u.dPrimeCQMean{condID,scoreID};
-				u.dPrimeCQMeanMean{condID,scoreID} = nanmean(dPrime, 1);
-				u.dPrimeCQMeanSEM{condID,scoreID} = nansem(dPrime, 1);
-
-				% vector strength
-				for binID = 1:size(u.vsBins,1)
-					for vsFreqID = 1:length(u.vsFreqs)
-						vec = u.vs{condID,scoreID}{binID,vsFreqID};
-						u.vectorStrengthMean{ ...
-							condID,scoreID}{binID,vsFreqID} = ...
-							nanmean(vec);
-						u.vectorStrengthSEM{ ...
-							condID,scoreID}{binID,vsFreqID} = ...
-							nansem(vec);
-					end
-				end
-
-				% running vs at 10 hz
-				vs = u.vs10{condID,scoreID};
-				u.vs10Mean{condID,scoreID} = nanmean(vs);
-				u.vs10SEM{condID,scoreID} = nansem(vs);
-
-				mts = u.mts{condID,scoreID};
-				u.mtsMean{condID,scoreID} = nanmean(mts);
-				u.mtsSEM{condID,scoreID} = nansem(mts);
-
-				% mfsl (minimum first spike latency)
-				mfsl = u.mfsl{condID,scoreID};
-				u.mfslMean{condID,scoreID} = nanmean(mfsl);
-				u.mfslSEM{condID,scoreID} = nansem(mfsl);
-
-				% mfsl phase
-				phase = u.mfslPhase{condID,scoreID};
-				u.mfslPhaseMean{condID,scoreID} = nanmean(phase);
-				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
-
-				% max firing rate
-				firingMax = u.firingMax{condID,scoreID};
-				u.firingMaxMean{condID,scoreID} = nanmean(firingMax);
-				u.firingMaxSEM{condID,scoreID} = nansem(firingMax);
-
-				% mean firing rate
-				firingMean = u.firingMean{condID,scoreID};
-				u.firingMeanMean{condID,scoreID} = nanmean(firingMean);
-				u.firingMeanSEM{condID,scoreID} = nansem(firingMean);
-
-				% pack
-				s.units{modeID} = u;
-			end
-		end
-	end
+% 	for modeID = 1:s.unitCount
+% 		for condID = 1:s.condCount
+% 			for scoreID = 1:5
+% 				% unpack
+% 				u = s.units{modeID};
+% 
+% 				% psth
+% 				psth = u.psth{condID,scoreID};
+% 				u.psthMean{condID,scoreID} = nanmean(psth);
+% 				u.psthSEM{condID,scoreID} = nansem(psth);
+% 
+% 				% cumulative quadratic mean of d'
+% 				dPrime = u.dPrimeCQMean{condID,scoreID};
+% 				u.dPrimeCQMeanMean{condID,scoreID} = nanmean(dPrime, 1);
+% 				u.dPrimeCQMeanSEM{condID,scoreID} = nansem(dPrime, 1);
+% 
+% 				% vector strength
+% 				for binID = 1:size(u.vsBins,1)
+% 					for vsFreqID = 1:length(u.vsFreqs)
+% 						vec = u.vs{condID,scoreID}{binID,vsFreqID};
+% 						u.vectorStrengthMean{ ...
+% 							condID,scoreID}{binID,vsFreqID} = ...
+% 							nanmean(vec);
+% 						u.vectorStrengthSEM{ ...
+% 							condID,scoreID}{binID,vsFreqID} = ...
+% 							nansem(vec);
+% 					end
+% 				end
+% 
+% 				% running vs at 10 hz
+% 				vs = u.vs10{condID,scoreID};
+% 				u.vs10Mean{condID,scoreID} = nanmean(vs);
+% 				u.vs10SEM{condID,scoreID} = nansem(vs);
+% 
+% 				mts = u.mts{condID,scoreID};
+% 				u.mtsMean{condID,scoreID} = nanmean(mts);
+% 				u.mtsSEM{condID,scoreID} = nansem(mts);
+% 
+% 				% mfsl (minimum first spike latency)
+% 				mfsl = u.mfsl{condID,scoreID};
+% 				u.mfslMean{condID,scoreID} = nanmean(mfsl);
+% 				u.mfslSEM{condID,scoreID} = nansem(mfsl);
+% 
+% 				% mfsl phase
+% 				phase = u.mfslPhase{condID,scoreID};
+% 				u.mfslPhaseMean{condID,scoreID} = nanmean(phase);
+% 				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
+% 
+% 				% max firing rate
+% 				firingMax = u.firingMax{condID,scoreID};
+% 				u.firingMaxMean{condID,scoreID} = nanmean(firingMax);
+% 				u.firingMaxSEM{condID,scoreID} = nansem(firingMax);
+% 
+% 				% mean firing rate
+% 				firingMean = u.firingMean{condID,scoreID};
+% 				u.firingMeanMean{condID,scoreID} = nanmean(firingMean);
+% 				u.firingMeanSEM{condID,scoreID} = nansem(firingMean);
+% 
+% 				% pack
+% 				s.units{modeID} = u;
+% 			end
+% 		end
+% 	end
 
 
 	%% save merged analysis in a .mat file
