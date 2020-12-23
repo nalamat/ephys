@@ -46,6 +46,8 @@ function viewAnalysis(analysis)
 		data.plotNames = {
 			'psth alt'
 			'psth corr alt'
+			'ter'
+			'tep'
 			'dprime waterfall alt'
 			'vs waterfall alt'
 			'psth'
@@ -497,10 +499,76 @@ function refreshPlot(fig, d)
 				end
 			end
 
+			% skip to the end
+			error('my:break', '');
+			
+		% target-evoked response and peak activation relative to nogo
+		elseif any(strcmpi(plotName, {'ter', 'tep'}))
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+
+			if strcmpi(plotName, 'ter')
+				plotTitle = 'Target-evoked response';
+			elseif strcmpi(plotName, 'tep')
+				plotTitle = 'Target-evoked peak';
+			end
+
+			sameYLim = true;
+			
+			modeCount = 3;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+
+				if strcmpi(plotName, 'ter')
+					vals = u.ter;
+				elseif strcmpi(plotName, 'tep')
+					vals = u.tep;
+				end
+				
+				if u.maskerLevel
+					conds = u.targetLevels - u.maskerLevel;
+					condLabel = 'SNR [dB]';
+				else
+					conds = u.targetLevels;
+					condLabel = 'SPL [dB]';
+				end
+
+				% dimensions: units x intervals x conds
+				sup = u.phasicSuppressing{1,1}==true;
+				enh = u.phasicEnhancing{1,1}==true;
+				vals = cat(3, vals{2:end,scoreID}); % no nogo
+				avgSup = squeeze(nanmean(vals(sup, :, :), 1)) * 100;
+				errSup = squeeze(nansem(vals(sup, :, :), 1)) * 100;
+				avgEnh = squeeze(nanmean(vals(enh, :, :), 1)) * 100;
+				errEnh = squeeze(nansem(vals(enh, :, :), 1)) * 100;
+				
+				intervalCount = 3;
+				for intervalID = 1:intervalCount
+					subplots{end+1} = subplot(modeCount, intervalCount, ...
+						(modeCount-modeID)*3 + intervalID);
+					errorbar(conds, avgSup(intervalID,:), errSup(intervalID,:), ...
+						'-o', 'color', [1 .4 0], 'linewidth', 2);
+					hold on;
+					errorbar(conds, avgEnh(intervalID,:), errEnh(intervalID,:), ...
+						'-o', 'color', [0 .3 1], 'linewidth', 2);
+
+					axis square tight;
+					xlim([min(conds)-2.5, max(conds)+2.5]);
+% 					ylim([-10, 10]);
+					xticks(conds);
+					xlabel(condLabel);
+					ylabel([plotTitle ' [%]']);
+					leg = legend({'Phasic Suppressing', 'Phasic Enhancing'}, ...
+						'location', 'northeast', 'fontsize',8);
+					title([u.label ', ' u.intervalNames{intervalID}]);
+				end
+			end
 
 			% skip to the end
 			error('my:break', '');
 
+			
 		% waterfall plot of dprime of units per snr and onset/peri/offset
 		elseif strcmpi(plotName, 'dprime waterfall alt')
 			plotTitle = 'd'' waterfall';
@@ -1269,7 +1337,7 @@ function refreshPlot(fig, d)
 				end
 				legend(plots, condsStr, 'location', loc);
 				title(u.label);
-
+				
 
 			% Neurometric d'
 			elseif strcmpi(plotName, 'dprime') || ...
@@ -2208,14 +2276,15 @@ function refreshPlot(fig, d)
 			'%d target responding (%d single, %d multi), %d tonic, ' ...
 			'%d phasic, %d phasic suppressing, %d phasic enhancing & ' ...
 			'%d phasic no-change units\n' ...
-			'Unit count per condition: %s\n' ...
+			... 'Unit count per condition: %s\n' ...
 			'Plot %d/%d [\\uparrow\\downarrow], %s%s trials [1-5]'], ...
 			a.spikeConfig, plotTitle, sessionCount, ...
 			length(animalNames), animalInfo, ...
 			a.targetRespondingUnits, a.singleUnits, a.multiUnits, ...
 			a.tonicUnits, a.phasicUnits, a.phasicSuppressingUnits, ...
 			a.phasicEnhancingUnits, a.phasicNoChangeUnits, ...
-			unitCount, d.plotID, length(d.plotNames), ...
+			... unitCount, ...
+			d.plotID, length(d.plotNames), ...
 			subsetInfo, d.scores{scoreID});
 		figtitle = sprintf('%s for %s, %s units', plotTitle, animalInfo, subset);
 	else
