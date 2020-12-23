@@ -46,8 +46,9 @@ function viewAnalysis(analysis)
 		data.plotNames = {
 			'psth alt'
 			'psth corr alt'
-			'ter'
-			'tep'
+			'ter alt'
+			'tep alt'
+			'dprime alt'
 			'dprime waterfall alt'
 			'vs waterfall alt'
 			'psth'
@@ -503,15 +504,17 @@ function refreshPlot(fig, d)
 			error('my:break', '');
 			
 		% target-evoked response and peak activation relative to nogo
-		elseif any(strcmpi(plotName, {'ter', 'tep'}))
+		elseif any(strcmpi(plotName, {'ter alt', 'tep alt', 'dprime alt'}))
 			if ~strcmpi(a.type, 'summary')
 				error('Only for summary analysis');
 			end
 
-			if strcmpi(plotName, 'ter')
+			if strcmpi(plotName, 'ter alt')
 				plotTitle = 'Target-evoked response';
-			elseif strcmpi(plotName, 'tep')
+			elseif strcmpi(plotName, 'tep alt')
 				plotTitle = 'Target-evoked peak';
+			elseif strcmpi(plotName, 'dprime alt')
+				plotTitle = 'Neurometric d''';
 			end
 
 			sameYLim = true;
@@ -520,10 +523,12 @@ function refreshPlot(fig, d)
 			for modeID = 1:modeCount
 				u = a.units{modeID};
 
-				if strcmpi(plotName, 'ter')
-					vals = u.ter;
-				elseif strcmpi(plotName, 'tep')
-					vals = u.tep;
+				if strcmpi(plotName, 'ter alt')
+					vals = u.ter * 100;
+				elseif strcmpi(plotName, 'tep alt')
+					vals = u.tep * 100;
+				elseif strcmpi(plotName, 'dprime alt')
+					vals = u.dPrimeIntervals;
 				end
 				
 				if u.maskerLevel
@@ -538,10 +543,10 @@ function refreshPlot(fig, d)
 				sup = u.phasicSuppressing{1,1}==true;
 				enh = u.phasicEnhancing{1,1}==true;
 				vals = cat(3, vals{2:end,scoreID}); % no nogo
-				avgSup = squeeze(nanmean(vals(sup, :, :), 1)) * 100;
-				errSup = squeeze(nansem(vals(sup, :, :), 1)) * 100;
-				avgEnh = squeeze(nanmean(vals(enh, :, :), 1)) * 100;
-				errEnh = squeeze(nansem(vals(enh, :, :), 1)) * 100;
+				avgSup = squeeze(nanmean(vals(sup, :, :), 1));
+				errSup = squeeze(nansem(vals(sup, :, :), 1));
+				avgEnh = squeeze(nanmean(vals(enh, :, :), 1));
+				errEnh = squeeze(nansem(vals(enh, :, :), 1));
 				
 				intervalCount = 3;
 				for intervalID = 1:intervalCount
