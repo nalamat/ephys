@@ -3,10 +3,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 	fprintf('Summarizing analysis\n');
 
-	effort = [' ' effort];
-
 	recordingModeLabels = {
-		['Active MMR' effort]
+		['Active MMR ' effort]
 		'Passive MMR'
 		'Passive Quiet'
 		};
@@ -18,6 +16,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	% summary struct
 	s = struct();
 	s.type = 'summary';
+	s.effort = effort;
 	s.unitCount = modeCount;
 	s.units = cell(s.unitCount, 1);
 	s.targetFreqs = [];
@@ -145,6 +144,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u = struct();
 		u.spikeConfig = u1.spikeConfig;
 		u.type = 'Summary';
+		u.effort = s.effort;
 		u.condCount = s.condCount;
 		u.targetFreqs = s.targetFreqs;
 		u.targetLevels = s.targetLevels;
@@ -613,66 +613,63 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	for modeID = 1:s.unitCount
 		for condID = 1:s.condCount
 			for scoreID = 1:5
+				% unpack
+				u = s.units{modeID};
+
 				% psth
-				psth = s.units{modeID}.psth{condID,scoreID};
-				s.units{modeID}.psthMean{condID,scoreID} = nanmean(psth, 1);
-				s.units{modeID}.psthSEM{condID,scoreID} = nansem(psth, 1);
+				psth = u.psth{condID,scoreID};
+				u.psthMean{condID,scoreID} = nanmean(psth);
+				u.psthSEM{condID,scoreID} = nansem(psth);
 
 				% cumulative quadratic mean of d'
-				dPrime = s.units{modeID}.dPrimeCQMean{condID,scoreID};
-				s.units{modeID}.dPrimeCQMeanMean{condID,scoreID} = ...
-					nanmean(dPrime, 1);
-				s.units{modeID}.dPrimeCQMeanSEM{condID,scoreID} = ...
-					nansem(dPrime, 1);
+				dPrime = u.dPrimeCQMean{condID,scoreID};
+				u.dPrimeCQMeanMean{condID,scoreID} = nanmean(dPrime, 1);
+				u.dPrimeCQMeanSEM{condID,scoreID} = nansem(dPrime, 1);
 
 				% vector strength
-				for binID = 1:size(s.units{modeID}.vsBins,1)
-					for vsFreqID = 1:length(s.units{modeID}.vsFreqs)
-						vec = s.units{modeID}.vs{ ...
-							condID,scoreID}{binID,vsFreqID};
-						s.units{modeID}.vectorStrengthMean{ ...
+				for binID = 1:size(u.vsBins,1)
+					for vsFreqID = 1:length(u.vsFreqs)
+						vec = u.vs{condID,scoreID}{binID,vsFreqID};
+						u.vectorStrengthMean{ ...
 							condID,scoreID}{binID,vsFreqID} = ...
 							nanmean(vec);
-						s.units{modeID}.vectorStrengthSEM{ ...
+						u.vectorStrengthSEM{ ...
 							condID,scoreID}{binID,vsFreqID} = ...
 							nansem(vec);
 					end
 				end
 
 				% running vs at 10 hz
-				vs = s.units{modeID}.vs10{condID,scoreID};
-				s.units{modeID}.vs10Mean{condID,scoreID} = nanmean(vs, 1);
-				s.units{modeID}.vs10SEM{condID,scoreID} = nansem(vs, 1);
+				vs = u.vs10{condID,scoreID};
+				u.vs10Mean{condID,scoreID} = nanmean(vs);
+				u.vs10SEM{condID,scoreID} = nansem(vs);
 
-				mts = s.units{modeID}.mts{condID,scoreID};
-				s.units{modeID}.mtsMean{condID,scoreID} = nanmean(mts, 1);
-				s.units{modeID}.mtsSEM{condID,scoreID} = nansem(mts, 1);
+				mts = u.mts{condID,scoreID};
+				u.mtsMean{condID,scoreID} = nanmean(mts);
+				u.mtsSEM{condID,scoreID} = nansem(mts);
 
 				% mfsl (minimum first spike latency)
-				mfsl = s.units{modeID}.mfsl{condID,scoreID};
-				s.units{modeID}.mfslMean{condID,scoreID} = nanmean(mfsl);
-				s.units{modeID}.mfslSEM{condID,scoreID} = nansem(mfsl);
+				mfsl = u.mfsl{condID,scoreID};
+				u.mfslMean{condID,scoreID} = nanmean(mfsl);
+				u.mfslSEM{condID,scoreID} = nansem(mfsl);
 
 				% mfsl phase
-				phase = s.units{modeID}.mfslPhase{condID,scoreID};
-				s.units{modeID}.mfslPhaseMean{condID,scoreID} = ...
-					nanmean(phase);
-				s.units{modeID}.mfslPhaseSEM{condID,scoreID} = ...
-					nansem(phase);
+				phase = u.mfslPhase{condID,scoreID};
+				u.mfslPhaseMean{condID,scoreID} = nanmean(phase);
+				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
 
 				% max firing rate
-				firingMax = s.units{modeID}.firingMax{condID,scoreID};
-				s.units{modeID}.firingMaxMean{condID,scoreID} = ...
-					nanmean(firingMax);
-				s.units{modeID}.firingMaxSEM{condID,scoreID} = ...
-					nansem(firingMax);
+				firingMax = u.firingMax{condID,scoreID};
+				u.firingMaxMean{condID,scoreID} = nanmean(firingMax);
+				u.firingMaxSEM{condID,scoreID} = nansem(firingMax);
 
 				% mean firing rate
-				firingMean = s.units{modeID}.firingMean{condID,scoreID};
-				s.units{modeID}.firingMeanMean{condID,scoreID} = ...
-					nanmean(firingMean);
-				s.units{modeID}.firingMeanSEM{condID,scoreID} = ...
-					nansem(firingMean);
+				firingMean = u.firingMean{condID,scoreID};
+				u.firingMeanMean{condID,scoreID} = nanmean(firingMean);
+				u.firingMeanSEM{condID,scoreID} = nansem(firingMean);
+
+				% pack
+				s.units{modeID} = u;
 			end
 		end
 	end
@@ -704,11 +701,4 @@ function res = recordingMode(a)
 			isequal(a.targetFreqs, 1)
 		res = 3;
 	end
-end
-
-function sem = nansem(x, dim)
-	if nargin<2
-		dim = 1;
-	end
-	sem = nanstd(x, 0, dim) ./ sqrt(sum(~isnan(x), dim));
 end
