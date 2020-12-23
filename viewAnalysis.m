@@ -1513,7 +1513,7 @@ function refreshPlot(fig, d)
 							vs = vs(:,msk);
 						end
 						avg = mean(vs, 2)';
-						err = std(vs, 0, 2)' / sqrt(size(vs, 2));
+						err = sem(vs, 2)';
 
 						if isempty(avg); continue; end
 
@@ -1593,7 +1593,7 @@ function refreshPlot(fig, d)
 							vs = vs(msk,:);
 						end
 						avg = mean(vs, 1);
-						err = std(vs, 0, 1) / sqrt(size(vs, 2));
+						err = sem(vs, 1);
 
 						if isempty(avg); continue; end
 
@@ -1709,7 +1709,7 @@ function refreshPlot(fig, d)
 							vs = vs(:,msk);
 						end
 						avg = mean(vs, 2)';
-						err = std(vs, 0, 2)' / sqrt(size(vs, 2));
+						err = sem(vs, 2)';
 
 						if isempty(avg); continue; end
 
@@ -1892,7 +1892,7 @@ function refreshPlot(fig, d)
 								firing = firing(msk);
 							end
 							avg(i) = mean(firing);
-							err(i) = std(firing) / sqrt(length(firing));
+							err(i) = sem(firing);
 						end
 
 						patches(freqID) = patch([x fliplr(x)], ...
@@ -1956,7 +1956,7 @@ function refreshPlot(fig, d)
 							end
 							mfsl(~isfinite(mfsl)) = [];
 							avg(i) = mean(mfsl);
-							err(i) = std(mfsl) / sqrt(length(mfsl));
+							err(i) = sem(mfsl);
 						end
 						plots(freqID) = errorbar(x, avg, err, ...
 							'.-', 'color', col, 'linewidth', 2, ...
@@ -2018,7 +2018,7 @@ function refreshPlot(fig, d)
 							end
 							phase(~isfinite(phase)) = [];
 							avg(i) = mean(phase);
-							err(i) = std(phase) / sqrt(length(phase));
+							err(i) = sem(phase);
 						end
 						plots(freqID) = errorbar(x, avg, err, ...
 							'.-', 'color', col, 'linewidth', 2, ...
@@ -2300,11 +2300,4 @@ function sameXYLim(subplots, sameXLim, sameYLim)
 		if sameXLim; ax.XLim = xLim; end
 		if sameYLim; ax.YLim = yLim; end
 	end
-end
-
-function sem = nansem(x, dim)
-	if nargin<2
-		dim = 1;
-	end
-	sem = nanstd(x, 0, dim) ./ sqrt(sum(~isnan(x), dim));
 end
