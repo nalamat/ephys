@@ -104,13 +104,12 @@ function exportSummary(summaryFile)
 
 					% dPrime
 					if condID~=1
-						bins = {'Onset', 'Peri', 'PeriGap', 'Offset'};
-						for binID = 1:length(bins)
-							bin = bins{binID};
-							d = u.(['dPrime' bin]){condID,scoreID}(i);
+						for intervalID = 1:length(u.intervals)
+							intervalName = u.intervalNames{intervalID};
+							dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
 							tables.dPrime(end+1,:) = ...
 								{sID unitID category subCategory ...
-								mode level score bin d};
+								mode level score intervalName dp};
 						end
 					end
 

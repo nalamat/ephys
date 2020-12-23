@@ -26,39 +26,46 @@ function units = analyzeUnits(units)
 		u.psthEdges      = u.viewBounds(1)-u.psthBin/2 : u.psthBin : ...
 			u.viewBounds(2)+u.psthBin/2;
 		u.psthCenters    = u.psthEdges(1:end-1)+u.psthBin/2;
-		gap = 50e-3;
-		binCount = length(u.psthCenters);
-		onset = 0<=u.psthCenters & u.psthCenters<gap*2;
-		peri = 0<=u.psthCenters & u.psthCenters<u.targetDuration;
-		periGap = gap*2<=u.psthCenters & u.psthCenters<u.targetDuration-gap;
-		offset = u.targetDuration-gap<=u.psthCenters & ...
-			u.psthCenters<u.targetDuration+gap;
+		psthBinCount     = length(u.psthCenters);
 
 		% convolution window for smoothing PSTH
-		u.psthWin        = 50e-3;            % convolution window size
-% 		win = gausswin(u.psthWin/u.psthBin); % gaussian window
-		win = rectwin(u.psthWin/u.psthBin);  % rectangular window
-		win = win / u.psthWin;               % normalize window
+		u.psthWin = 50e-3;                         % convolution window size
+% 		win       = gausswin(u.psthWin/u.psthBin); % gaussian window
+		win       = rectwin(u.psthWin/u.psthBin);  % rectangular window
+		win       = win / u.psthWin;               % normalize window
 
-		% Skip the first 100 ms after tone onset/offset
-		u.vsFreqs      = 1:1:20;
-		u.vsBins     = [u.viewBounds(1), 0;
-							gap*2, u.targetDuration-gap;
-							u.targetDuration+gap, u.viewBounds(2)];
+		% designate different intervals related to the target
+		u.gap = 50e-3;
+		u.onset = 0<=u.psthCenters & u.gap*2;
+		u.peri = u.gap*2<=u.psthCenters & ...
+			u.psthCenters<u.targetDuration-u.gap;
+		u.offset = u.targetDuration-u.gap<=u.psthCenters & ...
+			u.psthCenters<u.targetDuration+u.gap;
+		u.periFull = 0<=u.psthCenters & u.psthCenters<u.targetDuration;
+		u.intervalNames = {'Onset', 'Peri', 'Offset', 'PeriFull'};
+		u.intervals = {u.onset, u.peri, u.offset, u.periFull};
+
+		% vector strength parameters
+		u.vsFreqs    = 1:1:20;
+		u.vsBins     = [
+			u.viewBounds(1)     , 0
+			u.gap*2               , u.targetDuration-u.gap
+			u.targetDuration+u.gap, u.viewBounds(2)
+		];
 		u.vsBinNames = {'Pre','Peri','Post'};
 
 		u.vs10Window     = 300e-3;
 		u.vs10Centers    = u.psthCenters( ...
-			u.viewBounds(1) <= u.psthCenters & ...
 			u.psthCenters <= u.viewBounds(2)-u.vs10Window);
 
-		u.mtsParams.Fs = u.fs;      % sampling frequency
-		u.mtsParams.fpass = [1 50]; % band of frequencies to be kept
-		u.mtsParams.tapers = [2 3]; % taper parameters
-		u.mtsParams.pad = 2;        % pad factor for FFT
-		u.mtsParams.err = [2 0.05];
+		% multi-tapered spectrum parameters
+		u.mtsParams.Fs       = u.fs;      % sampling frequency
+		u.mtsParams.fpass    = [1 50];    % band of frequencies to be kept
+		u.mtsParams.tapers   = [2 3];     % taper parameters
+		u.mtsParams.pad      = 2;         % pad factor for FFT
+		u.mtsParams.err      = [2 0.05];
 		u.mtsParams.trialave = 1;
-		[~, u.mtsFreqs] = mtspectrumpt(rand(1,50), u.mtsParams);
+		[~, u.mtsFreqs]      = mtspectrumpt(rand(1,50), u.mtsParams);
 
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
@@ -69,14 +76,11 @@ function units = analyzeUnits(units)
 		u.psth             = c;
 		u.psthMean         = c;
 		u.psthSTD          = c;
-		u.dPrime           = c;
-		u.dPrimeCQMean     = c;
-		u.dPrimeCQSum      = c;
-		u.dPrimeMQMean     = c;
-		u.dPrimeOnset      = c;
-		u.dPrimePeri       = c; % including onset/offset
-		u.dPrimePeriGap    = c; % excluding onset/offset
-		u.dPrimeOffset     = c;
+		u.dPrime           = c; % as a function of time (psth centers)
+		u.dPrimeCQMean     = c; % cumulative quadratic mean versus time
+		u.dPrimeCQSum      = c; % cumulative quadratic sum versus time
+		u.dPrimeMQMean     = c; % moving quadratic mean versus time
+		u.dPrimeIntervals  = c; % quadratic mean for: onset/peri/offset...
 		u.lambda           = c;
 		u.mutualInfo       = c;
 		u.mfsl             = c; % minimum first spike latency
@@ -118,7 +122,7 @@ function units = analyzeUnits(units)
 
 				if trials == 0; continue; end
 
-				psth = zeros(trials, binCount);
+				psth = zeros(trials, psthBinCount);
 				for trialID = 1:trials
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
 					% this smoothing filter is non-causal and may cause the
@@ -133,14 +137,15 @@ function units = analyzeUnits(units)
 				u.psthMean{condID,scoreID} = psthMean;
 				u.psthSTD{condID,scoreID} = psthSTD;
 
-
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
 				if condID==1
-					u.dPrime{condID,scoreID} = zeros(1, binCount);
-					u.dPrimeCQMean{condID,scoreID} = zeros(1, binCount);
-					u.dPrimeCQSum{condID,scoreID} = zeros(1, binCount);
-					u.dPrimeMQMean{condID,scoreID} = zeros(1, binCount);
+					u.dPrime{condID,scoreID}          = zeros(1, psthBinCount);
+					u.dPrimeCQMean{condID,scoreID}    = zeros(1, psthBinCount);
+					u.dPrimeCQSum{condID,scoreID}     = zeros(1, psthBinCount);
+					u.dPrimeMQMean{condID,scoreID}    = zeros(1, psthBinCount);
+					u.dPrimeIntervals{condID,scoreID} = zeros(size(u.intervals));
+
 				elseif ~isempty(u.psthMean{1,1})
 					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
 						((psthSTD + u.psthSTD{1,1}) / 2);
@@ -166,15 +171,12 @@ function units = analyzeUnits(units)
 					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
 					u.dPrimeMQMean{condID,scoreID} = mqMean;
 
-					% quadratic mean for onset/peri/offset
-					u.dPrimeOnset{condID,scoreID}  = ...
-						sqrt(sum(dPrime(onset).^2) / sum(onset));
-					u.dPrimePeri{condID,scoreID} = ...
-						sqrt(sum(dPrime(peri).^2) / sum(peri));
-					u.dPrimePeriGap{condID,scoreID} = ...
-						sqrt(sum(dPrime(periGap).^2) / sum(periGap));
-					u.dPrimeOffset{condID,scoreID} = ...
-						sqrt(sum(dPrime(offset).^2) / sum(offset));
+					% quadratic mean for different intervals: pre/onset/peri ...
+					u.dPrimeIntervals{condID,scoreID} = zeros(size(u.intervals));
+					for intervalID = 1:length(u.intervals)
+						u.dPrimeIntervals{condID,scoreID}(intervalID) = ...
+							sqrt(mean(dPrime(u.intervals{intervalID}).^2));
+					end
 
 					% cumulative mean
 		% 			cmean = [];
@@ -275,10 +277,10 @@ function units = analyzeUnits(units)
 
 				% minimum first spike latency (MFSL) peri-stimulus
 				% assume no two peaks within 2*psthBin
-				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(peri)); ...
+				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(u.periFull)); ...
 % 					'minpeakdistance',5);
 				if ~isempty(locs)
-					psthCentersPeri = u.psthCenters(peri);
+					psthCentersPeri = u.psthCenters(u.periFull);
 					mfsl = psthCentersPeri(locs(1));
 				else
 					warning('[analyzeUnits] no MFSL found for unit %s, cond %d, score %d', u.label, condID, scoreID);
@@ -292,11 +294,11 @@ function units = analyzeUnits(units)
 
 				% maximum firing rate peri-stimulus
 				u.firingMax {condID,scoreID} = ...
-					max (u.psthMean{condID,scoreID}(peri));
+					max (u.psthMean{condID,scoreID}(u.periFull));
 				u.firingMean{condID,scoreID} = ...
-					mean(u.psthMean{condID,scoreID}(peri));
+					mean(u.psthMean{condID,scoreID}(u.periFull));
 				u.firingSTD {condID,scoreID} = ...
-					std (u.psthMean{condID,scoreID}(peri));
+					std (u.psthMean{condID,scoreID}(u.periFull));
 
 				% vector strength pre/peri/post-stimulus
 % 				spikeTimes = [u.spikeTimes{condID,scoreID}{:}];

@@ -164,6 +164,13 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.psthWin = u1.psthWin;
 		u.psthEdges = u1.psthEdges;
 		u.psthCenters = u1.psthCenters;
+		u.gap = u1.gap;
+		u.onset = u1.onset;
+		u.peri = u1.peri;
+		u.offset = u1.offset;
+		u.periFull = u1.periFull;
+		u.intervalNames = u1.intervalNames;
+		u.intervals = u1.intervals;
 		u.vsFreqs = u1.vsFreqs;
 		u.vsBins = u1.vsBins;
 		u.vsBinNames = u1.vsBinNames;
@@ -191,10 +198,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.dPrimeCQMeanMean = cc;
 		u.dPrimeCQMeanSEM = cc;
 		u.dPrimeCQSum = cc;
-		u.dPrimeOnset = cc;
-		u.dPrimePeri = cc;
-		u.dPrimePeriGap = cc;
-		u.dPrimeOffset = cc;
+		u.dPrimeIntervals = cc;
 		u.dPrimeBehavior = cell(s.condCount,1);
 		u.mfsl = cc;
 		u.mfslMean = cc;
@@ -258,16 +262,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					if u.dPrimeOnset{uCondID,1} > s.targetResponseThresh
-						targetResponse = targetResponse+1; end
-					if u.dPrimePeriGap{uCondID,1} > s.targetResponseThresh
-						targetResponse = targetResponse+1; end
-					if u.dPrimeOffset{uCondID,1} > s.targetResponseThresh
-						targetResponse = targetResponse+1; end
-% 					if any(abs(u.dPrime{uCondID,1}(0<=u.psthCenters & ...
-% 							u.psthCenters<u.targetDuration+50e-3)) > 1)
-% 						targetResponse = targetResponse+1;
-% 					end
+					for intervalID = 1:length(u.intervals)-1
+						if u.dPrimeIntervals{uCondID,1}(intervalID) > ...
+								s.targetResponseThresh
+							targetResponse = targetResponse+1;
+						end
+					end
 				end
 
 				vsFreq = u.vsFreqs==10;
@@ -494,26 +494,16 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
 							end+1,:) = dPrime;
 
-						% d' onset/peri/offset
-						dPrime = u.dPrimeOnset{uCondID,scoreID};
+						% quadratic mean d' for intervals: onset/peri/offset...
+						dPrime = u.dPrimeIntervals{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan; end
-						s.units{mode}.dPrimeOnset{sCondID,scoreID}( ...
-							end+1) = dPrime;
-
-						dPrime = u.dPrimePeri{uCondID,scoreID};
-						if isempty(dPrime); dPrime = nan; end
-						s.units{mode}.dPrimePeri{sCondID,scoreID}( ...
-							end+1) = dPrime;
-
-						dPrime = u.dPrimePeriGap{uCondID,scoreID};
-						if isempty(dPrime); dPrime = nan; end
-						s.units{mode}.dPrimePeriGap{sCondID,scoreID}( ...
-							end+1) = dPrime;
-
-						dPrime = u.dPrimeOffset{uCondID,scoreID};
-						if isempty(dPrime); dPrime = nan; end
-						s.units{mode}.dPrimeOffset{sCondID,scoreID}( ...
-							end+1) = dPrime;
+						c = size(s.units{mode}.dPrimeIntervals{sCondID,scoreID}, 2);
+						if c && c<length(dPrime) % fix for nan entries
+							s.units{mode}.dPrimeIntervals{sCondID,scoreID} ...
+								(:,c+1:length(dPrime)) = nan;
+						end
+						s.units{mode}.dPrimeIntervals{sCondID,scoreID} ...
+							(end+1,:) = dPrime;
 
 						% vector strength
 						for binID = 1:size(u.vsBins,1)

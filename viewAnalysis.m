@@ -514,7 +514,7 @@ function refreshPlot(fig, d)
 			end
 
 			% sort according to active mode, peri, +10 dB SNR
-			dPrime = vertcat(a.units{1}.dPrimePeriGap{end,scoreID})';
+			dPrime = a.units{1}.dPrimeIntervals{end,scoreID}(:,2);
 			if ~strcmpi(subset, 'all')
 				msk = a.units{1}.(subset){1,scoreID}==true;
 				dPrime = dPrime(msk);
@@ -522,34 +522,33 @@ function refreshPlot(fig, d)
 			[~, i] = sort(dPrime);
 
 			modeCount = 2;
+			intervalCount = length(a.units{1}.intervals)-1;    % no perifull
 			for modeID = 1:modeCount
 				u = a.units{modeID};
+				
+				% dimensions: unit x interval x snr
+				dPrime = cat(3, u.dPrimeIntervals{2:end,scoreID});
+				if ~strcmpi(subset, 'all')
+					msk = u.(subset){1,scoreID}==true;
+					dPrime = dPrime(msk, :, :);
+				end
+				% sort
+% 				[~, i] = sort(dPrime(:, 3));
+				dPrime = dPrime(i, :, :);
+				
+				if u.maskerLevel
+					snrs = u.targetLevels - u.maskerLevel;
+				else
+					snrs = u.targetLevels;
+				end
+				units = 1:size(dPrime,1);
 
-				binName = {'Onset', 'PeriGap', 'Offset'};
-				binCount = length(binName);
-				for binID = 1:binCount
-					dPrime = vertcat( ...
-						u.(['dPrime' binName{binID}]){2:end,scoreID})';
-					if ~strcmpi(subset, 'all')
-						msk = u.(subset){1,scoreID}==true;
-						dPrime = dPrime(msk, :);
-					end
-
-% 					[~, i] = sort(dPrime(:, 3));
-					dPrime = dPrime(i, :);
-
-					if u.maskerLevel
-						snrs = u.targetLevels - u.maskerLevel;
-					else
-						snrs = u.targetLevels;
-					end
-					units = 1:size(dPrime,1);
-
-					subplot(modeCount, binCount, ...
-						(modeCount-modeID)*3 + binID);
+				for intervalID = 1:intervalCount
+					subplot(modeCount, intervalCount, ...
+						(modeCount-modeID)*3 + intervalID);
 
 					[x, y] = meshgrid(snrs, units);
-					waterfall(x, y, dPrime);
+					waterfall(x, y, squeeze(dPrime(:,intervalID,:)));
 
 					xticks(snrs);
 					ylim([units(1) units(end)]);
@@ -562,7 +561,7 @@ function refreshPlot(fig, d)
 					ylabel('Unit number');
 					zlabel('d''');
 
-					title([u.label ', ' binName{binID} ' d''']);
+					title([u.label ', ' u.intervalNames{intervalID} ' d''']);
 				end
 			end
 
