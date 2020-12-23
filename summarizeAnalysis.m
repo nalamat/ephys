@@ -178,7 +178,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.mtsFreqs = u1.mtsFreqs;
 		u.label = recordingModeLabels{modeID};
 
-		cc = cell(s.condCount, 5); % 5: scores
+		cc = cell(s.condCount, 5); % dimensions: conditions x scores
 
 		u.animalNames = cc;
 		u.sessionIDs = cc;
@@ -194,6 +194,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.psth = cc;
 % 		u.psthMean = cc;
 % 		u.psthSEM = cc;
+		u.ter = cc;
+		u.tep = cc;
 		u.dPrimeCQMean = cc;
 % 		u.dPrimeCQMeanMean = cc;
 % 		u.dPrimeCQMeanSEM = cc;
@@ -405,12 +407,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sessions{sessionID}{1}.animalName, ...
 					sessions{sessionID}{1}.timeStr, category);
 			end
-
+			
+			%% map unit analysis to summary
 			for mode = 1:length(sessions{sessionID})
 				a = sessions{sessionID}{mode};
 				a = calculatePerformance(a);
 	% 			if isempty(a); continue; end
-				u = a.units{unitID};
+				u = a.units{unitID};     % unpack original analysis unit
+				su = s.units{mode};      % unpack summary unit
 				for uCondID = 1:u.condCount
 					% map condition ID from unit to summary
 					sCondID = mapCondID(uCondID, u, s);
@@ -420,46 +424,52 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					if sCondID==0; continue; end
 
 					for scoreID = 1:5
-						% check if there have been any trials for the current
-						% condition and score pair
-						psth = u.psthMean{uCondID,scoreID};
-						if isempty(psth); psth = nan; end
-
 						% keep a list of summarized animal names & unit IDs
 						% (different unit numbering scheme)
-						s.units{mode}.animalNames{sCondID,scoreID}{end+1} ...
-							= a.animalName;
-						s.units{mode}.sessionIDs{sCondID,scoreID}(end+1) ...
-							= sessionID;
-						s.units{mode}.unitIDs{sCondID,scoreID}(end+1) ...
-							= s.targetRespondingUnits;
-
-						s.units{mode}.unitTypes{sCondID,scoreID}{end+1} ...
-							= u.type;
+						su.animalNames{sCondID,scoreID}{end+1} = a.animalName;
+						su.sessionIDs{sCondID,scoreID}(end+1) = sessionID;
+						su.unitIDs{sCondID,scoreID}(end+1) = s.targetRespondingUnits;
+						su.unitTypes{sCondID,scoreID}{end+1} = u.type;
 
 						% does unit respond to masker?
-						s.units{mode}.tonic{ ...
-							sCondID,scoreID}(end+1) = ~phasic;
-						s.units{mode}.phasic{ ...
-							sCondID,scoreID}(end+1) = phasic;
-						s.units{mode}.category{ ...
-							sCondID,scoreID}{end+1} = category;
-						s.units{mode}.phasicSuppressing{ ...
-							sCondID,scoreID}(end+1) = phasicSuppressing;
-						s.units{mode}.phasicEnhancing{ ...
-							sCondID,scoreID}(end+1) = phasicEnhancing;
-						s.units{mode}.phasicNoChange{ ...
-							sCondID,scoreID}(end+1) = phasicNoChange;
-						s.units{mode}.subCategory{ ...
-							sCondID,scoreID}{end+1} = subCategory;
+						su.tonic{sCondID,scoreID}(end+1) = ~phasic;
+						su.phasic{sCondID,scoreID}(end+1) = phasic;
+						su.category{sCondID,scoreID}{end+1} = category;
+						su.phasicSuppressing{sCondID,scoreID}(end+1) = ...
+							phasicSuppressing;
+						su.phasicEnhancing{sCondID,scoreID}(end+1) = phasicEnhancing;
+						su.phasicNoChange{sCondID,scoreID}(end+1) = phasicNoChange;
+						su.subCategory{sCondID,scoreID}{end+1} = subCategory;
 
 						% psth
-						c = size(s.units{mode}.psth{sCondID,scoreID}, 2);
+						psth = u.psthMean{uCondID,scoreID};
+						if isempty(psth); psth = nan; end
+						c = size(su.psth{sCondID,scoreID}, 2);
 						if c && c<size(psth,2) % fix for nan entries
-							s.units{mode}.psth{sCondID, ...
-								scoreID}(:,c+1:size(psth, 2)) = nan;
+							su.psth{sCondID,scoreID}(:,c+1:size(psth, 2)) = nan;
 						end
-						s.units{mode}.psth{sCondID,scoreID}(end+1,:) = psth;
+						su.psth{sCondID,scoreID}(end+1,:) = psth;
+
+						% target-evoked response and peak activation relative to nogo
+						if uCondID ~= 1
+							ter = nan(size(u.intervals));
+							tep = nan(size(u.intervals));
+							for intervalID = 1:length(u.intervals)
+								interval = u.intervals{intervalID};
+								nogo = u.psthMean{1,1}(interval);
+								go = u.psthMean{uCondID,scoreID};
+								if isempty(go); continue; end
+								go = go(interval);
+% 								ter(intervalID) = trapz(u.psthCenters(interval), go-nogo);
+% 								ter(intervalID) = ter(intervalID) / mean(nogo); % normalize
+								ter(intervalID) = mean(go-nogo) / mean(nogo);
+								tep(intervalID) = (max(go) - max(nogo)) / max(nogo);
+							end
+							ter(isinf(ter)) = nan;
+							tep(isinf(tep)) = nan;
+							su.ter{sCondID,scoreID}(end+1,:) = ter;
+							su.tep{sCondID,scoreID}(end+1,:) = tep;
+						end
 
 						% d'
 						dPrime = u.dPrimeCQMean{uCondID,scoreID};
@@ -469,14 +479,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							pre = find(u.psthCenters < 0);
 							dPrime = dPrime - dPrime(pre(end));
 						end
-						c = size(s.units{mode}.dPrimeCQMean{sCondID, ...
-							scoreID}, 2);
+						c = size(su.dPrimeCQMean{sCondID,scoreID}, 2);
 						if c && c<size(dPrime,2) % fix for nan entries
-							s.units{mode}.dPrimeCQMean{sCondID, ...
-								scoreID}(:,c+1:size(dPrime, 2)) = nan;
+							su.dPrimeCQMean{sCondID,scoreID} ...
+								(:,c+1:size(dPrime, 2)) = nan;
 						end
-						s.units{mode}.dPrimeCQMean{sCondID,scoreID}( ...
-							end+1,:) = dPrime;
+						su.dPrimeCQMean{sCondID,scoreID}(end+1,:) = dPrime;
 
 						dPrime = u.dPrimeCQSum{uCondID,scoreID};
 						if isempty(dPrime); dPrime = nan;
@@ -485,25 +493,18 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							pre = find(u.psthCenters < 0);
 							dPrime = dPrime - dPrime(pre(end));
 						end
-						c = size(s.units{mode}.dPrimeCQSum{sCondID, ...
-							scoreID}, 2);
+						c = size(su.dPrimeCQSum{sCondID,scoreID}, 2);
 						if c && c<size(dPrime,2) % fix for nan entries
-							s.units{mode}.dPrimeCQSum{sCondID, ...
-								scoreID}(:,c+1:size(dPrime, 2)) = nan;
+							su.dPrimeCQSum{sCondID,scoreID}(:,c+1:size(dPrime, 2)) = nan;
 						end
-						s.units{mode}.dPrimeCQSum{sCondID,scoreID}( ...
-							end+1,:) = dPrime;
+						su.dPrimeCQSum{sCondID,scoreID}(end+1,:) = dPrime;
 
 						% quadratic mean d' for intervals: onset/peri/offset...
 						dPrime = u.dPrimeIntervals{uCondID,scoreID};
-						if isempty(dPrime); dPrime = nan; end
-						c = size(s.units{mode}.dPrimeIntervals{sCondID,scoreID}, 2);
-						if c && c<length(dPrime) % fix for nan entries
-							s.units{mode}.dPrimeIntervals{sCondID,scoreID} ...
-								(:,c+1:length(dPrime)) = nan;
+						if isempty(dPrime)
+							dPrime = nan(size(u.dPrimeIntervals{1,1}));
 						end
-						s.units{mode}.dPrimeIntervals{sCondID,scoreID} ...
-							(end+1,:) = dPrime;
+						su.dPrimeIntervals{sCondID,scoreID}(end+1,:) = dPrime;
 
 						% vector strength
 						for binID = 1:size(u.vsBins,1)
@@ -513,9 +514,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 								else
 									vec = vec{binID,vsFreqID};
 								end
-								s.units{mode}.vs{ ...
-									sCondID,scoreID}{binID,vsFreqID}( ...
-									end+1) = vec;
+								su.vs{sCondID,scoreID}{binID,vsFreqID}(end+1) = vec;
 							end
 						end
 
@@ -524,61 +523,55 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						pval = u.vs10PVal{uCondID,scoreID};
 						if isempty(vs); vs = nan; end
 						if isempty(pval); pval = nan; end
-						c = size(s.units{mode}.vs10{sCondID,scoreID}, 2);
+						c = size(su.vs10{sCondID,scoreID}, 2);
 						if c && c<size(vs,2) % fix for nan entries
-							s.units{mode}.vs10{sCondID,scoreID} ...
-								(:,c+1:size(vs, 2)) = nan;
+							su.vs10{sCondID,scoreID}(:,c+1:size(vs, 2)) = nan;
 						end
 						if c && c<size(pval,2) % fix for nan entries
-							s.units{mode}.vs10PVal{sCondID,scoreID} ...
-								(:,c+1:size(pval, 2)) = nan;
+							su.vs10PVal{sCondID,scoreID}(:,c+1:size(pval, 2)) = nan;
 						end
-						s.units{mode}.vs10{sCondID,scoreID}(end+1,:) = vs;
-						s.units{mode}.vs10PVal{sCondID,scoreID}(end+1,:)=pval;
+						su.vs10{sCondID,scoreID}(end+1,:) = vs;
+						su.vs10PVal{sCondID,scoreID}(end+1,:) = pval;
 
 						% multi-taper spectrum peri-stimulus
 						mts = u.mts{uCondID,scoreID};
 						if isempty(mts); mts = nan; end
 						if c && c<size(mts,2) % fix for nan entries
-							s.units{mode}.mts{sCondID,scoreID} ...
-								(:,c+1:size(mts, 2)) = nan;
+							su.mts{sCondID,scoreID}(:,c+1:size(mts, 2)) = nan;
 						end
-						s.units{mode}.mts{sCondID,scoreID}(end+1,:) = mts;
+						su.mts{sCondID,scoreID}(end+1,:) = mts;
 
 						% mfsl (minimum first spike latency)
 						mfsl = u.mfsl{uCondID,scoreID};
 						if isempty(mfsl); mfsl = nan; end
-						s.units{mode}.mfsl{sCondID,scoreID}(end+1) = mfsl;
+						su.mfsl{sCondID,scoreID}(end+1,:) = mfsl;
 
 						% mfsl phase
 						phase = u.mfslPhase{uCondID,scoreID};
 						if isempty(phase); phase = nan; end
-						s.units{mode}.mfslPhase{sCondID,scoreID}(end+1) ...
-							= phase;
+						su.mfslPhase{sCondID,scoreID}(end+1,:) = phase;
 
 						% max firing rate
 						firingMax = u.firingMax{uCondID,scoreID};
 						if isempty(firingMax); firingMax = nan; end
-						s.units{mode}.firingMax{sCondID,scoreID}(end+1) ...
-							= firingMax;
+						su.firingMax{sCondID,scoreID}(end+1,:) = firingMax;
 
 						% max firing rate
 						firingMean = u.firingMean{uCondID,scoreID};
 						if isempty(firingMean); firingMean = nan; end
-						s.units{mode}.firingMean{sCondID,scoreID}(end+1)...
-							= firingMean;
+						su.firingMean{sCondID,scoreID}(end+1,:) = firingMean;
 					end
 
 					if isempty(u.psthMean{uCondID,1}); continue; end
 
 					if mode==1
-						s.unitCountPerCond{sCondID} = ...
-							s.unitCountPerCond{sCondID} + 1;
+						s.unitCountPerCond{sCondID} = s.unitCountPerCond{sCondID} + 1;
 					end
 
-					s.units{mode}.dPrimeBehavior{sCondID}(end+1) = ...
-						a.dPrimeBehavior{uCondID};
+					su.dPrimeBehavior{sCondID}(end+1) = a.dPrimeBehavior{uCondID};
 				end
+				
+				s.units{mode} = su;    % repack summary unit
 			end
 		end
 	end
