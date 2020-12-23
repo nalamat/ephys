@@ -36,7 +36,7 @@ function units = analyzeUnits(units)
 
 		% designate different intervals related to the target
 		u.gap = 50e-3;
-		u.onset = 0<=u.psthCenters & u.gap*2;
+		u.onset = 0<=u.psthCenters & u.psthCenters<u.gap*2;
 		u.peri = u.gap*2<=u.psthCenters & ...
 			u.psthCenters<u.targetDuration-u.gap;
 		u.offset = u.targetDuration-u.gap<=u.psthCenters & ...
