@@ -101,8 +101,7 @@ function exportSummary(summaryFile)
 					vsFreq = u.vsFreqs==10;
 					for binID = 1:size(u.vsBins,1)
 						bin = u.vsBinNames{binID};
-						vs = u.vs{...
-							condID,scoreID}{binID,vsFreq}(i);
+						vs = u.vs{condID,scoreID}(i, binID, vsFreq);
 						tables.VS10(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score bin vs};

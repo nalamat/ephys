@@ -1,7 +1,7 @@
 function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 % Distribute extracted spike times and LFP RMS (for multi-units) into
 % individual units and rearrange trials into a set of scores.
-% 
+%
 % coding of scores:
 %   scoreID   trialType    score
 %     1          GO       HIT+MISS
@@ -9,11 +9,11 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 %     3          GO         MISS
 %     4          GO         HIT
 %     5          GO         MISS
-%     1         NOGO       CA+FA
-%     2         NOGO        CA
+%     1         NOGO       CR+FA
+%     2         NOGO        CR
 %     3         NOGO        FA
 %     4         NOGO        FA
-%     5         NOGO        CA
+%     5         NOGO        CR
 %
 % In args:
 %     spikes (cell array of 2D cell arrays of array of doubles):
@@ -41,20 +41,20 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 		if single
 			spikes = {spikes};
 		end
-		
+
 	elseif any(strcmpi(spikeConfig, {'sorted', 'sortedjoint'}))
 		% read UltraMegaSort's output and separate spikes into the analysis
 		% struct they belong to (different recordings of same session)
 		% only in process or good units
 		if ~iscell(spikes); spikes = {spikes}; end
-		
+
 		spikes2 = cell(length(analysis));
 		unitNumbersAll = [];
 		unitCountAll = 0;
 		unitChannelIDs = [];
 		unitChannels = [];
 		unitTypes = {};
-		
+
 		for channelID = 1:length(spikes)
 			sp = spikes{channelID};
 			labelCats = sp.params.display.label_categories;
@@ -85,7 +85,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				end
 				trialsSoFar = trialsSoFar + a.trialCount;
 			end
-			
+
 			unitNumbersAll = [unitNumbersAll unitNumbers'];
 			unitCountAll = unitCountAll + unitCount;
 			channel = analysis{1}.channels(channelID);
@@ -98,23 +98,23 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 	else
 		error('[spikesToUnits] invalid unit type');
 	end
-	
-	
+
+
 	for analysisID = 1:length(analysis)
 		a = analysis{analysisID}; % unpack
 		sp = spikes{analysisID};
-		
+
 		if strcmpi(spikeConfig, 'unsorted')
 			a.unitCount = length(a.channels);
 		elseif any(strcmpi(spikeConfig, {'sorted', 'sortedjoint'}))
 			a.unitCount = unitCountAll;
 		end
-		
+
 		if ~isfield(a, 'spikesBand'); a.spikesBand = []; end
-		
+
 		a.units = cell(1, a.unitCount);
 		a.spikeConfig = spikeConfig;
-		
+
 		for unitID = 1:a.unitCount % choose unit number
 			u                   = struct();    % unit struct
 			u.animalName        = a.animalName;
@@ -125,6 +125,9 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 			u.fs                = a.fs;
 			u.viewBounds        = a.viewBounds;
 % 			u.trialCount        = a.trialCount;
+			u.lfpBands          = a.lfpBands;
+			u.lfpBandNames      = a.lfpBandNames;
+			u.lfpBandCount      = a.lfpBandCount;
 			u.spikesBand        = a.spikesBand;
 			u.maskerFile        = a.maskerFile;
 			u.maskerLevel       = a.maskerLevel;
@@ -140,9 +143,6 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				u.channel       = a.channels(unitID);
 				u.number        = 0; % for sorted and sortedjoint only
 				u.label         = sprintf('Ch %d', a.channels(unitID));
-				u.lfpBands      = a.lfpBands;
-				u.lfpBandNames  = a.lfpBandNames;
-				u.lfpBandCount  = a.lfpBandCount;
 				u.spikeDuration = a.spikeDuration;
 				u.spikeThresholdFactor    = a.spikeThresholdFactor;
 				u.spikeThreshold          = a.spikeThreshold(unitID);
@@ -183,7 +183,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 
 				% relative to tone onset
 				trialSpikeTimes = sp{trialID, unitID} + u.viewBounds(1);
-				
+
 				% look 'coding of scores' at the top
 				score = a.trialLog(trialID).score;
 				u.spikeTimes{condID, 1}{end+1} = trialSpikeTimes;
@@ -199,7 +199,7 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				if any(strcmpi(score, {'MISS', 'CR'}))
 					u.spikeTimes{condID, 5}{end+1} = trialSpikeTimes;
 				end
-				
+
 				if ~isfield(a, 'lfp'); continue; end
 				if strcmpi(spikeConfig, 'sorted')
 					% associate LFP of the entire channel to each unit
@@ -207,10 +207,10 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 				else
 					lfp = squeeze(a.lfp(trialID, unitID, :, :));
 				end
-				
+
 				if strcmpi(spikeConfig, 'unsorted')
 					u.lfp{condID, 1}(:, :, end+1) = lfp;
-						
+
 					if any(strcmpi(score, {'HIT', 'CR'}))
 						u.lfp{condID, 2}(:, :, end+1) = lfp;
 					end
@@ -231,12 +231,12 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 			a.units{unitID} = u;
 
 		end % unitID
-		
+
 		analysis{analysisID} = a; % pack
-		
+
 	end % analysisID
-	
-	
+
+
 	if single
 		analysis = analysis{1};
 	end

@@ -59,9 +59,11 @@ function viewAnalysis(analysis)
 			'dprime behavior'
 			'vs 10'
 			'vs 10 running'
+			'vs pre'
 			'vs peri'
+			'vs post'
 			'mts'
-			'firing max'
+% 			'firing max'
 % 			'firing mean'
 % 			'deltaAP'
 			'deltaAP/behav'
@@ -309,8 +311,8 @@ function refreshPlot(fig, d)
 					msk = u.(subset){1,scoreID}==true;
 					nogo = nogo(msk, :);
 				end
-				nogoMean = mean(nogo, 1);
-				nogoErr = std(nogo, 0, 1) / sqrt(size(nogo, 1));
+				nogoMean = nanmean(nogo, 1);
+				nogoErr = nansem(nogo, 1);
 
 				for snrID = 1:3
 					% calculate average psth of go
@@ -319,8 +321,8 @@ function refreshPlot(fig, d)
 						msk = u.(subset){1,scoreID}==true;
 						go = go(msk, :);
 					end
-					goMean = mean(go, 1);
-					goErr = std(go, 0, 1) / sqrt(size(go, 1));
+					goMean = nanmean(go, 1);
+					goErr = nansem(go, 1);
 
 					% plot go and nogo
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
@@ -403,8 +405,8 @@ function refreshPlot(fig, d)
 					msk = u.(subset){1,scoreID}==true;
 					nogo = nogo(msk, :);
 				end
-				nogoMean = mean(nogo, 1);
-				nogoErr = std(nogo, 0, 1) / sqrt(size(nogo, 1));
+				nogoMean = nanmean(nogo, 1);
+				nogoErr = nansem(nogo, 1);
 
 				for snrID = 1:3
 					% calculate average psth of go
@@ -413,8 +415,8 @@ function refreshPlot(fig, d)
 						msk = u.(subset){1,scoreID}==true;
 						go = go(msk, :);
 					end
-					goMean = mean(go, 1);
-					goErr = std(go, 0, 1) / sqrt(size(go, 1));
+					goMean = nanmean(go, 1);
+					goErr = nansem(go, 1);
 
 
 					% running cross correlation
@@ -524,9 +526,9 @@ function refreshPlot(fig, d)
 				u = a.units{modeID};
 
 				if strcmpi(plotName, 'ter alt')
-					vals = u.ter * 100;
+					vals = u.ter;
 				elseif strcmpi(plotName, 'tep alt')
-					vals = u.tep * 100;
+					vals = u.tep;
 				elseif strcmpi(plotName, 'dprime alt')
 					vals = u.dPrimeIntervals;
 				end
@@ -543,6 +545,9 @@ function refreshPlot(fig, d)
 				sup = u.phasicSuppressing{1,1}==true;
 				enh = u.phasicEnhancing{1,1}==true;
 				vals = cat(3, vals{2:end,scoreID}); % no nogo
+				if any(strncmpi(plotName, {'ter', 'tep'}, 3))
+					vals = vals * 100; % as percentage
+				end
 				avgSup = squeeze(nanmean(vals(sup, :, :), 1));
 				errSup = squeeze(nansem(vals(sup, :, :), 1));
 				avgEnh = squeeze(nanmean(vals(enh, :, :), 1));
@@ -657,10 +662,10 @@ function refreshPlot(fig, d)
 
 			% sort according to active mode, peri, +10 dB SNR
 			freq = a.units{1}.vsFreqs == 10;
-			vs = vertcat(a.units{1}.vs{end,scoreID}{2,freq});
+			vs = squeeze(a.units{1}.vs{end,scoreID}(:,2,freq));
 			if ~strcmpi(subset, 'all')
 				msk = a.units{1}.(subset){1,scoreID}==true;
-				vs = vs(msk);
+				vs = vs(msk, :);
 			end
 			[~, i] = sort(vs);
 
@@ -678,8 +683,7 @@ function refreshPlot(fig, d)
 						condStr = num2str(level, '%d dB SPL');
 					end
 
-					vs = vertcat( ...
-						u.vs{snrID+1,scoreID}{:,freq})';
+					vs = squeeze(u.vs{snrID+1,scoreID}(:,:,freq));
 					if ~strcmpi(subset, 'all')
 						msk = u.(subset){1,scoreID}==true;
 						vs = vs(msk, :);
@@ -746,10 +750,10 @@ function refreshPlot(fig, d)
 				psthA = psthA(msk, :);
 				psthP = psthP(msk, :);
 			end
-			psthAErr = std(psthA, 0, 1) / sqrt(size(psthA,1));
-			psthPErr = std(psthP, 0, 1) / sqrt(size(psthP,1));
-			psthA = mean(psthA, 1);
-			psthP = mean(psthP, 1);
+			psthAErr = nansem(psthA, 1);
+			psthPErr = nansem(psthP, 1);
+			psthA = nanmean(psthA, 1);
+			psthP = nanmean(psthP, 1);
 
 % 			deltaAP = psthA - psthP;
 
@@ -799,8 +803,8 @@ function refreshPlot(fig, d)
 				end
 				psthNogoErr = std(psthNogo, 0, 1) / sqrt(size(psthNogo,1));
 				psthGoErr = std(psthGo, 0, 1) / sqrt(size(psthGo,1));
-				psthNogo = mean(psthNogo, 1);
-				psthGo = mean(psthGo, 1);
+				psthNogo = nanmean(psthNogo, 1);
+				psthGo = nanmean(psthGo, 1);
 				deltaMA = psthNogo - psthGo;
 
 				subplots{end+1} = subplot(3, uA.condCount, condID);
@@ -847,8 +851,8 @@ function refreshPlot(fig, d)
 				end
 				psthNogoErr = std(psthNogo, 0, 1) / sqrt(size(psthNogo,1));
 				psthGoErr = std(psthGo, 0, 1) / sqrt(size(psthGo,1));
-				psthNogo = mean(psthNogo, 1);
-				psthGo = mean(psthGo, 1);
+				psthNogo = nanmean(psthNogo, 1);
+				psthGo = nanmean(psthGo, 1);
 				deltaMP = psthNogo - psthGo;
 
 				subplots{end+1} = ...
@@ -1201,8 +1205,8 @@ function refreshPlot(fig, d)
 							msk = u.(subset){condID,scoreID}==true;
 							psth = psth(msk, :);
 						end
-						avg = mean(psth, 1);
-						err = std(psth, 0, 1) / sqrt(size(psth, 1));
+						avg = nanmean(psth, 1);
+						err = nansem(psth, 1);
 					else
 						avg = u.psthMean{condID,scoreID};
 						err = u.psthSTD{condID,scoreID};
@@ -1378,8 +1382,8 @@ function refreshPlot(fig, d)
 							msk = u.(subset){condID,scoreID}==true;
 							dp = dp(msk, :);
 						end
-						avg = mean(dp, 1);
-						err = std(dp, 0, 1) / sqrt(size(dp, 1));
+						avg = nanmean(dp, 1);
+						err = nansem(dp, 1);
 					else
 						avg = dp;
 					end
@@ -1460,8 +1464,8 @@ function refreshPlot(fig, d)
 								msk = u.(subset){condID,1}==true;
 								dPrime = dPrime(msk);
 							end
-							avg(i) = mean(dPrime);
-							err(i) = std(dPrime);% / sqrt(length(dPrime));
+							avg(i) = nanmean(dPrime);
+							err(i) = nansem(dPrime);% / sqrt(length(dPrime));
 						end
 
 % 						patches(freqID) = patch([snr fliplr(snr)], ...
@@ -1578,14 +1582,13 @@ function refreshPlot(fig, d)
 				for condID = 1:u.condCount
 % 					if condID >= u.condCount-2; continue; end
 					if strcmpi(a.type, 'summary')
-						vs = vertcat(u.vs{ ...
-							condID,scoreID}{:,vsFreq});
+						vs = squeeze(u.vs{condID,scoreID}(:,:,vsFreq));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
-							vs = vs(:,msk);
+							vs = vs(msk,:);
 						end
-						avg = mean(vs, 2)';
-						err = sem(vs, 2)';
+						avg = nanmean(vs, 1);
+						err = nansem(vs, 1);
 
 						if isempty(avg); continue; end
 
@@ -1605,10 +1608,8 @@ function refreshPlot(fig, d)
 							strength = nan(size(bins));
 							pval = nan(size(bins));
 						else
-							strength = [u.vs{ ...
-								condID,scoreID}{:,vsFreq}];
-							pval = [u.vsPVal{ ...
-								condID,scoreID}{:,vsFreq}];
+							strength = u.vs{condID,scoreID}(:,vsFreq);
+							pval = u.vsPVal{condID,scoreID}(:,vsFreq);
 						end
 % 						zscore = [u.vsZScore{ ...
 % 							condID,scoreID}{:,vsFreq}];
@@ -1659,13 +1660,13 @@ function refreshPlot(fig, d)
 				centers = u.vs10Centers;
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						vs = vertcat(u.vs10{condID,scoreID});
+						vs = u.vs10{condID,scoreID};
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(msk,:);
 						end
-						avg = mean(vs, 1);
-						err = sem(vs, 1);
+						avg = nanmean(vs, 1);
+						err = nansem(vs, 1);
 
 						if isempty(avg); continue; end
 
@@ -1753,9 +1754,8 @@ function refreshPlot(fig, d)
 
 
 			% Vector strength
-			elseif strcmpi( plotName(1:min(length('vs'), ...
-					length(plotName))), 'vs')
-				if strcmp(u.vsBinNames{2}, 'Intra')
+			elseif strncmpi(plotName, 'vs', 2)
+				if strcmp(u.vsBinNames{2}, 'Intra') % compatibility
 					u.vsBinNames{2} = 'Peri';
 				end
 				binID = find(strcmpi(u.vsBinNames, ...
@@ -1769,19 +1769,14 @@ function refreshPlot(fig, d)
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
 						% hack: showing average of all bins
-						vs_pre = vertcat(u.vs{ ...
-							condID,scoreID}{1,:});
-						vs_peri = vertcat(u.vs{ ...
-							condID,scoreID}{2,:});
-						vs_post = vertcat(u.vs{ ...
-							condID,scoreID}{3,:});
-						vs = (vs_pre + vs_peri + vs_post) / 3;
+% 						vs = squeeze(mean(u.vs{condID,scoreID}, 2));
+						vs = squeeze(u.vs{condID,scoreID}(:,binID,:));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
-							vs = vs(:,msk);
+							vs = vs(msk,:);
 						end
-						avg = mean(vs, 2)';
-						err = sem(vs, 2)';
+						avg = nanmean(vs, 1);
+						err = nansem(vs, 1);
 
 						if isempty(avg); continue; end
 
@@ -1795,8 +1790,8 @@ function refreshPlot(fig, d)
 % 						alpha(patches(condID), .2);
 
 					else
-						strength = [u.vs{condID,scoreID}{binID,:}];
-						pval     = [u.vsPVal{condID,scoreID}{binID,:}];
+						strength = u.vs{condID,scoreID}(binID,:);
+						pval     = u.vsPVal{condID,scoreID}(binID,:);
 	% 					zscore   = [u.vsZScore{condID,scoreID}{binID,:}];
 						sig      = pval < .001;
 	% 					thr      = abs(zscore) > 1;
@@ -1963,8 +1958,8 @@ function refreshPlot(fig, d)
 								msk = u.(subset){condID,scoreID}==true;
 								firing = firing(msk);
 							end
-							avg(i) = mean(firing);
-							err(i) = sem(firing);
+							avg(i) = nanmean(firing);
+							err(i) = nansem(firing);
 						end
 
 						patches(freqID) = patch([x fliplr(x)], ...
@@ -2027,8 +2022,8 @@ function refreshPlot(fig, d)
 								mfsl = mfsl(msk);
 							end
 							mfsl(~isfinite(mfsl)) = [];
-							avg(i) = mean(mfsl);
-							err(i) = sem(mfsl);
+							avg(i) = nanmean(mfsl);
+							err(i) = nansem(mfsl);
 						end
 						plots(freqID) = errorbar(x, avg, err, ...
 							'.-', 'color', col, 'linewidth', 2, ...
@@ -2089,8 +2084,8 @@ function refreshPlot(fig, d)
 								phase = phase(msk);
 							end
 							phase(~isfinite(phase)) = [];
-							avg(i) = mean(phase);
-							err(i) = sem(phase);
+							avg(i) = nanmean(phase);
+							err(i) = nansem(phase);
 						end
 						plots(freqID) = errorbar(x, avg, err, ...
 							'.-', 'color', col, 'linewidth', 2, ...
