@@ -297,12 +297,17 @@ function units = analyzeUnits(units)
 				u.firingSTD {condID,scoreID} = ...
 					std (u.psthMean{condID,scoreID}(u.periFull));
 
-				% vector strength pre/peri/post-stimulus
-% 				spikeTimes = [u.spikeTimes{condID,scoreID}{:}];
-				spikeTimes = u.spikeTimes{condID,scoreID};
-				spikeTimesAll = [spikeTimes{:}];
+				% vector strength and multi-taper spectrum pre/peri/post-stimulus
+% 				spikeTimes = u.spikeTimes{condID,scoreID};
+				spikeTimesAll = [u.spikeTimes{condID,scoreID}{:}];
+				
 				for binID = 1:size(u.vsBins,1)
 					bin = u.vsBins(binID,:);
+
+					spikeTimesBin = spikeTimesAll( ...
+						bin(1)<=spikeTimesAll & spikeTimesAll<bin(2));
+					
+					% vector strength for each base frequency
 					for freqID = 1:length(u.vsFreqs)
 
 						% calculate VS trial by trial
@@ -326,10 +331,6 @@ function units = analyzeUnits(units)
 % 							end
 % 						end
 % 						vs = mean(vs);
-
-						spikeTimesBin = spikeTimesAll( ...
-							bin(1)<=spikeTimesAll & ...
-							spikeTimesAll<bin(2));
 
 						% calculate VS using spikes from all trials
 						if ~isempty(spikeTimesBin)
@@ -356,6 +357,16 @@ function units = analyzeUnits(units)
 					% masker response z-score across all base frequencies
 	% 				z = zscore([u.vs{condID,scoreID}{binID,:}]);
 	% 				u.vsZScore{condID,scoreID}{binID,:} = num2cell(z);
+	
+					% multi-taper spectrum
+					if length(spikeTimesBin)>10
+						mts = mtspectrumpt(spikeTimesBin - min(spikeTimesBin), ...
+							u.mtsParams)';
+						if length(mts) == length(u.mtsFreqs)
+							u.mts{condID,scoreID}(binID,:) = mts;
+						end
+					end
+					
 				end % binID
 
 				% running vector strength at 10Hz as a function of time
@@ -391,17 +402,6 @@ function units = analyzeUnits(units)
 					end
 					
 				end % centerID
-
-				% multi-taper spectrum peri-stimulus
-				spikeTimesPeri = spikeTimesAll( ...
-					u.vsBins(2,1)<=spikeTimesAll & spikeTimesAll<u.vsBins(2,2));
-				if length(spikeTimesPeri)>10
-					mts = mtspectrumpt(spikeTimesPeri, u.mtsParams)';
-					if length(mts) == length(u.mtsFreqs)
-						u.mts{condID,scoreID} = mts;
-					end
-				end
-
 
 				% LFP
 				% dimensions: {conds x scores}[bands x bins x trials]

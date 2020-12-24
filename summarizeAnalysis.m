@@ -190,7 +190,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		ci   = init([0, length(u.intervals)]);
 		cv   = init([0, length(u.vsBins), length(u.vsFreqs)]);
 		cv2  = init([0, length(u.vs10Centers)]);
-		cm   = init([0, length(u.mtsFreqs)]);
+		cm   = init([0, length(u.vsBins), length(u.mtsFreqs)]);
 		cl   = init([0, u.lfpBandCount, 3]);
 
 		u.animalNames = c;
@@ -428,9 +428,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 					% skip if a particular condition is not included in the
 					% summary analysis
-					if sCondID==0;
-						continue;
-					end
+					if sCondID==0; continue; end
 
 					for scoreID = 1:5
 						% keep a list of summarized animal names & unit IDs
@@ -489,7 +487,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 						% vector strength
 						vs = u.vs{uCondID,scoreID};
-						su.vs{sCondID,scoreID}(end+1, :, :) = vs;
+						su.vs{sCondID,scoreID}(end+1,:,:) = vs;
 
 						% running vs at 10 Hz
 						vs = u.vs10{uCondID,scoreID};
@@ -499,7 +497,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 						% multi-taper spectrum peri-stimulus
 						mts = u.mts{uCondID,scoreID};
-						su.mts{sCondID,scoreID}(end+1,:) = mts;
+						su.mts{sCondID,scoreID}(end+1,:,:) = mts;
 
 						% mfsl (minimum first spike latency)
 						mfsl = u.mfsl{uCondID,scoreID};

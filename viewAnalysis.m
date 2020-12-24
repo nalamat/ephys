@@ -62,7 +62,10 @@ function viewAnalysis(analysis)
 			'vs pre'
 			'vs peri'
 			'vs post'
-			'mts'
+			'mts 10'
+			'mts pre'
+			'mts peri'
+			'mts post'
 % 			'firing max'
 % 			'firing mean'
 % 			'deltaAP'
@@ -75,7 +78,6 @@ function viewAnalysis(analysis)
 		data.plotNames = {
 			'raster'
 			'psth'
-			'mts'
 % 			'dprime cqmean'
 % 			'dprime cqsum'
 % 			'dprime mqmean'
@@ -88,8 +90,10 @@ function viewAnalysis(analysis)
 			'vs pre'
 			'vs peri'
 			'vs post'
-			'mts'
 			'mts 10'
+			'mts pre'
+			'mts peri'
+			'mts post'
 			'rlf'
 			'firing max'
 			'mfsl'
@@ -1578,11 +1582,11 @@ function refreshPlot(fig, d)
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
 				bins = 1:size(u.vsBins,1);
-				vsFreq = u.vsFreqs==10;
+				freq = u.vsFreqs==10;
 				for condID = 1:u.condCount
 % 					if condID >= u.condCount-2; continue; end
 					if strcmpi(a.type, 'summary')
-						vs = squeeze(u.vs{condID,scoreID}(:,:,vsFreq));
+						vs = squeeze(u.vs{condID,scoreID}(:,:,freq));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(msk,:);
@@ -1604,15 +1608,10 @@ function refreshPlot(fig, d)
 						p = plots(condID);
 						set(p, 'markerfacecolor', get(p, 'color'));
 					else
-						if isempty(u.vs{condID,scoreID})
-							strength = nan(size(bins));
-							pval = nan(size(bins));
-						else
-							strength = u.vs{condID,scoreID}(:,vsFreq);
-							pval = u.vsPVal{condID,scoreID}(:,vsFreq);
-						end
+						strength = u.vs{condID,scoreID}(:,freq);
+						pval = u.vsPVal{condID,scoreID}(:,freq);
 % 						zscore = [u.vsZScore{ ...
-% 							condID,scoreID}{:,vsFreq}];
+% 							condID,scoreID}{:,freq}];
 						sig = pval < .001;
 % 						thr = abs(zscore) > 1;
 						plots(condID) = plot(bins, strength, ...
@@ -1651,7 +1650,7 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% Vector strength as a function of level at 10 Hz
+			% Running vector strength at 10 Hz as a function of time and level
 			elseif strcmpi(plotName, 'vs 10 running')
 				plotTitle = 'Running vector strength at 10 Hz';
 
@@ -1679,13 +1678,8 @@ function refreshPlot(fig, d)
 							col, 'edgecolor', 'none');
 						alpha(patches(condID), .2);
 					else
-						if isempty(u.vs10{condID,scoreID})
-							vs = nan(size(centers));
-							pval = nan(size(centers));
-						else
-							vs = u.vs10{condID,scoreID};
-							pval = u.vs10PVal{condID,scoreID};
-						end
+						vs = u.vs10{condID,scoreID};
+						pval = u.vs10PVal{condID,scoreID};
 						sig = pval < .001;
 						plots(condID) = plot(centers, vs, ...
 							'color', getColor(condID), ...
@@ -1817,30 +1811,61 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% Plot RLF
-			elseif strcmpi(plotName, 'rlf')
-				plotTitle = 'RLF';
+			% MTS at 10Hz as a function of level
+			elseif strcmpi(plotName, 'mts 10')
+				plotTitle = 'Peri-stimulus MTS at 10 Hz';
+				sameYLim = true;
 
-				for freqID = 1:length(u.targetFreqs)
-					rlf = u.rlf{freqID,scoreID};
-					rlf = [u.firingMean{1,scoreID}, rlf]; % Add nogo
-					plot(snrNogo, rlf, 'color', getColor(freqID));
+				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
+				bins = 1:length(u.vsBins);
+
+				for condID = 1:u.condCount
+					if strcmpi(a.type, 'summary')
+						mts = u.mts{condID,scoreID}(:,:,freqs);
+						mts = 10*log10(mts);
+						mts = squeeze(mean(mts, 3));
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){condID,scoreID}==true;
+							mts = mts(msk,:);
+						end
+						err = nansem(mts, 1);
+						mts = nanmean(mts, 1);
+					else
+						mts = u.mts{condID,scoreID}(:,freqs);
+						mts = 10*log10(mts);
+						mts = mean(mts, 2);
+						err = nan(size(mts));
+					end
+					
+					errorbar(bins, mts, err, '-o', ...
+						'color', getColor(condID), ...
+						'markerfacecolor', getColor(condID), ...
+						'markersize', 4, ...
+						'linewidth', 1.5);
 				end
 
 				axis square tight;
-				xticks(snrNogo);
-				xticklabels(snrNogoStr);
-				xlabel(snrLabel);
-				ylabel('Mean firing rate (1/s)');
-				if length(freqsStr) > 1
-					legend(freqsStrHz, 'location', 'northeastoutside');
+				xticks(bins);
+				xticklabels(u.vsBinNames);
+				xlim([min(bins)-.25 max(bins)+.25]);
+% 				xlabel(snrLabel);
+				ylabel('MTS power at 10 Hz');
+				if strcmpi(a.type, 'summary')
+					loc = 'northeast';
+				else
+					loc = 'northeastoutside';
 				end
+				legend(condsStr, 'location', loc);
 				title(u.label);
 
 
 			% multi-taper spectrum
-			elseif strcmpi(plotName, 'mts')
-				plotTitle = 'Peri-stimulus MTS';
+			elseif strncmpi(plotName, 'mts', 3)
+				binID = find(strcmpi(u.vsBinNames, ...
+					plotName(length('mts')+2:end)));
+				binName = u.vsBinNames{binID};
+
+				plotTitle = [binName '-stimulus MTS'];
 
 				plots = zeros(u.condCount, 1);
 				patches = zeros(u.condCount, 1);
@@ -1849,7 +1874,7 @@ function refreshPlot(fig, d)
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mts = vertcat(u.mts{condID,scoreID});
+						mts = squeeze(u.mts{condID,scoreID}(:,binID,:));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							mts = mts(msk, :);
@@ -1858,7 +1883,7 @@ function refreshPlot(fig, d)
 						avg = nanmean(mts, 1);
 						err = nansem(mts, 1);
 					else
-						avg = 10*log10(u.mts{condID,scoreID});
+						avg = 10*log10(u.mts{condID,scoreID}(binID,:));
 					end
 					avg = avg - median(avg(20<u.mtsFreqs));
 					col = getColor(condID);
@@ -1895,28 +1920,21 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% MTS at 10Hz as a function of level
-			elseif strcmpi(plotName, 'mts 10')
-				plotTitle = 'Peri-stimulus MTS at 10 Hz';
-
-				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
+			% Plot RLF
+			elseif strcmpi(plotName, 'rlf')
+				plotTitle = 'RLF';
 
 				for freqID = 1:length(u.targetFreqs)
-					condIDs = [1, ... % nogo
-						(freqID-1)*length(u.targetLevels) + ...
-						(1:length(u.targetLevels))+1];
-					mts = vertcat(u.mts{condIDs,scoreID});
-					mts = mean(mts(:,freqs),2);
-					plot(snrNogo, 10*log10(mts), ...
-						'color', getColor(freqID));
+					rlf = u.rlf{freqID,scoreID};
+					rlf = [u.firingMean{1,scoreID}, rlf]; % Add nogo
+					plot(snrNogo, rlf, 'color', getColor(freqID));
 				end
 
 				axis square tight;
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
-				xlim([snrNogo(1) snrNogo(end)]);
 				xlabel(snrLabel);
-				ylabel('MTS power at 10 Hz (Peri)');
+				ylabel('Mean firing rate (1/s)');
 				if length(freqsStr) > 1
 					legend(freqsStrHz, 'location', 'northeastoutside');
 				end
