@@ -73,6 +73,7 @@ function d = showGUI()
 		'Inspect', 'Inspect sorted spikes with UMS2K'
 		'Analyze', 'Analyze extracted spikes and generate activity metrics'
 		'Mark', 'Mark selected sessions as "Good"'
+% 		'Hack', 'Run a little hack script on each analysis'
 		'Aggregate', ['Append all analyses into one "mat" file, use ' ...
 			'for making portable "mat" files']
 		...'Combine', ... % combine
@@ -362,7 +363,7 @@ function btnCallback(btn, ~)
 				s = d.sessions{sessionID}; % unpack
 				file = s.(['file' d.spikeConfig]);
 				mat = struct();
-				mat.marked = true; %#ok<STRNU>
+				mat.marked = true;
 				s.(['marked' d.spikeConfig]) = true;
 
 				if exist(file, 'file')
@@ -374,6 +375,44 @@ function btnCallback(btn, ~)
 			end
 
 			disp('Done marking');
+			
+		case 'hack'
+			if strcmpi(d.radioDataGroup.SelectedObject.String, 'summaries')
+				error('my:break', 'Mark not defined for summaries');
+			end
+			
+			for i = 1:length(sessionIDs)
+				sessionID = sessionIDs(i);
+				s = d.sessions{sessionID}; % unpack
+				fprintf('Session %d/%d\n', i, length(sessionIDs));
+				
+				file = s.(['file' d.spikeConfig]);
+				fprintf('Loading %s\n', file);
+				if ~exist(file, 'file')
+					disp('Session file doesn''t exist, skipping');
+					continue;
+				end
+				mat = load(file);
+				
+				for analysisID = 1:length(mat.analysis)
+					a = mat.analysis{analysisID}; % unpack
+					a.dataPath = '../Data/';
+					fprintf('Reading data file: %s\n', a.dataFile);
+					[~, a] = readTrialView(a);
+					mat.analysis{analysisID}.dataPath     = a.dataPath;
+					mat.analysis{analysisID}.spikesBands  = a.spikesBand;
+					mat.analysis{analysisID}.lfpBands     = a.lfpBands;
+					mat.analysis{analysisID}.lfpBandNames = a.lfpBandNames;
+					mat.analysis{analysisID}.lfpBandCount = a.lfpBandCount;
+					mat.analysis{analysisID}.lfp          = a.lfp;
+				end
+
+				if exist(file, 'file')
+					save(file, '-struct', 'mat');
+				end
+			end
+
+			disp('Done hacking');
 			
 		case 'aggregate'
 			% export all analyses into one mat file
