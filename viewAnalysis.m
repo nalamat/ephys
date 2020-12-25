@@ -411,17 +411,37 @@ function refreshPlot(fig, d)
 					nogo = nogo(msk, :);
 				end
 				nogoMean = nanmean(nogo, 1);
-				nogoErr = nansem(nogo, 1);
 
 				for snrID = 1:3
 					% calculate average psth of go
-					R = vertcat(u.psthCorrR{snrID+1,scoreID});
+					go = vertcat(u.psth{1+snrID,scoreID});
 					if ~strcmpi(subset, 'all')
-						msk = u.(subset){1,scoreID}==true;
-						R = R(msk, :);
+						msk = u.(subset){1+snrID,scoreID}==true;
+						go = go(msk, :);
 					end
-					RMean = nanmean(R, 1);
-					RErr = nansem(R, 1);
+					goMean = nanmean(go, 1);
+					
+					R = zeros(size(u.psthCorrTimes));
+					P = ones(size(u.psthCorrTimes));
+					for timeID = 1:length(u.psthCorrTimes)
+						time = u.psthCorrTimes(timeID);
+						% center aligned window
+						msk = time - u.psthCorrWindow/2 <= u.psthCenters & ...
+							u.psthCenters <= time + u.psthCorrWindow/2;
+						[r, p] = corrcoef(nogoMean(msk), goMean(msk));
+						R(timeID) = r(1,2);
+						P(timeID) = p(1,2);
+					end
+					RMean = R;
+					RErr = zeros(size(R));
+				
+% 					R = vertcat(u.psthCorrR{snrID+1,scoreID});
+% 					if ~strcmpi(subset, 'all')
+% 						msk = u.(subset){1,scoreID}==true;
+% 						R = R(msk, :);
+% 					end
+% 					RMean = nanmean(R, 1);
+% 					RErr = nansem(R, 1);
 					
 					% running pearson's correlation
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);

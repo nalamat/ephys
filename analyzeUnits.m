@@ -30,14 +30,15 @@ function units = analyzeUnits(units)
 		
 		% running pearson's correlation between nogo and go
 		u.psthCorrWindow = 200e-3;
-		u.psthCorrTimes  = u.psthCenters( ... % left aligned windows
-			u.viewBounds(1)+u.psthCorrWindow <= u.psthCenters);
+		u.psthCorrTimes  = u.psthCenters( ... % center aligned windows
+			u.viewBounds(1)+u.psthCorrWindow/2 <= u.psthCenters & ...
+			u.psthCenters <= u.viewBounds(2)-u.psthCorrWindow/2);
 
 		% convolution window for smoothing PSTH
-		u.psthWin = 50e-3;                         % convolution window size
-% 		win       = gausswin(u.psthWin/u.psthBin); % gaussian window
-		win       = rectwin(u.psthWin/u.psthBin);  % rectangular window
-		win       = win / u.psthWin;               % normalize window
+		u.psthWin        = 50e-3;                         % window size
+		u.psthWindow     = gausswin(u.psthWin/u.psthBin); % gaussian window
+		u.psthWindow     = rectwin(u.psthWin/u.psthBin);  % rectangular window
+		u.psthWindow     = u.psthWindow / u.psthWin;      % normalize window
 
 		% designate different intervals related to the target
 		u.gap = 50e-3;
@@ -60,8 +61,9 @@ function units = analyzeUnits(units)
 		u.vsBinNames = {'Pre','Peri','Post'};
 
 		u.vs10Window     = 300e-3;
-		u.vs10Times      = u.psthCenters( ... % left aligned windows
-			u.viewBounds(1)+u.vs10Window <= u.psthCenters);
+		u.vs10Times      = u.psthCenters( ... % center aligned windows
+			u.viewBounds(1)+u.vs10Window/2 <= u.psthCenters & ...
+			u.psthCenters <= u.viewBounds(2)-u.vs10Window/2);
 
 		% multi-tapered spectrum parameters
 		u.mtsParams.Fs       = u.fs;      % sampling frequency
@@ -139,7 +141,7 @@ function units = analyzeUnits(units)
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
 					% this smoothing filter is non-causal and may cause the
 					% neural response to spread backwards before an event
-					psth(trialID, :) = conv(hist, win, 'same');
+					psth(trialID, :) = conv(hist, u.psthWindow, 'same');
 				end
 
 				psthMean = mean(psth, 1);
@@ -153,14 +155,14 @@ function units = analyzeUnits(units)
 				if condID ~= 1
 					R = zeros(size(u.psthCorrTimes));
 					P = ones(size(u.psthCorrTimes));
+					nogo = u.psthMean{1,1};
+					go = u.psthMean{condID,scoreID};
 					for timeID = 1:length(u.psthCorrTimes)
 						time = u.psthCorrTimes(timeID);
-						% left aligned window
-						msk = time - u.psthCorrWindow <= u.psthCenters & ...
-							u.psthCenters <= time;
-						nogo = u.psthMean{1,1}(msk);
-						go = u.psthMean{condID,scoreID}(msk);
-						[r, p] = corrcoef(nogo, go);
+						% center aligned window
+						win = time - u.psthCorrWindow/2 <= u.psthCenters & ...
+							u.psthCenters < time + u.psthCorrWindow/2;
+						[r, p] = corrcoef(nogo(win), go(win));
 						R(timeID) = r(1,2);
 						P(timeID) = p(1,2);
 					end
@@ -403,8 +405,9 @@ function units = analyzeUnits(units)
 
 				for timeID = 1:length(u.vs10Times)
 					time = u.vs10Times(timeID);
-					spikeTimesBin = spikeTimesAll( ... % left aligned windows
-						time-u.vs10Window<=spikeTimesAll & spikeTimesAll<=time);
+					spikeTimesBin = spikeTimesAll( ... % center aligned windows
+						time - u.vs10Window/2 <= spikeTimesAll & ...
+						spikeTimesAll < time + u.vs10Window/2);
 
 					% calculate VS using spikes from all trials
 					if ~isempty(spikeTimesBin)
