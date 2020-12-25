@@ -59,6 +59,7 @@ function viewAnalysis(analysis)
 			'dprime behavior'
 			'vs 10'
 			'vs 10 running'
+			'vs 10 running phase'
 			'vs pre'
 			'vs peri'
 			'vs post'
@@ -436,6 +437,7 @@ function refreshPlot(fig, d)
 
 					% plot go and nogo
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
+					hold on;
 % 					for ii = 1 : length(twin)
 % 						tmp = xcl(ii,:);
 % 						tmp(20:22)=0;
@@ -561,11 +563,13 @@ function refreshPlot(fig, d)
 				for intervalID = 1:intervalCount
 					subplots{end+1} = subplot(modeCount, intervalCount, ...
 						(modeCount-modeID)*3 + intervalID);
-					errorbar(conds, avgSup(intervalID,:), errSup(intervalID,:), ...
-						'-o', 'color', [1 .4 0], 'linewidth', 2);
 					hold on;
+					errorbar(conds, avgSup(intervalID,:), errSup(intervalID,:), ...
+						'-o', 'color', [1 .4 0], 'markerfacecolor', [1 .4 0], ...
+						'markersize', 4, 'linewidth', 1.5);
 					errorbar(conds, avgEnh(intervalID,:), errEnh(intervalID,:), ...
-						'-o', 'color', [0 .3 1], 'linewidth', 2);
+						'-o', 'color', [0 .3 1], 'markerfacecolor', [0 .3 1], ...
+						'markersize', 4, 'linewidth', 1.5);
 
 					axis square tight;
 					xlim([min(conds)-2.5, max(conds)+2.5]);
@@ -1484,9 +1488,8 @@ function refreshPlot(fig, d)
 % 					plots(freqID) = plot(snr, avg, '-o', 'color', col, ...
 % 						'linewidth',2);
 					plots(freqID) = errorbar(snr, avg, err, '-o', ...
-						'color', col, 'linewidth', 2);
-					p = plots(freqID);
-					set(p, 'markerfacecolor', get(p, 'color'));
+						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
+						'linewidth', 1.5);
 				end
 
 				% push ribbons to the back of line plots
@@ -1604,9 +1607,8 @@ function refreshPlot(fig, d)
 % 							col, 'edgecolor', 'none');
 % 						alpha(patches(condID), .2);
 						plots(condID) = errorbar(bins, avg, err, '-o', ...
-							'color', col, 'linewidth', 2);
-						p = plots(condID);
-						set(p, 'markerfacecolor', get(p, 'color'));
+							'color', col, 'markerfacecolor', col, 'markersize', 4, ...
+							'linewidth', 1.5);
 					else
 						strength = u.vs{condID,scoreID}(:,freq);
 						pval = u.vsPVal{condID,scoreID}(:,freq);
@@ -1651,18 +1653,27 @@ function refreshPlot(fig, d)
 
 
 			% Running vector strength at 10 Hz as a function of time and level
-			elseif strcmpi(plotName, 'vs 10 running')
-				plotTitle = 'Running vector strength at 10 Hz';
+			elseif strncmpi(plotName, 'vs 10 running', 13)
+				if contains(plotName, 'phase')
+					plotTitle = 'Running vector phase at 10 Hz';
+					field = 'vs10Phase';
+				else
+					plotTitle = 'Running vector strength at 10 Hz';
+					field = 'vs10';
+				end
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
 				centers = u.vs10Centers;
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						vs = u.vs10{condID,scoreID};
+						vs = u.(field){condID,scoreID};
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(msk,:);
+						end
+						if contains(plotName, 'phase')
+							vs = vs * 180 / pi;
 						end
 						avg = nanmean(vs, 1);
 						err = nansem(vs, 1);
@@ -1678,12 +1689,15 @@ function refreshPlot(fig, d)
 							col, 'edgecolor', 'none');
 						alpha(patches(condID), .2);
 					else
-						vs = u.vs10{condID,scoreID};
-						pval = u.vs10PVal{condID,scoreID};
-						sig = pval < .001;
+						vs = u.(field){condID,scoreID};
+						if contains(plotName, 'phase')
+							vs = vs * 180 / pi;
+						end
 						plots(condID) = plot(centers, vs, ...
 							'color', getColor(condID), ...
 							'linewidth', 2);
+						pval = u.vs10PVal{condID,scoreID};
+						sig = pval < .001;
 						plot(centers(sig), vs(sig), '*', ...
 							'color', getColor(condID));
 					end
@@ -1699,14 +1713,13 @@ function refreshPlot(fig, d)
 				markTarget(u);
 
 				axis square tight;
-% 				xlim([.9, bins(end)+.1]);
-% 				xticks(bins);
-% 				if strcmp(u.vsBinNames{2}, 'Intra')
-% 					u.vsBinNames{2} = 'Peri';
-% 				end
-% 				xticklabels(u.vsBinNames);
-				ylim([0,vectorUL]);
-				ylabel('Vector strength at 10 Hz');
+				if contains(plotName, 'phase')
+					ylim([-90,90]);
+					ylabel('Vector phase [\circ]');
+				else
+					ylim([0,vectorUL]);
+					ylabel('Vector strength at 10 Hz');
+				end
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else
@@ -1717,37 +1730,7 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-% 			Vector strength as a function of level at 10 Hz
-% 			elseif data.plotID==3 || data.plotID==4 || data.plotID==5
-% 				binID = data.plotID - 2;
-% 				plotName = [u.vsBinNames{binID} ...
-% 					'-stimulus vector strength at 10 Hz'];
-%
-% 				for freqID = 1:length(p.targetFreqs)
-% 					arr = [u.vs{1}{ ...
-% 						binID}{u.vsFreqs==10}];    % Nogo
-% 					for levelID = 1:length(p.targetLevels)
-% 						condID = (freqID-1)*length(p.targetLevels) + ...
-% 							levelID+1;
-% 						arr(end+1) = u.vs{condID}{ ...
-% 							binID}{u.vsFreqs==10};
-% 					end
-% 					plot(levelsNogo, arr);
-% 				end
-%
-% 				axis square tight;
-% 				xticks(levelsNogo);
-% 				xticklabels(levelsNogoStr);
-% 				ylim([0,.5]);
-%
-% 				xlabel(levelLabel);
-% 				ylabel('Vector strength at 10 Hz');
-% 				title(u.label);
-%
-% 				legend(freqsStrHz, 'location', 'northeastoutside');
-
-
-			% Vector strength
+			% Vector strength vs frequency for the given bin
 			elseif strncmpi(plotName, 'vs', 2)
 				if strcmp(u.vsBinNames{2}, 'Intra') % compatibility
 					u.vsBinNames{2} = 'Peri';
@@ -1777,11 +1760,11 @@ function refreshPlot(fig, d)
 						col = getColor(condID);
 						plots(condID) = plot(u.vsFreqs, avg, ...
 							'color', col, 'linewidth', 1.5);
-% 						patches(condID) = patch( ...
-% 							[u.vsFreqs fliplr(u.vsFreqs)], ...
-% 							[avg+err fliplr(avg-err)], ...
-% 							col, 'edgecolor', 'none');
-% 						alpha(patches(condID), .2);
+						patches(condID) = patch( ...
+							[u.vsFreqs fliplr(u.vsFreqs)], ...
+							[avg+err fliplr(avg-err)], ...
+							col, 'edgecolor', 'none');
+						alpha(patches(condID), .2);
 
 					else
 						strength = u.vs{condID,scoreID}(binID,:);
@@ -1813,7 +1796,7 @@ function refreshPlot(fig, d)
 
 			% MTS at 10Hz as a function of level
 			elseif strcmpi(plotName, 'mts 10')
-				plotTitle = 'Peri-stimulus MTS at 10 Hz';
+				plotTitle = 'MTS at 10 Hz';
 				sameYLim = true;
 
 				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
@@ -1849,7 +1832,7 @@ function refreshPlot(fig, d)
 				xticklabels(u.vsBinNames);
 				xlim([min(bins)-.25 max(bins)+.25]);
 % 				xlabel(snrLabel);
-				ylabel('MTS power at 10 Hz');
+				ylabel('MTS power at 10 Hz [dB]');
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else

@@ -41,8 +41,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		% only compatible with EARS
 		if ~strcmpi(a.version, 'ears'); continue; end
 
-		mode = recordingMode(a);
-		if mode == 0; continue; end
+		modeID = recordingMode(a);
+		if modeID == 0; continue; end
 
 		% find matching date
 		id2 = 0;
@@ -59,11 +59,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 		% if no matching date found, append
 		if id2 == 0
-			sessions{end+1} = cell(2,1);
+			sessions{end+1} = cell(modeCount,1);
 			id2 = length(sessions);
 		end
 
-		sessions{id2}{mode} = a;
+		sessions{id2}{modeID} = a;
 	end % analysisID
 
 
@@ -79,10 +79,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 		blank = false;
 		% don't use passive quiet
-		for mode = 1:2 %modeCount
-			if isempty(sessions{sessionID}{mode})
+		for modeID = 1:2 %modeCount
+			if isempty(sessions{sessionID}{modeID})
 				blank = true;
-			elseif any(sessions{sessionID}{mode}.trialCountPerCond<10)
+			elseif any(sessions{sessionID}{modeID}.trialCountPerCond<10)
 				blank = true;
 			end
 		end
@@ -112,8 +112,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 	%% get all target stimulus conditions
 	for sessionID = 1:length(sessions)
-		for mode = 1:length(sessions{sessionID})
-			a = sessions{sessionID}{mode};
+		for modeID = 1:length(sessions{sessionID})
+			a = sessions{sessionID}{modeID};
 	% 		if isempty(a); continue; end
 			s.animalNames = [s.animalNames a.animalName];
 			s.targetFreqs  = [s.targetFreqs , a.targetFreqs ];
@@ -240,7 +240,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 		u.mtsSEM = c;
 
 		s.units{modeID} = u;
-	end
+	end % modeID
 
 
 	%% select target responding units and gather their activation metrics
@@ -264,8 +264,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			phasic = 0;
 			% don't use passive quiet for categorizing units for now
 			% only use active mmr and passive mmr
-			for mode = 1:2 %length(sessions{sessionID})
-				a = sessions{sessionID}{mode};
+			for modeID = 1:2 %length(sessions{sessionID})
+				a = sessions{sessionID}{modeID};
 	% 			if isempty(a); continue; end
 				u = a.units{unitID};
 				for uCondID = 2:u.condCount
@@ -416,12 +416,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			end
 			
 			%% map unit analysis to summary
-			for mode = 1:length(sessions{sessionID})
-				a = sessions{sessionID}{mode};
+			for modeID = 1:length(sessions{sessionID})
+				a = sessions{sessionID}{modeID};
 				a = calculatePerformance(a);
 	% 			if isempty(a); continue; end
 				u = a.units{unitID};     % unpack original analysis unit
-				su = s.units{mode};      % unpack summary unit
+				su = s.units{modeID};      % unpack summary unit
 				for uCondID = 1:u.condCount
 					% map condition ID from unit to summary
 					sCondID = mapCondID(uCondID, u, s);
@@ -449,10 +449,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.subCategory{sCondID,scoreID}{end+1} = subCategory;
 
 						% psth
-						psth = u.psthMean{uCondID,scoreID};
-						su.psth{sCondID,scoreID}(end+1,:) = psth;
+						su.psth{sCondID,scoreID}(end+1,:) = ...
+							u.psthMean{uCondID,scoreID};
 
-						% target-evoked response and peak activation relative to nogo
+						% calculate target-evoked response and
+						% peak activation relative to nogo
 						if uCondID ~= 1
 							ter = nan(size(u.intervals));
 							tep = nan(size(u.intervals));
@@ -472,8 +473,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 
 						% d'
-						dPrime = u.dPrimeCQMean{uCondID,scoreID};
-						su.dPrimeCQMean{sCondID,scoreID}(end+1,:) = dPrime;
+						su.dPrimeCQMean{sCondID,scoreID}(end+1,:) = ...
+							u.dPrimeCQMean{uCondID,scoreID};
 
 						dPrime = u.dPrimeCQSum{uCondID,scoreID};
 						% reference dPrime to tone onset
@@ -482,53 +483,53 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.dPrimeCQSum{sCondID,scoreID}(end+1,:) = dPrime;
 
 						% quadratic mean d' for intervals: onset/peri/offset...
-						dPrime = u.dPrimeIntervals{uCondID,scoreID};
-						su.dPrimeIntervals{sCondID,scoreID}(end+1,:) = dPrime;
+						su.dPrimeIntervals{sCondID,scoreID}(end+1,:) = ...
+							u.dPrimeIntervals{uCondID,scoreID};
 
 						% vector strength
-						vs = u.vs{uCondID,scoreID};
-						su.vs{sCondID,scoreID}(end+1,:,:) = vs;
+						su.vs{sCondID,scoreID}(end+1,:,:) = ...
+							u.vs{uCondID,scoreID};
 
 						% running vs at 10 Hz
-						vs = u.vs10{uCondID,scoreID};
-						phase = u.vs10Phase{uCondID,scoreID};
-						su.vs10{sCondID,scoreID}(end+1,:) = vs;
-						su.vs10Phase{sCondID,scoreID}(end+1,:) = phase;
+						su.vs10{sCondID,scoreID}(end+1,:) = ...
+							u.vs10{uCondID,scoreID};
+						su.vs10Phase{sCondID,scoreID}(end+1,:) = ...
+							u.vs10Phase{uCondID,scoreID};
 
 						% multi-taper spectrum peri-stimulus
-						mts = u.mts{uCondID,scoreID};
-						su.mts{sCondID,scoreID}(end+1,:,:) = mts;
+						su.mts{sCondID,scoreID}(end+1,:,:) = ...
+							u.mts{uCondID,scoreID};
 
 						% mfsl (minimum first spike latency)
-						mfsl = u.mfsl{uCondID,scoreID};
-						su.mfsl{sCondID,scoreID}(end+1,:) = mfsl;
-
-						% mfsl phase
-						phase = u.mfslPhase{uCondID,scoreID};
-						su.mfslPhase{sCondID,scoreID}(end+1,:) = phase;
+						su.mfsl{sCondID,scoreID}(end+1,:) = ...
+							u.mfsl{uCondID,scoreID};
+						su.mfslPhase{sCondID,scoreID}(end+1,:) = ...
+							u.mfslPhase{uCondID,scoreID};
 
 						% max firing rate
-						firingMax = u.firingMax{uCondID,scoreID};
-						su.firingMax{sCondID,scoreID}(end+1,:) = firingMax;
+						su.firingMax{sCondID,scoreID}(end+1,:) = ...
+							u.firingMax{uCondID,scoreID};
 
-						% max firing rate
-						firingMean = u.firingMean{uCondID,scoreID};
-						su.firingMean{sCondID,scoreID}(end+1,:) = firingMean;
+						% mean firing rate
+						su.firingMean{sCondID,scoreID}(end+1,:) = ...
+							u.firingMean{uCondID,scoreID};
 					end
 
 					if any(isnan(u.psthMean{uCondID,1})); continue; end
 
-					if mode==1
+					if modeID==1
 						s.unitCountPerCond{sCondID} = s.unitCountPerCond{sCondID} + 1;
 					end
 
 					su.dPrimeBehavior{sCondID}(end+1) = a.dPrimeBehavior{uCondID};
 				end
 				
-				s.units{mode} = su;    % repack summary unit
-			end
-		end
-	end
+				s.units{modeID} = su;    % repack summary unit
+			end % modeID
+			
+		end % unitID
+		
+	end % sessionID
 
 	fprintf(['Selected %d target responding, %d tonic, %d phasic, ' ...
 		'%d phasic suppressing, %d phasic enhancing & ' ...
