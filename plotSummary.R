@@ -61,7 +61,7 @@ se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar', #linetype='solid',
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 gc()
-data = read.xlsx(summaryFile, 'TargetEvoked')
+data = read.xlsx(summaryFile, 'TER')
 data2 = subset(data, Score=='All' & Interval=='Peri')
 data2$SubjectID = factor(data2$SubjectID)
 data2$UnitID = factor(data2$UnitID)
@@ -277,39 +277,39 @@ save_plot(p, file=paste('figs/Summary/dp-', gerbil, '.svg', sep=''))
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 gc()
-data = read.xlsx(summaryFile, 'VS10')
+data = read.xlsx(summaryFile, 'VS')
 data2 = subset(data, Score=='All' & Category=='Phasic')
 data2$Bin = factor(data2$Bin, c('Pre','Peri','Post'), 1:3)
 # as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
 # data2$Bin = as.numeric.factor(data2$Bin)
 data2$SNR = factor(data2$TargetLevel-50, c(-50,-10,0,10), c('Nogo', -10, 0, 10))
 
-model1 = lme(VS ~ SNR*Mode*Bin, data2, random= ~ 1 | UnitID)
+model1 = lme(VS10 ~ SNR*Mode*Bin, data2, random= ~ 1 | UnitID)
 summary(model1)
 anova(model1)
 
-model2 = aov(VS ~ SNR*Mode*Bin + Error(UnitID), subset(data2))
+model2 = aov(VS10 ~ SNR*Mode*Bin + Error(UnitID), subset(data2))
 summary(model2)
 
 labs_xy = labs(x='SNR [dB]', y='Vector strength')
 ylim = coord_cartesian(ylim=c(0,.45))
 
-# ggplot(data2, aes(x=SNR, y=VS, color=Mode, shape=Bin)) +
+# ggplot(data2, aes(x=SNR, y=VS10, color=Mode, shape=Bin)) +
 #   geom_point(size=2, position=position_dodge(width=dg)) +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=VS, color=Mode, shape=Bin)) +
+# ggplot(data2, aes(x=SNR, y=VS10, color=Mode, shape=Bin)) +
 #   se_errorbar + mean_point +
 #   labs_xy + labs(color='Mode') +
 #   theme_my
 #
-# ggplot(data2, aes(x=SNR, y=VS, shape=Bin)) +
+# ggplot(data2, aes(x=SNR, y=VS10, shape=Bin)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
 
-# p = ggplot(data2, aes(x=SNR, y=VS, color=Mode, group=Mode)) +
+# p = ggplot(data2, aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
 #   se_errorbar + mean_line + mean_point +
 #   labs_xy + labs(color='Mode', title='Phasic units') +
 #   coord_cartesian(ylim=c(0,.6)) +
@@ -320,7 +320,7 @@ ylim = coord_cartesian(ylim=c(0,.45))
 # title = paste('Phasic Units ', length(unique(subset(data2)$UnitID)), ' (dp > ', dp, ')')
 
 p = ggplot(subset(data2, Bin==2),
-           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Units') +
   color_manual +
@@ -332,7 +332,7 @@ save_plot(p, file=paste('figs/Summary/VSperi-', gerbil, '.svg', sep=''))
 # }
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Enhancing'),
-           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Enhancing Units') +
   color_manual +
@@ -342,7 +342,7 @@ print(p)
 save_plot(p, file=paste('figs/Summary/VSperi-enhancing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Suppressing'),
-           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic Suppressing Units') +
   color_manual +
@@ -352,7 +352,7 @@ print(p)
 save_plot(p, file=paste('figs/Summary/VSperi-suppressing-', gerbil, '.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic No Change'),
-           aes(x=SNR, y=VS, color=Mode, group=Mode)) +
+           aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
   se_errorbar + mean_line + mean_point +
   labs_xy + labs(color='Mode', title='Phasic No Change Units') +
   color_manual +
@@ -364,7 +364,7 @@ save_plot(p, file=paste('figs/Summary/VSperi-nochange-', gerbil, '.svg', sep='')
 
 # violin plot
 p = ggplot(subset(data2, Bin==2),
-           aes(x=SNR, y=VS, fill=Mode)) +
+           aes(x=SNR, y=VS10, fill=Mode)) +
   geom_violin(position=position_dodge(.5), alpha=.9, width=.8) +
   labs_xy + labs(fill='Mode', title='Phasic units') +
   fill_manual +
@@ -374,7 +374,7 @@ p = ggplot(subset(data2, Bin==2),
 p
 save_plot(p, file=paste('figs/Summary/VSperi3-', gerbil, '.svg', sep=''))
 
-# ggplot(data2, aes(x=SNR, y=VS)) +
+# ggplot(data2, aes(x=SNR, y=VS10)) +
 #   se_errorbar + mean_point +
 #   labs_xy +
 #   theme_my
