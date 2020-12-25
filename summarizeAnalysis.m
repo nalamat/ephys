@@ -115,14 +115,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		for modeID = 1:length(sessions{sessionID})
 			a = sessions{sessionID}{modeID};
 	% 		if isempty(a); continue; end
-			s.animalNames = [s.animalNames a.animalName];
+			s.animalNames  = [s.animalNames a.animalName];
 			s.targetFreqs  = [s.targetFreqs , a.targetFreqs ];
 			s.targetLevels = [s.targetLevels, a.targetLevels];
 		end
 	end
-	s.animalNames = unique(s.animalNames);
-	s.targetFreqs  = unique(s.targetFreqs);
-	s.targetLevels = unique(s.targetLevels);
+	s.animalNames      = unique(s.animalNames);
+	s.targetFreqs      = unique(s.targetFreqs);
+	s.targetLevels     = unique(s.targetLevels);
 % 	s.targetFreqs = [1];
 % 	s.targetLevels = [40 50 60];
 	% the `unique` function has a weird behavior that returns a 0x1 vectors
@@ -145,99 +145,86 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u1 = sessions{1}{1}.units{1};
 
 		u = struct();
-		u.spikeConfig = u1.spikeConfig;
-		u.type = 'Summary';
-		u.effort = s.effort;
-		u.condCount = s.condCount;
-		u.targetFreqs = s.targetFreqs;
-		u.targetLevels = s.targetLevels;
+		u.spikeConfig        = u1.spikeConfig;
+		u.type               = 'Summary';
+		u.effort             = s.effort;
+		u.condCount          = s.condCount;
+		u.targetFreqs        = s.targetFreqs;
+		u.targetLevels       = s.targetLevels;
 		if modeID == 3
 			u.maskerLevel = 0;
 		else
 			u.maskerLevel = 50;
 		end
-		u.targetDuration = s.targetDuration;
-		u.viewBounds = s.viewBounds;
-		u.lfpBands          = s.lfpBands;
-		u.lfpBandNames      = s.lfpBandNames;
-		u.lfpBandCount      = s.lfpBandCount;
+		u.targetDuration     = s.targetDuration;
+		u.viewBounds         = s.viewBounds;
+		u.lfpBands           = s.lfpBands;
+		u.lfpBandNames       = s.lfpBandNames;
+		u.lfpBandCount       = s.lfpBandCount;
 		u.targetResponseThresh = s.targetResponseThresh;
 		u.targetResponseThreshCount = s.targetResponseThreshCount;
-		u.phasicThresh = s.phasicThresh;
-		u.phasicThreshCount = s.phasicThreshCount;
+		u.phasicThresh       = s.phasicThresh;
+		u.phasicThreshCount  = s.phasicThreshCount;
 
-		u.psthBin = u1.psthBin;
-		u.psthWin = u1.psthWin;
-		u.psthEdges = u1.psthEdges;
-		u.psthCenters = u1.psthCenters;
-		u.gap = u1.gap;
-		u.onset = u1.onset;
-		u.peri = u1.peri;
-		u.offset = u1.offset;
-		u.periFull = u1.periFull;
-		u.intervalNames = u1.intervalNames;
-		u.intervals = u1.intervals;
-		u.vsFreqs = u1.vsFreqs;
-		u.vsBins = u1.vsBins;
-		u.vsBinNames = u1.vsBinNames;
-		u.vs10Centers = u1.vs10Centers;
-		u.mtsFreqs = u1.mtsFreqs;
-		u.label = recordingModeLabels{modeID};
+		u.psthBin            = u1.psthBin;
+		u.psthWin            = u1.psthWin;
+		u.psthEdges          = u1.psthEdges;
+		u.psthCenters        = u1.psthCenters;
+		u.psthCorrWindow     = u1.psthCorrWindow;
+		u.psthCorrTimes      = u1.psthCorrTimes;
+		u.gap                = u1.gap;
+		u.onset              = u1.onset;
+		u.peri               = u1.peri;
+		u.offset             = u1.offset;
+		u.periFull           = u1.periFull;
+		u.intervalNames      = u1.intervalNames;
+		u.intervals          = u1.intervals;
+		u.vsFreqs            = u1.vsFreqs;
+		u.vsBins             = u1.vsBins;
+		u.vsBinNames         = u1.vsBinNames;
+		u.vs10Times          = u1.vs10Times;
+		u.mtsFreqs           = u1.mtsFreqs;
+		u.label              = recordingModeLabels{modeID};
 
 		c    = cell(u.condCount, 5); % {conds x scores}
 		init = @(sz)cellfun(@(c){nan(sz)}, c);
 		ct   = init([0, length(u.psthCenters)]);
+		cc   = init([0, length(u.psthCorrTimes)]);
 		ci   = init([0, length(u.intervals)]);
 		cv   = init([0, length(u.vsBins), length(u.vsFreqs)]);
-		cv2  = init([0, length(u.vs10Centers)]);
+		cv2  = init([0, length(u.vs10Times)]);
 		cm   = init([0, length(u.vsBins), length(u.mtsFreqs)]);
 		cl   = init([0, u.lfpBandCount, 3]);
 
-		u.animalNames = c;
-		u.sessionIDs = c;
-		u.unitIDs = c;
-		u.unitTypes = c; % single/multi
-		u.phasic = c;
-		u.tonic = c;
-		u.category = c; % phasic/tonic
-		u.phasicSuppressing = c;
-		u.phasicEnhancing = c;
-		u.phasicNoChange = c;
-		u.subCategory = c; % suppressing/enhancing/no-change
-		u.psth = ct;
-% 		u.psthMean = cc;
-% 		u.psthSEM = cc;
-		u.ter = ci;
-		u.tep = ci;
-		u.dPrimeCQMean = ct;
-% 		u.dPrimeCQMeanMean = cc;
-% 		u.dPrimeCQMeanSEM = cc;
-		u.dPrimeCQSum = ct;
-		u.dPrimeIntervals = ci;
-		u.dPrimeBehavior = cell(s.condCount,1);
-		u.mfsl = c;
-% 		u.mfslMean = cc;
-% 		u.mfslSEM = cc;
-		u.mfslPhase = c;
-% 		u.mfslPhaseMean = cc;
-% 		u.mfslPhaseSEM = cc;
-		u.firingMax = c;
-% 		u.firingMaxMean = cc;
-% 		u.firingMaxSEM = cc;
-		u.firingMean = c;
-% 		u.firingMeanMean = cc;
-% 		u.firingMeanSEM = cc;
-		u.vs = cv;
-		u.vsPhase = cv;
-% 		u.vsMean = c;
-% 		u.vsSEM = c;
-		u.vs10 = cv2;
-		u.vs10Phase = cv2;
-% 		u.vs10Mean = c;
-% 		u.vs10SEM = c;
-		u.mts = cm;
-% 		u.mtsMean = c;
-% 		u.mtsSEM = c;
+		u.animalNames        = c;
+		u.sessionIDs         = c;
+		u.unitIDs            = c;
+		u.unitTypes          = c; % single/multi
+		u.phasic             = c;
+		u.tonic              = c;
+		u.category           = c; % phasic/tonic
+		u.phasicSuppressing  = c;
+		u.phasicEnhancing    = c;
+		u.phasicNoChange     = c;
+		u.subCategory        = c; % suppressing/enhancing/no-change
+		u.psth               = ct;
+		u.psthCorrR          = cc;
+		u.psthCorrP          = cc;
+		u.ter                = ci;
+		u.tep                = ci;
+		u.dPrimeCQMean       = ct;
+		u.dPrimeCQSum        = ct;
+		u.dPrimeIntervals    = ci;
+		u.dPrimeBehavior     = cell(s.condCount,1);
+		u.mfsl               = c;
+		u.mfslPhase          = c;
+		u.firingMax          = c;
+		u.firingMean         = c;
+		u.vs                 = cv;
+		u.vsPhase            = cv;
+		u.vs10               = cv2;
+		u.vs10Phase          = cv2;
+		u.mts                = cm;
 
 		s.units{modeID} = u;
 	end % modeID
@@ -451,6 +438,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						% psth
 						su.psth{sCondID,scoreID}(end+1,:) = ...
 							u.psthMean{uCondID,scoreID};
+						
+						% running correlation
+						su.psthCorrR{sCondID,scoreID}(end+1,:) = ...
+							u.psthCorrR{uCondID,scoreID};
+						su.psthCorrP{sCondID,scoreID}(end+1,:) = ...
+							u.psthCorrP{uCondID,scoreID};
 
 						% calculate target-evoked response and
 						% peak activation relative to nogo

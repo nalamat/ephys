@@ -76,7 +76,8 @@ function d = showGUI()
 		'Aggregate', ['Append all analyses into one "mat" file, use ' ...
 			'for making portable "mat" files']
 		...'Combine', ... % combine
-		'Summarize', 'Categorize & summarize units from selected sessions'
+		'Summarize', ['Categorize & summarize units from selected sessions' ...
+			', and some export some metrics as Excel']
 		'View', 'View plots of the analysis'};
 	d.btns = {};
 	for i = 1:length(btns)
@@ -326,6 +327,7 @@ function btnCallback(btn, ~)
 				end
 				
 				% analyze
+				disp('Analyzing ...');
 				mat.analysis = spikesToUnits(mat.spikes, ...
 					mat.analysis, mat.spikeConfig);
 				for analysisID = 1:length(mat.analysis)

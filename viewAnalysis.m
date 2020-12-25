@@ -415,13 +415,33 @@ function refreshPlot(fig, d)
 
 				for snrID = 1:3
 					% calculate average psth of go
-					go = vertcat(u.psth{snrID+1,scoreID});
+					R = vertcat(u.psthCorrR{snrID+1,scoreID});
 					if ~strcmpi(subset, 'all')
 						msk = u.(subset){1,scoreID}==true;
-						go = go(msk, :);
+						R = R(msk, :);
 					end
-					goMean = nanmean(go, 1);
-					goErr = nansem(go, 1);
+					RMean = nanmean(R, 1);
+					RErr = nansem(R, 1);
+					
+					% running pearson's correlation
+					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
+					hold on;
+					plot(u.psthCorrTimes, RMean, ...
+						'color', colors2{modeID, 1+snrID}, ...
+						'linewidth', 1.5);
+					
+					p = patch([u.psthCorrTimes fliplr(u.psthCorrTimes)], ...
+						[RMean+RErr fliplr(RMean-RErr)], ...
+						colors2{modeID, 1+snrID}, ...
+						'edgecolor', 'none');
+					alpha(p, .2);
+					uistack(p, 'bottom');
+					
+					% mark significant p-values
+% 					hold on;
+% 					sig = P<.05;
+% 					plot(centers(sig), R(sig), '.', 'markersize', 12, ...
+% 						'color', [.6 .6 1]);
 
 
 					% running cross correlation
@@ -436,8 +456,6 @@ function refreshPlot(fig, d)
 % 						goMeanPeri-mean((nogoMeanPeri+goMeanPeri)/2), 1/u.psthBin, time_window, time_step, time_window, 0);
 
 					% plot go and nogo
-					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
-					hold on;
 % 					for ii = 1 : length(twin)
 % 						tmp = xcl(ii,:);
 % 						tmp(20:22)=0;
@@ -448,41 +466,13 @@ function refreshPlot(fig, d)
 
 % 					plot(u.psthCenters, movmean((goMean - nogoMean) ./ (goErr/2 + nogoErr/2), 10));
 
-
-					% running pearson's correlation
-					win = 200e-3;
-					centers = u.psthCenters;
-					centers = centers(centers <= max(centers)-win);
-% 					centers = u.viewBounds(1):win:u.viewBounds(2)-win;
-					R = zeros(size(centers));
-					P = ones(size(centers));
-					for centerID = 1:length(centers)
-						center = centers(centerID);
-						nogo = nogoMean(center <= u.psthCenters & ...
-							u.psthCenters < center + win);
-						go = goMean(center <= u.psthCenters & ...
-							u.psthCenters < center + win);
-						[r, p] = corrcoef(nogo, go);
-						R(centerID) = r(1,2);
-						P(centerID) = p(1,2);
-					end
-					plot(centers, R, ...
-						'color', colors2{modeID, 1+snrID}, ...
-						'linewidth', 1.5);
-					% mark significant p-values
-% 					hold on;
-% 					sig = P<.05;
-% 					plot(centers(sig), R(sig), '.', 'markersize', 12, ...
-% 						'color', [.6 .6 1]);
-
-
 					markTarget(u, modeID==1);
 
 					axis tight square;
 					xticks(u.viewBounds(1):1:u.viewBounds(2));
 	% 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
 					xticklabels(-1:1:2);
-					xlim([u.viewBounds(1), max(centers)]);
+					xlim([u.psthCorrTimes(1), u.psthCorrTimes(end)]);
 % 					xlim(u.viewBounds);
 					yticks(-1:.5:1);
 					ylim([-1,1]);
@@ -1664,7 +1654,7 @@ function refreshPlot(fig, d)
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
-				centers = u.vs10Centers;
+				times = u.vs10Times;
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
 						vs = u.(field){condID,scoreID};
@@ -1681,10 +1671,10 @@ function refreshPlot(fig, d)
 						if isempty(avg); continue; end
 
 						col = getColor(condID);
-						plots(condID) = plot(centers, avg, ...
+						plots(condID) = plot(times, avg, ...
 							'color', col, 'linewidth', 2);
 						patches(condID) = patch( ...
-							[centers fliplr(centers)], ...
+							[times fliplr(times)], ...
 							[avg+err fliplr(avg-err)], ...
 							col, 'edgecolor', 'none');
 						alpha(patches(condID), .2);
@@ -1693,12 +1683,12 @@ function refreshPlot(fig, d)
 						if contains(plotName, 'phase')
 							vs = vs * 180 / pi;
 						end
-						plots(condID) = plot(centers, vs, ...
+						plots(condID) = plot(times, vs, ...
 							'color', getColor(condID), ...
 							'linewidth', 2);
 						pval = u.vs10PVal{condID,scoreID};
 						sig = pval < .001;
-						plot(centers(sig), vs(sig), '*', ...
+						plot(times(sig), vs(sig), '*', ...
 							'color', getColor(condID));
 					end
 				end

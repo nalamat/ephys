@@ -27,6 +27,11 @@ function units = analyzeUnits(units)
 			u.viewBounds(2)+u.psthBin/2;
 		u.psthCenters    = u.psthEdges(1:end-1)+u.psthBin/2;
 		psthBinCount     = length(u.psthCenters);
+		
+		% running pearson's correlation between nogo and go
+		u.psthCorrWindow = 200e-3;
+		u.psthCorrTimes  = u.psthCenters( ... % left aligned windows
+			u.viewBounds(1)+u.psthCorrWindow <= u.psthCenters);
 
 		% convolution window for smoothing PSTH
 		u.psthWin = 50e-3;                         % convolution window size
@@ -55,8 +60,8 @@ function units = analyzeUnits(units)
 		u.vsBinNames = {'Pre','Peri','Post'};
 
 		u.vs10Window     = 300e-3;
-		u.vs10Centers    = u.psthCenters( ...
-			u.psthCenters <= u.viewBounds(2)-u.vs10Window);
+		u.vs10Times      = u.psthCenters( ... % left aligned windows
+			u.viewBounds(1)+u.vs10Window <= u.psthCenters);
 
 		% multi-tapered spectrum parameters
 		u.mtsParams.Fs       = u.fs;      % sampling frequency
@@ -76,14 +81,17 @@ function units = analyzeUnits(units)
 		init = @(sz1, sz2)cellfun(@(c){nan(sz1, sz2)}, c);
 		c1   = init(1, 1);
 		ct   = init(1, length(u.psthCenters));
+		cc   = init(1, length(u.psthCorrTimes));
 		ci   = init(1, length(u.intervals));
 		cv   = init(length(u.vsBins), length(u.vsFreqs));
-		cv2  = init(1, length(u.vs10Centers));
+		cv2  = init(1, length(u.vs10Times));
 		cm   = init(length(u.vsBins), length(u.mtsFreqs));
 		cl   = init(u.lfpBandCount, 3);
 		u.psth             = init(0, length(u.psthCenters));
 		u.psthMean         = ct;
 		u.psthSTD          = ct;
+		u.psthCorrR        = cc;
+		u.psthCorrP        = cc;
 		u.dPrime           = ct;  % as a function of time (psth centers)
 		u.dPrimeCQMean     = ct;  % cumulative quadratic mean versus time
 		u.dPrimeCQSum      = ct;  % cumulative quadratic sum versus time
@@ -140,6 +148,25 @@ function units = analyzeUnits(units)
 				u.psth{condID,scoreID} = psth;
 				u.psthMean{condID,scoreID} = psthMean;
 				u.psthSTD{condID,scoreID} = psthSTD;
+				
+				% running pearson's correlation
+				if condID ~= 1
+					R = zeros(size(u.psthCorrTimes));
+					P = ones(size(u.psthCorrTimes));
+					for timeID = 1:length(u.psthCorrTimes)
+						time = u.psthCorrTimes(timeID);
+						% left aligned window
+						msk = time - u.psthCorrWindow <= u.psthCenters & ...
+							u.psthCenters <= time;
+						nogo = u.psthMean{1,1}(msk);
+						go = u.psthMean{condID,scoreID}(msk);
+						[r, p] = corrcoef(nogo, go);
+						R(timeID) = r(1,2);
+						P(timeID) = p(1,2);
+					end
+					u.psthCorrR{condID,scoreID} = R;
+					u.psthCorrP{condID,scoreID} = P;
+				end
 
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
@@ -373,14 +400,11 @@ function units = analyzeUnits(units)
 				vsFreq = 10;
 				spikeTimes = u.spikeTimes{condID,scoreID};
 				spikeTimesAll = [spikeTimes{:}];
-				u.vs10{condID,scoreID} = zeros(size(u.vs10Centers));
-				u.vs10PVal{condID,scoreID} = ones(size(u.vs10Centers));
 
-				for centerID = 1:length(u.vs10Centers)
-					center = u.vs10Centers(centerID);
-					spikeTimesBin = spikeTimesAll( ...
-						center<=spikeTimesAll & ...
-						spikeTimesAll<center+u.vs10Window);
+				for timeID = 1:length(u.vs10Times)
+					time = u.vs10Times(timeID);
+					spikeTimesBin = spikeTimesAll( ... % left aligned windows
+						time-u.vs10Window<=spikeTimesAll & spikeTimesAll<=time);
 
 					% calculate VS using spikes from all trials
 					if ~isempty(spikeTimesBin)
@@ -396,9 +420,9 @@ function units = analyzeUnits(units)
 
 						pval = rayleighsz(vs, n);
 
-						u.vs10{condID,scoreID}(centerID) = vs;
-						u.vs10Phase{condID,scoreID}(centerID) = theta2;
-						u.vs10PVal{condID,scoreID}(centerID) = pval;
+						u.vs10{condID,scoreID}(timeID) = vs;
+						u.vs10Phase{condID,scoreID}(timeID) = theta2;
+						u.vs10PVal{condID,scoreID}(timeID) = pval;
 					end
 					
 				end % centerID
