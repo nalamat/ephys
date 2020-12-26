@@ -88,7 +88,6 @@ function units = analyzeUnits(units)
 		cv   = init(length(u.vsBins), length(u.vsFreqs));
 		cv2  = init(1, length(u.vs10Times));
 		cm   = init(length(u.vsBins), length(u.mtsFreqs));
-		cl   = init(u.lfpBandCount, 3);
 		u.psth             = init(0, length(u.psthCenters));
 		u.psthMean         = ct;
 		u.psthSTD          = ct;
@@ -114,10 +113,13 @@ function units = analyzeUnits(units)
 		u.vs10Phase        = cv2; % phase of running vector strength at 10 hz
 		u.vs10PVal         = cv2; % p values
 		u.mts              = cm;
-		% {conds x scores}[bands x bins]
-		u.lfpMean          = cl;
-		u.lfpSTD           = cl;
-		u.lfpSEM           = cl;
+		if isfield(u, 'lfp')
+			% {conds x scores}[bands x bins]
+			cl   = init(u.lfpBandCount, 3);
+			u.lfpMean          = cl;
+			u.lfpSTD           = cl;
+			u.lfpSEM           = cl;
+		end
 
 		c = cell(length(u.targetFreqs), 3);
 		u.rlf              = c;
@@ -433,10 +435,12 @@ function units = analyzeUnits(units)
 				% LFP
 				% dimensions: {conds x scores}[bands x bins x trials]
 				% bins are: pre/peri/post-stim
-				lfp = u.lfp{condID, scoreID};
-				u.lfpMean{condID, scoreID} = mean(lfp, 3);
-				u.lfpSTD{condID, scoreID} = std(lfp, 0, 3);
-				u.lfpSEM{condID, scoreID} = sem(lfp, 3);
+				if isfield(u, 'lfp')
+					lfp = u.lfp{condID, scoreID};
+					u.lfpMean{condID, scoreID} = mean(lfp, 3);
+					u.lfpSTD{condID, scoreID} = std(lfp, 0, 3);
+					u.lfpSEM{condID, scoreID} = sem(lfp, 3);
+				end
 
 			end % scoreID
 

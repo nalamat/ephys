@@ -114,7 +114,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	for sessionID = 1:length(sessions)
 		for modeID = 1:length(sessions{sessionID})
 			a = sessions{sessionID}{modeID};
-	% 		if isempty(a); continue; end
+			if isempty(a); continue; end      % for missing passive quiet
 			s.animalNames  = [s.animalNames a.animalName];
 			s.targetFreqs  = [s.targetFreqs , a.targetFreqs ];
 			s.targetLevels = [s.targetLevels, a.targetLevels];
@@ -225,6 +225,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vs10               = cv2;
 		u.vs10Phase          = cv2;
 		u.mts                = cm;
+		u.lfp                = cl;
 
 		s.units{modeID} = u;
 	end % modeID
@@ -278,7 +279,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						if isnan(vs)
 							fprintf(['NAN: cond %d, bin %d, ' ...
 								'channel %d, %s\n'], uCondID, binID, ...
-								a.channels(unitID), u.dataFile);
+								u.channel, u.dataFile);
 						end
 						if p < s.phasicThresh
 							phasic = phasic+1;
@@ -405,10 +406,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			%% map unit analysis to summary
 			for modeID = 1:length(sessions{sessionID})
 				a = sessions{sessionID}{modeID};
+				if isempty(a); continue; end    % for missing passive quiet
 				a = calculatePerformance(a);
-	% 			if isempty(a); continue; end
-				u = a.units{unitID};     % unpack original analysis unit
-				su = s.units{modeID};      % unpack summary unit
+				u = a.units{unitID};            % unpack original analysis unit
+				su = s.units{modeID};           % unpack summary unit
 				for uCondID = 1:u.condCount
 					% map condition ID from unit to summary
 					sCondID = mapCondID(uCondID, u, s);
@@ -499,13 +500,22 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.mfslPhase{sCondID,scoreID}(end+1,:) = ...
 							u.mfslPhase{uCondID,scoreID};
 
-						% max firing rate
+						% mean and max firing rate
+						su.firingMean{sCondID,scoreID}(end+1,:) = ...
+							u.firingMean{uCondID,scoreID};
 						su.firingMax{sCondID,scoreID}(end+1,:) = ...
 							u.firingMax{uCondID,scoreID};
 
-						% mean firing rate
-						su.firingMean{sCondID,scoreID}(end+1,:) = ...
-							u.firingMean{uCondID,scoreID};
+						try
+						if isfield(u, 'lfp')
+							su.lfp{sCondID,scoreID}(end+1,:,:) = ...
+								u.lfpMean{uCondID,scoreID};
+						else
+							su.lfp{sCondID,scoreID}(end+1,:,:) = nan;
+						end
+						catch
+							disp('');
+						end
 					end
 
 					if any(isnan(u.psthMean{uCondID,1})); continue; end

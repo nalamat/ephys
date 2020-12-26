@@ -125,9 +125,13 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 			u.fs                = a.fs;
 			u.viewBounds        = a.viewBounds;
 % 			u.trialCount        = a.trialCount;
-			u.lfpBands          = a.lfpBands;
-			u.lfpBandNames      = a.lfpBandNames;
-			u.lfpBandCount      = a.lfpBandCount;
+			if isfield(a, 'lfp')
+				u.lfpBands        = a.lfpBands;
+				u.lfpBandNames    = a.lfpBandNames;
+				u.lfpBandCount    = a.lfpBandCount;
+			else
+				u.lfpBandCount    = 0;
+			end
 			u.spikesBand        = a.spikesBand;
 			u.maskerFile        = a.maskerFile;
 			u.maskerLevel       = a.maskerLevel;
@@ -166,12 +170,16 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 
 			% spike times per stimulus condition and score for each trial
 			u.spikeTimes = cell(u.condCount, scoreCount);
-			u.lfp = cell(u.condCount, scoreCount);
+			if isfield(a, 'lfp')
+				u.lfp = cell(u.condCount, scoreCount);
+			end
 
 			for condID = 1:u.condCount
 				for scoreID = 1:scoreCount
 					u.spikeTimes{condID, scoreID} = {};
-					u.lfp{condID, scoreID} = zeros(0,0,0);
+					if isfield(a, 'lfp')
+						u.lfp{condID, scoreID} = zeros(0,0,0);
+					end
 				end
 			end
 
@@ -200,15 +208,14 @@ function analysis = spikesToUnits(spikes, analysis, spikeConfig)
 					u.spikeTimes{condID, 5}{end+1} = trialSpikeTimes;
 				end
 
-				if ~isfield(a, 'lfp'); continue; end
-				if strcmpi(spikeConfig, 'sorted')
-					% associate LFP of the entire channel to each unit
-					lfp = squeeze(a.lfp(trialID, u.channelID, :, :));
-				else
-					lfp = squeeze(a.lfp(trialID, unitID, :, :));
-				end
+				if isfield(a, 'lfp')
+					if strcmpi(spikeConfig, 'sorted')
+						% associate LFP of the entire channel to each unit
+						lfp = squeeze(a.lfp(trialID, u.channelID, :, :));
+					else
+						lfp = squeeze(a.lfp(trialID, unitID, :, :));
+					end
 
-				if strcmpi(spikeConfig, 'unsorted')
 					u.lfp{condID, 1}(:, :, end+1) = lfp;
 
 					if any(strcmpi(score, {'HIT', 'CR'}))

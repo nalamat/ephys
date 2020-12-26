@@ -583,6 +583,9 @@ function refreshPlot(fig, d)
 
 					axis square tight;
 					xlim([min(conds)-2.5, max(conds)+2.5]);
+					if contains(plotName, 'dprime')
+						ylim([0, .8]);
+					end
 % 					ylim([-10, 10]);
 					xticks(conds);
 					xlabel(condLabel);
