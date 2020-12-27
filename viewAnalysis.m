@@ -51,6 +51,9 @@ function viewAnalysis(analysis)
 			'dprime alt'
 			'dprime waterfall alt'
 			'vs waterfall alt'
+			'lfp alpha'
+			'lfp beta'
+			'lfp gamma'
 			'psth'
 % 			'psth err'
 			'dprime cqmean'
@@ -1331,7 +1334,7 @@ function refreshPlot(fig, d)
 
 
 			% local field potential
-			elseif strcmpi(plotName(1:min(3, length(plotName))), 'lfp')
+			elseif strncmpi(plotName, 'lfp', 3)
 				bandName = plotName(5:end);
 				bandName = [upper(bandName(1)) bandName(2:end)];
 				bandID = find(strcmpi(u.lfpBandNames, bandName));
@@ -1342,23 +1345,28 @@ function refreshPlot(fig, d)
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						error('Not implemented')
-
+						lfp = squeeze(u.lfp{condID,scoreID}(:,bandID,:));
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){condID,scoreID}==true;
+							lfp = lfp(msk, :);
+						end
+						avg = nanmean(lfp, 1);
+						err = nansem(lfp, 1);
 					else
-						lfpMean = u.lfpMean{condID, scoreID}(bandID, :);
-						lfpSEM = u.lfpSEM{condID, scoreID}(bandID, :);
-						plots(condID) = plot(1:3, lfpMean, ...
-							'color', getColor(condID), 'linewidth',1.5);
-						errorbar(1:3, lfpMean, lfpSEM, ...
-							'color', getColor(condID), 'linewidth',1.5);
+						avg = u.lfpMean{condID,scoreID}(bandID,:);
+						err = u.lfpSEM{condID,scoreID}(bandID,:);
 					end
+					errorbar(1:3, avg, err, '-o', ...
+						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
+						'linewidth', 1.5);
 				end
 
 				axis square tight;
-% 				ylim([0,vectorUL]);
 				xticks(1:3);
 				xticklabels({'Pre', 'Peri', 'Post'});
+				xlim([.75, 3.25]);
 				xlabel('');
+% 				ylim([0,vectorUL]);
 				ylabel(['RMS of ' bandName]);
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
