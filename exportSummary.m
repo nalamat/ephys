@@ -72,23 +72,21 @@ function exportSummary(summaryFile)
 					category    = u.category{condID,scoreID}(i);
 					subCategory = u.subCategory{condID,scoreID}(i);
 
-					if condID~=1
-						for intervalID = 1:length(u.intervals)
-							interval = u.intervalNames{intervalID};
+					for intervalID = 1:length(u.intervals)
+						interval = u.intervalNames{intervalID};
 
-							% target-evoked response
-							ter = u.ter{condID,scoreID}(i,intervalID);
+						% target-evoked response
+						ter = u.ter{condID,scoreID}(i,intervalID);
 
-							% target-evoked peak
-							tep = u.tep{condID,scoreID}(i,intervalID);
+						% target-evoked peak
+						tep = u.tep{condID,scoreID}(i,intervalID);
 
-							% dPrime
-							dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
+						% dPrime
+						dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
 
-							tables.TER(end+1,:) = ...
-								{sessionID unitID category subCategory ...
-								mode level score interval ter tep dp};
-						end
+						tables.TER(end+1,:) = ...
+							{sessionID unitID category subCategory ...
+							mode level score interval ter tep dp};
 					end
 
 					% vector strength

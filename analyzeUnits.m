@@ -154,27 +154,36 @@ function units = analyzeUnits(units)
 				u.psthSTD{condID,scoreID} = psthSTD;
 				
 				% running pearson's correlation
-				if condID ~= 1
+				if condID == 1 && scoreID == 1
+					R = ones(size(u.psthCorrTimes));
+					P = zeros(size(u.psthCorrTimes));
+				else
 					R = zeros(size(u.psthCorrTimes));
 					P = ones(size(u.psthCorrTimes));
-					nogo = u.psthMean{1,1};
-					go = u.psthMean{condID,scoreID};
 					for timeID = 1:length(u.psthCorrTimes)
 						time = u.psthCorrTimes(timeID);
 						% center aligned window
 						win = time - u.psthCorrWindow/2 <= u.psthCenters & ...
 							u.psthCenters < time + u.psthCorrWindow/2;
-						[r, p] = corrcoef(nogo(win), go(win));
+						[r, p] = corrcoef(u.psthMean{1,1}(win), psthMean(win));
 						R(timeID) = r(1,2);
 						P(timeID) = p(1,2);
 					end
-					u.psthCorrR{condID,scoreID} = R;
-					u.psthCorrP{condID,scoreID} = P;
 				end
+				u.psthCorrR{condID,scoreID} = R;
+				u.psthCorrP{condID,scoreID} = P;
 
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
-				if condID ~= 1 && ~any(isnan(u.psthMean{1,1}))
+% 				if ~any(isnan(u.psthMean{1,1}))
+				if condID == 1 && scoreID == 1
+					u.dPrime         {condID,scoreID} = zeros(size(u.psthCenters));
+					u.dPrimeCQMean   {condID,scoreID} = zeros(size(u.psthCenters));
+					u.dPrimeCQSum    {condID,scoreID} = zeros(size(u.psthCenters));
+					u.dPrimeMQMean   {condID,scoreID} = zeros(size(u.psthCenters));
+					u.dPrimeIntervals{condID,scoreID} = zeros(size(u.intervals));
+					
+				else
 					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
 						((psthSTD + u.psthSTD{1,1}) / 2);
 					dPrime(dPrime>4) = 4;

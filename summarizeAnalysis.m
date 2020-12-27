@@ -448,7 +448,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 						% calculate target-evoked response and
 						% peak activation relative to nogo
-						if uCondID ~= 1
+						if uCondID == 1 && scoreID == 1
+							ter = zeros(size(u.intervals));
+							tep = zeros(size(u.intervals));
+						else
 							ter = nan(size(u.intervals));
 							tep = nan(size(u.intervals));
 							for intervalID = 1:length(u.intervals)
@@ -460,11 +463,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 								ter(intervalID) = mean(go-nogo) / mean(nogo);
 								tep(intervalID) = (max(go) - max(nogo)) / max(nogo);
 							end
-							ter(isinf(ter)) = nan;
-							tep(isinf(tep)) = nan;
-							su.ter{sCondID,scoreID}(end+1,:) = ter;
-							su.tep{sCondID,scoreID}(end+1,:) = tep;
 						end
+						ter(isinf(ter)) = nan;
+						tep(isinf(tep)) = nan;
+						su.ter{sCondID,scoreID}(end+1,:) = ter;
+						su.tep{sCondID,scoreID}(end+1,:) = tep;
 
 						% d'
 						su.dPrimeCQMean{sCondID,scoreID}(end+1,:) = ...
@@ -506,15 +509,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.firingMax{sCondID,scoreID}(end+1,:) = ...
 							u.firingMax{uCondID,scoreID};
 
-						try
 						if isfield(u, 'lfp')
 							su.lfp{sCondID,scoreID}(end+1,:,:) = ...
 								u.lfpMean{uCondID,scoreID};
 						else
 							su.lfp{sCondID,scoreID}(end+1,:,:) = nan;
-						end
-						catch
-							disp('');
 						end
 					end
 
