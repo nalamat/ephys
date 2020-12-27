@@ -268,7 +268,11 @@ function refreshPlot(fig, d)
 		end
 		vectorUL = .6;
 	else
-		firingUL = 160;
+		if strcmpi(a.type, 'summary')
+			firingUL = 40;
+		else
+			firingUL = 160;
+		end
 		vectorUL = .8;
 % 		firingUL = 40;
 % 		vectorUL = .4;
@@ -1338,6 +1342,7 @@ function refreshPlot(fig, d)
 				bandName = plotName(5:end);
 				bandName = [upper(bandName(1)) bandName(2:end)];
 				bandID = find(strcmpi(u.lfpBandNames, bandName));
+				sameYLim = true;
 
 				plotTitle = ['RMS of ' bandName ' band'];
 
@@ -1350,13 +1355,17 @@ function refreshPlot(fig, d)
 							msk = u.(subset){condID,scoreID}==true;
 							lfp = lfp(msk, :);
 						end
+						lfp = 10*log10(lfp);
 						avg = nanmean(lfp, 1);
 						err = nansem(lfp, 1);
 					else
-						avg = u.lfpMean{condID,scoreID}(bandID,:);
-						err = u.lfpSEM{condID,scoreID}(bandID,:);
+						lfp = u.lfpMean{condID,scoreID}(bandID,:,:);
+						lfp = 10*log10(lfp);
+						avg = nanmean(lfp, 3);
+						err = nansem(lfp, 3);
 					end
-					errorbar(1:3, avg, err, '-o', ...
+					col = getColor(condID);
+					plots(condID) = errorbar(1:3, avg, err, '-o', ...
 						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
 						'linewidth', 1.5);
 				end
@@ -1367,7 +1376,7 @@ function refreshPlot(fig, d)
 				xlim([.75, 3.25]);
 				xlabel('');
 % 				ylim([0,vectorUL]);
-				ylabel(['RMS of ' bandName]);
+				ylabel(['RMS of ' bandName ' [dB]']);
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else
