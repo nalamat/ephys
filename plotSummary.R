@@ -5,20 +5,20 @@ library(tidyr) # gather
 library(dplyr) # recode
 library(ggplot2) # ggplot
 
-gerbil = 'HE-All'
+# gerbil = 'HE-All'
 # gerbil = 'HE-CMR05Fluffy'
 # gerbil = 'HE-CMR05Tail'
 # gerbil = 'HE-D2Right'
 # gerbil = 'HE-E1Right'
 #
-gerbil = 'LE-All'
+# gerbil = 'LE-All'
 # gerbil = 'LE-CMR08Head'
 # gerbil = 'LE-CMR08Tail'
 
 # for (gerbil in c('HE-All', 'HE-CMR05Fluffy', 'HE-CMR05Tail','HE-D2Right',
 #   'HE-E1Right', 'LE-All', 'LE-CMR08Tail', 'LE-CMR08Head')) {
 
-summaryFile = paste('results/Summary-', gerbil, '-Sorted.xlsx', sep='')
+# summaryFile = paste('results/Summary-', gerbil, '-Sorted.xlsx', sep='')
 
 save_plot = function(plot, file) {
   # ggsave(plot, file=file, height=4, width=6, dpi=600)
@@ -61,10 +61,17 @@ se_errorbar = stat_summary(fun.data=mean_se, geom='errorbar', #linetype='solid',
 # summaryFile = paste('results/Summary-', gerbil, '-Sorted-dp', dp, '.xlsx', sep='')
 
 gc()
-data = read.xlsx(summaryFile, 'TER')
-data2 = subset(data, Score=='All' & Interval=='Peri')
+# data = read.xlsx(summaryFile, 'TER')
+dataHE = read.xlsx('results/Summary-HE-All-Sorted.xlsx', 'TER')
+dataHE$Effort = 'HE'
+dataLE = read.xlsx('results/Summary-LE-All-Sorted.xlsx', 'TER')
+dataLE$Effort = 'LE'
+data = rbind(dataHE, dataLE)
+
+data2 = subset(data, TargetLevel!=0 & Score=='All' & Interval!='PeriFull')
 data2$SubjectID = factor(data2$SubjectID)
 data2$UnitID = factor(data2$UnitID)
+data2$Interval = factor(data2$Interval, c('Onset','Peri','Offset'))
 data2$SNR = factor(data2$TargetLevel-50)
 data2$SNRn = data2$TargetLevel-50
 data2$TER = data2$TER * 100   # as percentage
@@ -84,7 +91,7 @@ data2 %>%
   summarize(Count=n_distinct(UnitID)) %>%
   print
 
-summary(subset(data2, SubCategory=='Phasic Enhancing', select=c(SubjectID, UnitID)))
+# summary(subset(data2, SubCategory=='Phasic Enhancing', select=c(SubjectID, UnitID)))
 
 model = aov(TER ~ SNR*Mode*SubCategory + Error(factor(UnitID)),
   subset(data2, Category=='Phasic'))
@@ -126,9 +133,16 @@ ylim = coord_cartesian(ylim=c(-30,30))
 # title = paste('Phasic Units ', length(unique(subset(data2, Category=='Phasic')$UnitID)), ' (dp > ', dp, ')')
 
 p = ggplot(subset(data2, Category=='Phasic'),
-           aes(x=SNR, y=TER, color=Mode, group=Mode)) +
+           aes(x=SNR, y=TER, color=Mode,
+               group=Mode,
+               # shape=Category, linetype=Category,
+               # group=interaction(Mode, Category)
+               )) +
   xintercept + yintercept +
   se_errorbar + mean_line + mean_point +
+  # scale_linetype_manual(values=linetypes) +
+  # scale_shape_manual(values=shapes) +
+  facet_grid(rows=vars(Effort), cols=vars(Interval)) +
   labs_xy + labs(color='Mode', title='Phasic Units') +
   color_manual +
   # ylim +
@@ -137,7 +151,30 @@ p = ggplot(subset(data2, Category=='Phasic'),
 print(p)
 save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
 
+
+p = ggplot(subset(data2, SubCategory=='Phasic Enhancing' |
+                    SubCategory=='Phasic Suppressing'),
+           aes(x=SNR, y=TER, color=Mode,
+               # group=Mode,
+               shape=SubCategory, linetype=SubCategory,
+               group=interaction(Mode, SubCategory)
+           )) +
+  xintercept + yintercept +
+  se_errorbar + mean_line + mean_point +
+  scale_linetype_manual(values=linetypes) +
+  scale_shape_manual(values=shapes) +
+  facet_grid(rows=vars(Effort), cols=vars(Interval)) +
+  labs_xy + labs(color='Mode', title='Phasic Units') +
+  color_manual +
+  # ylim +
+  expand_x + expand_y +
+  theme_my
+print(p)
+save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+
+
 # }
+
 
 p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
            aes(x=SNR, y=TER, color=Mode, group=Mode)) +
@@ -187,6 +224,50 @@ p
 save_plot(p, file=paste('figs/Summary/ter-tonic-', gerbil, '.svg', sep=''))
 
 
+# target-evoked peak
+labs_xy = labs(x='SNR [dB]', y='Target-evoked peak [%]')
+
+p = ggplot(subset(data2, Category=='Phasic'),
+           aes(x=SNR, y=TEP, color=Mode,
+               group=Mode,
+               # shape=Category, linetype=Category,
+               # group=interaction(Mode, Category)
+           )) +
+  xintercept + yintercept +
+  se_errorbar + mean_line + mean_point +
+  # scale_linetype_manual(values=linetypes) +
+  # scale_shape_manual(values=shapes) +
+  facet_grid(rows=vars(Effort), cols=vars(Interval)) +
+  labs_xy + labs(color='Mode', title='Phasic Units') +
+  color_manual +
+  # ylim +
+  expand_x + expand_y +
+  theme_my
+print(p)
+save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+
+
+p = ggplot(subset(data2, SubCategory=='Phasic Enhancing' |
+                    SubCategory=='Phasic Suppressing'),
+           aes(x=SNR, y=TEP, color=Mode,
+               # group=Mode,
+               shape=SubCategory, linetype=SubCategory,
+               group=interaction(Mode, SubCategory)
+           )) +
+  xintercept + yintercept +
+  se_errorbar + mean_line + mean_point +
+  scale_linetype_manual(values=linetypes) +
+  scale_shape_manual(values=shapes) +
+  facet_grid(rows=vars(Effort), cols=vars(Interval)) +
+  labs_xy + labs(color='Mode', title='Phasic Units') +
+  color_manual +
+  # ylim +
+  expand_x + expand_y +
+  theme_my
+print(p)
+save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+
+
 #################
 # d prime
 
@@ -200,17 +281,29 @@ model = aov(dPrime ~ SNR*Mode*Category + Error(UnitID), data2)
 summary(model)
 
 labs_xy = labs(x='SNR [dB]', y='d\'')
-ylim = coord_cartesian(ylim=c(0,.39999))
+ylim = coord_cartesian(ylim=c(0,NaN))
 
-p = ggplot(subset(data2, Category=='Phasic'),
-           aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
+
+p = ggplot(subset(data2,
+                  Category=='Phasic'
+                  ),
+           aes(x=SNR, y=dPrime, color=Mode,
+               group=Mode,
+               # shape=Category, linetype=Category,
+               # group=interaction(Mode, Category)
+           )) +
   se_errorbar + mean_line + mean_point +
-  labs_xy + labs(color='Mode', title='Phasic units') +
+  # scale_linetype_manual(values=linetypes) +
+  # scale_shape_manual(values=shapes) +
+  facet_grid(rows=vars(Effort), cols=vars(Interval)) +
+  labs_xy + labs(color='Mode', title='Phasic Units') +
   color_manual +
-  ylim + expand_x + no_expand_y +
+  ylim +
+  expand_x + expand_y +
   theme_my + grid_xy
-p
-save_plot(p, file=paste('figs/Summary/dp-phasic-', gerbil, '.svg', sep=''))
+print(p)
+save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+
 
 p = ggplot(subset(data2, SubCategory=='Phasic Enhancing'),
            aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
