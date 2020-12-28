@@ -15,15 +15,18 @@ function exportSummary(summaryFile)
 
 	% prep table headers
 	headers = struct();
-	headers.TER = ...  % target-evoked response for onset/peri/offset
+	headers.Intervals = ...  % for onset/peri/offset
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Interval' 'TER', 'TEP', 'dPrime'};
-	headers.VS = ...     % vector strength for pre/peri/post
+	headers.Bins = ...     % for pre/peri/post
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Bin' 'VS10' 'MTS10'};
-	headers.Firing = ... % peri stimulus, including onset/offset
+	headers.Overall = ...     
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'FiringMean', 'FiringMax'};
+		'Mode' 'TargetLevel' 'Score' ...
+		'FiringMeanOnset' 'FiringMeanPeri' 'FiringMeanOffset' ...
+		'FiringMaxOnset' 'FiringMaxPeri' 'FiringMaxOffset' ...
+		'VS10Phase' 'PSTHCorr'};
 
 	% prep tables as empty cells
 	tableNames = fieldnames(headers);
@@ -72,6 +75,7 @@ function exportSummary(summaryFile)
 					category    = u.category{condID,scoreID}(i);
 					subCategory = u.subCategory{condID,scoreID}(i);
 
+					% for onset/peri/offset/perifull
 					for intervalID = 1:length(u.intervals)
 						interval = u.intervalNames{intervalID};
 
@@ -84,30 +88,54 @@ function exportSummary(summaryFile)
 						% dPrime
 						dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
 
-						tables.TER(end+1,:) = ...
+						tables.Intervals(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score interval ter tep dp};
 					end
 
-					% vector strength
+					% for pre/peri/post
 					vsFreq = u.vsFreqs==10;
 					mtsFreq = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
 					for binID = 1:size(u.vsBins,1)
 						bin = u.vsBinNames{binID};
+						
+						% vector strength at 10Hz
 						vs  = u.vs{condID,scoreID}(i,binID,vsFreq);
+						
+						% multi-taper spectrum at 10Hz
 						mts = u.mts{condID,scoreID}(i,binID,mtsFreq);
 						mts = mean(mts);
-						tables.VS(end+1,:) = ...
+						
+						tables.Bins(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score bin vs mts};
 					end
 
-					% mean and max firing rate
-					firingMean = u.firingMean{condID,scoreID}(i);
-					firingMax  = u.firingMax{condID,scoreID}(i);
-					tables.Firing(end+1,:) = ...
+					% overall
+% 					firingMean = u.firingMean{condID,scoreID}(i);
+% 					firingMax  = u.firingMax{condID,scoreID}(i);
+
+					firingMeanOnset  = mean(u.psth{condID,scoreID}(i, u.onset ));
+					firingMeanPeri   = mean(u.psth{condID,scoreID}(i, u.peri  ));
+					firingMeanOffset = mean(u.psth{condID,scoreID}(i, u.offset));
+					firingMaxOnset   = max (u.psth{condID,scoreID}(i, u.onset ));
+					firingMaxPeri    = max (u.psth{condID,scoreID}(i, u.peri  ));
+					firingMaxOffset  = max (u.psth{condID,scoreID}(i, u.offset));
+					
+					% onset vector phase at 10Hz
+					[~, timeID] = min(abs(u.vs10Times-u.vs10Window/2));
+					vs10Phase = u.vs10{condID,scoreID}(i, timeID);
+					
+					% psth pearson's correlation
+					[~, timeID] = min(abs(u.psthCorrTimes-u.psthCorrWindow/2));
+					psthCorr = u.psthCorrR{condID,scoreID}(i, timeID);
+					
+					tables.Overall(end+1,:) = ...
 							{sessionID unitID category subCategory ...
-							mode level score firingMean firingMax};
+							mode level score ...
+							firingMeanOnset firingMeanPeri firingMeanOffset ...
+							firingMaxOnset firingMaxPeri firingMaxOffset ...
+							vs10Phase psthCorr};
 				end
 			end
 		end
