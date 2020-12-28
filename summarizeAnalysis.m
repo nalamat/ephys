@@ -182,6 +182,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vsFreqs            = u1.vsFreqs;
 		u.vsBins             = u1.vsBins;
 		u.vsBinNames         = u1.vsBinNames;
+		u.vs10Window         = u1.vs10Window;
 		u.vs10Times          = u1.vs10Times;
 		u.mtsFreqs           = u1.mtsFreqs;
 		u.label              = recordingModeLabels{modeID};
@@ -361,14 +362,23 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 				phasicNoChange = ~phasicSuppressing && ~phasicEnhancing;
 % 			end
 
-			% compare VS of pre and peri in active at +10 dB SNR
+			% compare 10Hz VS of pre versus peri in active at +10 dB SNR
 			if phasic
 				u = sessions{sessionID}{1}.units{unitID};
+				
 				vsFreq = u.vsFreqs==10;
-				change = (u.vs{end,1}(2,vsFreq) - u.vs{end,1}(1,vsFreq)) ...
-						/ u.vs{end,1}(1,vsFreq);
+				vs = cat(3, u.vs{:,1}); % bin x freq x snr
+				vs = squeeze(vs(:, vsFreq, :)); % bin x snr
+				vsPreMean = mean(vs(1,:));
+				vsPeri10dB = vs(2,end);
+				change = (vsPeri10dB - vsPreMean) / vsPreMean;
+				
+				% categorize based on average peri firing rate
+% 				firingMeanNogo = mean(u.psthMean{1,1}(u.peri));
+% 				firingMean10dB = mean(u.psthMean{end,1}(u.peri));
+% 				change = (firingMean10dB - firingMeanNogo) / firingMeanNogo;
 
-				if  change < -.2
+				if change < -.2
 					phasicSuppressing = true;
 				elseif change > .2
 					phasicEnhancing = true;
