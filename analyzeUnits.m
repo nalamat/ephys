@@ -307,10 +307,8 @@ function units = analyzeUnits(units)
 					u.spikeDuration);
 
 				% calculate mutual information
-				if ~isnan(u.lambda{1,1})
-					u.mutualInfo{condID,scoreID} = mutualInfo( ...
-						u.lambda{condID,scoreID}, u.lambda{1,1}); % vs nogo
-				end
+				u.mutualInfo{condID,scoreID} = mutualInfo( ...
+					u.lambda{condID,scoreID}, u.lambda{1,1}); % vs nogo
 
 				% minimum first spike latency (MFSL) peri-stimulus
 				% assume no two peaks within 2*psthBin

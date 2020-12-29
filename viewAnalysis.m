@@ -51,9 +51,6 @@ function viewAnalysis(analysis)
 			'dprime alt'
 			'dprime waterfall alt'
 			'vs waterfall alt'
-			'lfp alpha'
-			'lfp beta'
-			'lfp gamma'
 			'psth'
 % 			'psth err'
 			'dprime cqmean'
@@ -71,12 +68,16 @@ function viewAnalysis(analysis)
 			'mts peri'
 			'mts post'
 % 			'firing max'
-% 			'firing mean'
+			'firing mean'
 % 			'deltaAP'
 			'deltaAP/behav'
 			'mfsl'
 			'mfsl phase'
 			'mfsl violin'
+			'lfp alpha'
+			'lfp beta'
+			'lfp gamma'
+			'mutual info'
 			};
 	else
 		data.plotNames = {
@@ -86,9 +87,6 @@ function viewAnalysis(analysis)
 % 			'dprime cqsum'
 % 			'dprime mqmean'
 % 			'dprime'
-% 			'lfp alpha'
-% 			'lfp beta'
-% 			'lfp gamma'
 			'vs 10'
 			'vs 10 running'
 			'vs pre'
@@ -102,9 +100,13 @@ function viewAnalysis(analysis)
 			'firing max'
 			'mfsl'
 			'mfsl phase'
+% 			'psth err'
+% 			'psth heatmap'
+			'lfp alpha'
+			'lfp beta'
+			'lfp gamma'
 			'mutual info'
-			'psth err'
-			'psth heatmap'};
+			};
 	end
 
 	% subset the analysis based on any criteria
@@ -427,43 +429,43 @@ function refreshPlot(fig, d)
 						go = go(msk, :);
 					end
 					goMean = nanmean(go, 1);
-					
-					R = zeros(size(u.psthCorrTimes));
-					P = ones(size(u.psthCorrTimes));
-					for timeID = 1:length(u.psthCorrTimes)
-						time = u.psthCorrTimes(timeID);
-						% center aligned window
-						msk = time - u.psthCorrWindow/2 <= u.psthCenters & ...
-							u.psthCenters <= time + u.psthCorrWindow/2;
-						[r, p] = corrcoef(nogoMean(msk), goMean(msk));
-						R(timeID) = r(1,2);
-						P(timeID) = p(1,2);
-					end
-					RMean = R;
-					RErr = zeros(size(R));
-				
-% 					R = vertcat(u.psthCorrR{snrID+1,scoreID});
-% 					if ~strcmpi(subset, 'all')
-% 						msk = u.(subset){1,scoreID}==true;
-% 						R = R(msk, :);
+
+% 					R = zeros(size(u.psthCorrTimes));
+% 					P = ones(size(u.psthCorrTimes));
+% 					for timeID = 1:length(u.psthCorrTimes)
+% 						time = u.psthCorrTimes(timeID);
+% 						% center aligned window
+% 						msk = time - u.psthCorrWindow/2 <= u.psthCenters & ...
+% 							u.psthCenters <= time + u.psthCorrWindow/2;
+% 						[r, p] = corrcoef(nogoMean(msk), goMean(msk));
+% 						R(timeID) = r(1,2);
+% 						P(timeID) = p(1,2);
 % 					end
-% 					RMean = nanmean(R, 1);
-% 					RErr = nansem(R, 1);
-					
+% 					RMean = R;
+% 					RErr = zeros(size(R));
+
+					R = vertcat(u.psthCorrR{snrID+1,scoreID});
+					if ~strcmpi(subset, 'all')
+						msk = u.(subset){1,scoreID}==true;
+						R = R(msk, :);
+					end
+					RMean = nanmean(R, 1);
+					RErr = nansem(R, 1);
+
 					% running pearson's correlation
 					subplot(modeCount, 3, (modeCount-modeID)*3 + snrID);
 					hold on;
 					plot(u.psthCorrTimes, RMean, ...
 						'color', colors2{modeID, 1+snrID}, ...
 						'linewidth', 1.5);
-					
+
 					p = patch([u.psthCorrTimes fliplr(u.psthCorrTimes)], ...
 						[RMean+RErr fliplr(RMean-RErr)], ...
 						colors2{modeID, 1+snrID}, ...
 						'edgecolor', 'none');
 					alpha(p, .2);
 					uistack(p, 'bottom');
-					
+
 					% mark significant p-values
 % 					hold on;
 % 					sig = P<.05;
@@ -527,7 +529,7 @@ function refreshPlot(fig, d)
 
 			% skip to the end
 			error('my:break', '');
-			
+
 		% target-evoked response and peak activation relative to nogo
 		elseif any(strcmpi(plotName, {'ter alt', 'tep alt', 'dprime alt'}))
 			if ~strcmpi(a.type, 'summary')
@@ -543,7 +545,7 @@ function refreshPlot(fig, d)
 			end
 
 			sameYLim = true;
-			
+
 			modeCount = 3;
 			for modeID = 1:modeCount
 				u = a.units{modeID};
@@ -555,7 +557,7 @@ function refreshPlot(fig, d)
 				elseif strcmpi(plotName, 'dprime alt')
 					vals = u.dPrimeIntervals;
 				end
-				
+
 				if u.maskerLevel
 					conds = u.targetLevels - u.maskerLevel;
 					condLabel = 'SNR [dB]';
@@ -575,7 +577,7 @@ function refreshPlot(fig, d)
 				errSup = squeeze(nansem(vals(sup, :, :), 1));
 				avgEnh = squeeze(nanmean(vals(enh, :, :), 1));
 				errEnh = squeeze(nansem(vals(enh, :, :), 1));
-				
+
 				intervalCount = 3;
 				for intervalID = 1:intervalCount
 					subplots{end+1} = subplot(modeCount, intervalCount, ...
@@ -606,7 +608,7 @@ function refreshPlot(fig, d)
 			% skip to the end
 			error('my:break', '');
 
-			
+
 		% waterfall plot of dprime of units per snr and onset/peri/offset
 		elseif strcmpi(plotName, 'dprime waterfall alt')
 			plotTitle = 'd'' waterfall';
@@ -631,7 +633,7 @@ function refreshPlot(fig, d)
 			intervalCount = length(a.units{1}.intervals)-1;    % no perifull
 			for modeID = 1:modeCount
 				u = a.units{modeID};
-				
+
 				% dimensions: unit x interval x snr
 				dPrime = cat(3, u.dPrimeIntervals{2:end,scoreID});
 				if ~strcmpi(subset, 'all')
@@ -641,7 +643,7 @@ function refreshPlot(fig, d)
 				% sort
 % 				[~, i] = sort(dPrime(:, 3));
 				dPrime = dPrime(i, :, :);
-				
+
 				if u.maskerLevel
 					snrs = u.targetLevels - u.maskerLevel;
 				else
@@ -1384,7 +1386,7 @@ function refreshPlot(fig, d)
 				end
 				legend(plots, condsStr, 'location', loc);
 				title(u.label);
-				
+
 
 			% Neurometric d'
 			elseif strcmpi(plotName, 'dprime') || ...
@@ -1849,7 +1851,7 @@ function refreshPlot(fig, d)
 						mts = mean(mts, 2);
 						err = nan(size(mts));
 					end
-					
+
 					errorbar(bins, mts, err, '-o', ...
 						'color', getColor(condID), ...
 						'markerfacecolor', getColor(condID), ...
@@ -2068,13 +2070,6 @@ function refreshPlot(fig, d)
 					end
 				end
 
-				% push ribbons to the back of line plots
-				for freqID = length(u.targetFreqs):-1:1
-					if patches(freqID)
-						uistack(patches(freqID),'bottom');
-					end
-				end
-
 				axis square tight;
 				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
@@ -2182,43 +2177,48 @@ function refreshPlot(fig, d)
 			% Plot mutual information
 			elseif strcmpi(plotName, 'mutual info')
 				plotTitle = 'Mutual information';
-				mutualInfo = vertcat(u.mutualInfo{:});
 
-				if length(u.targetLevels)==1 && length(u.targetFreqs)>1
-					plot(1:length(u.targetFreqs), ...
-						[mutualInfo{2:end, scoreID}], ...
-						'color', getColor(1));
-					xticks(1:length(u.targetFreqs));
-					xticklabels(freqsStr);
-					xlabel(freqLabel)
-% 					leg = legend(levelsStr);
-% 					title(leg, levelLabel);
-					leg = legend(snrStr);
-					title(leg, snrLabel);
+				plots = zeros(length(u.targetFreqs),1);
 
-				else
-					for freqID = 1:length(u.targetFreqs)
-						levelIDs = 1:length(u.targetLevels);
-						condIDs = (freqID-1)*length(u.targetLevels) ...
-							+ levelIDs + 1;
-						plt = plot(u.targetLevels, ...
-							[mutualInfo{condIDs, scoreID}], ...
-							'color', getColor(freqID));
-						if length(u.targetLevels)==1
-							plt.Marker = 'x';
+				for freqID = 1:length(u.targetFreqs)
+					levelIDs = 1:length(u.targetLevels);
+					condIDs = [1, ... % add nogo
+						(freqID-1)*length(u.targetLevels) + levelIDs+1];
+					
+					if strcmpi(a.type,'summary')
+						col = colors2{unitID,end};
+						mutualInfo = cat(2, u.mutualInfo{condIDs,scoreID});
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){1,scoreID}==true;
+							mutualInfo = mutualInfo(msk, :);
 						end
+						mutualInfo(isinf(mutualInfo)) = nan;
+						avg = nanmean(mutualInfo, 1);
+						err = nansem(mutualInfo, 1);
+
+					else
+						col = getColor(freqID+2);
+						avg = horzcat(u.mutualInfo{condIDs,scoreID});
+						err = nan(size(avg));
 					end
-					xticks(snr);
-					xlabel(snrLabel);
-					leg = legend(freqsStrHz);
-					title(leg, freqLabel);
+
+					plots(freqID) = errorbar(snrNogo, avg, err, '-o', ...
+						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
+						'linewidth', 1.5);
 				end
 
 				axis square tight;
+				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
+				xticks(snrNogo);
+				xticklabels(snrNogoStr);
+				xlabel(snrLabel);
 				ylim([0, 1]);
 				ylabel('Mutual information');
-				leg.Location = 'northeastoutside';
+				if length(freqsStr) > 1
+					legend(plots, freqsStrHz, 'location', 'northeastoutside');
+				end
 				title(u.label);
+
 
 			else
 				error('Invalid plot name');

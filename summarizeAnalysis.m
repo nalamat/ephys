@@ -226,6 +226,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.vs10               = cv2;
 		u.vs10Phase          = cv2;
 		u.mts                = cm;
+		u.mutualInfo         = c;
 		u.lfp                = cl;
 
 		s.units{modeID} = u;
@@ -365,14 +366,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			% compare 10Hz VS of pre versus peri in active at +10 dB SNR
 			if phasic
 				u = sessions{sessionID}{1}.units{unitID};
-				
+
 				vsFreq = u.vsFreqs==10;
 				vs = cat(3, u.vs{:,1}); % bin x freq x snr
 				vs = squeeze(vs(:, vsFreq, :)); % bin x snr
 				vsPreMean = mean(vs(1,:));
 				vsPeri10dB = vs(2,end);
 				change = (vsPeri10dB - vsPreMean) / vsPreMean;
-				
+
 				% categorize based on average peri firing rate
 % 				firingMeanNogo = mean(u.psthMean{1,1}(u.peri));
 % 				firingMean10dB = mean(u.psthMean{end,1}(u.peri));
@@ -412,7 +413,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sessions{sessionID}{1}.animalName, ...
 					sessions{sessionID}{1}.timeStr, category);
 			end
-			
+
 			%% map unit analysis to summary
 			for modeID = 1:length(sessions{sessionID})
 				a = sessions{sessionID}{modeID};
@@ -449,7 +450,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						% psth
 						su.psth{sCondID,scoreID}(end+1,:) = ...
 							u.psthMean{uCondID,scoreID};
-						
+
 						% running correlation
 						su.psthCorrR{sCondID,scoreID}(end+1,:) = ...
 							u.psthCorrR{uCondID,scoreID};
@@ -519,6 +520,11 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.firingMax{sCondID,scoreID}(end+1,:) = ...
 							u.firingMax{uCondID,scoreID};
 
+						% mutual information
+						su.mutualInfo{sCondID,scoreID}(end+1,:) = ...
+							u.mutualInfo{uCondID,scoreID};
+
+						% local field potential
 						if isfield(u, 'lfp')
 							su.lfp{sCondID,scoreID}(end+1,:,:) = ...
 								u.lfpMean{uCondID,scoreID};
@@ -535,12 +541,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 					su.dPrimeBehavior{sCondID}(end+1) = a.dPrimeBehavior{uCondID};
 				end
-				
+
 				s.units{modeID} = su;    % repack summary unit
 			end % modeID
-			
+
 		end % unitID
-		
+
 	end % sessionID
 
 	fprintf(['Selected %d target responding, %d tonic, %d phasic, ' ...
@@ -565,17 +571,17 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 			for scoreID = 1:5
 % 				% unpack
 % 				u = s.units{modeID};
-% 
+%
 % 				% psth
 % 				psth = u.psth{condID,scoreID};
 % 				u.psthMean{condID,scoreID} = nanmean(psth);
 % 				u.psthSEM{condID,scoreID} = nansem(psth);
-% 
+%
 % 				% cumulative quadratic mean of d'
 % 				dPrime = u.dPrimeCQMean{condID,scoreID};
 % 				u.dPrimeCQMeanMean{condID,scoreID} = nanmean(dPrime, 1);
 % 				u.dPrimeCQMeanSEM{condID,scoreID} = nansem(dPrime, 1);
-% 
+%
 % 				% vector strength
 % 				for binID = 1:size(u.vsBins,1)
 % 					for vsFreqID = 1:length(u.vsFreqs)
@@ -588,36 +594,36 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 							nansem(vec);
 % 					end
 % 				end
-% 
+%
 % 				% running vs at 10 hz
 % 				vs = u.vs10{condID,scoreID};
 % 				u.vs10Mean{condID,scoreID} = nanmean(vs);
 % 				u.vs10SEM{condID,scoreID} = nansem(vs);
-% 
+%
 % 				mts = u.mts{condID,scoreID};
 % 				u.mtsMean{condID,scoreID} = nanmean(mts);
 % 				u.mtsSEM{condID,scoreID} = nansem(mts);
-% 
+%
 % 				% mfsl (minimum first spike latency)
 % 				mfsl = u.mfsl{condID,scoreID};
 % 				u.mfslMean{condID,scoreID} = nanmean(mfsl);
 % 				u.mfslSEM{condID,scoreID} = nansem(mfsl);
-% 
+%
 % 				% mfsl phase
 % 				phase = u.mfslPhase{condID,scoreID};
 % 				u.mfslPhaseMean{condID,scoreID} = nanmean(phase);
 % 				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
-% 
+%
 % 				% max firing rate
 % 				firingMax = u.firingMax{condID,scoreID};
 % 				u.firingMaxMean{condID,scoreID} = nanmean(firingMax);
 % 				u.firingMaxSEM{condID,scoreID} = nansem(firingMax);
-% 
+%
 % 				% mean firing rate
 % 				firingMean = u.firingMean{condID,scoreID};
 % 				u.firingMeanMean{condID,scoreID} = nanmean(firingMean);
 % 				u.firingMeanSEM{condID,scoreID} = nansem(firingMean);
-% 
+%
 % 				% pack
 % 				s.units{modeID} = u;
 % 			end
