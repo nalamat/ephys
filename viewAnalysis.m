@@ -1957,77 +1957,57 @@ function refreshPlot(fig, d)
 
 
 			% Plot mean and max of firing rate
-			elseif strcmpi(plotName, 'firing max') || ...
-					strcmpi(plotName, 'firing mean')
-				if strcmpi(plotName, 'firing max')
+			elseif strncmpi(plotName, 'firing', 6)
+				if contains(plotName, 'max')
 					plotTitle = 'Maximum firing rate';
-				elseif strcmpi(plotName, 'firing mean')
+					field = 'firingMax';
+				elseif contains(plotName, 'mean')
 					plotTitle = 'Average firing rate';
+					field = 'firingMean';
 				end
 				sameYLim = true;
-
+				
 				plots = zeros(length(u.targetFreqs),1);
-				patches = zeros(length(u.targetFreqs),1);
 
 				for freqID = 1:length(u.targetFreqs)
 					levelIDs = 1:length(u.targetLevels);
-					% Add nogo
-					condIDs = [1, (freqID-1)*length(u.targetLevels) + ...
-						levelIDs+1];
-					col = getColor(freqID);
-					x = snrNogo;
+					condIDs = [1, ... % add nogo
+						(freqID-1)*length(u.targetLevels) + levelIDs+1];
+					
 					if strcmpi(a.type,'summary')
-						avg = zeros(size(condIDs));
-						err = zeros(size(condIDs));
-						for i = 1:length(condIDs)
-							condID = condIDs(i);
-							if strcmpi(plotName, 'firing max')
-								firing = u.firingMax{condID,scoreID};
-							elseif strcmpi(plotName, 'firing mean')
-								firing = u.firingMean{condID,scoreID};
-							end
-
-							if ~strcmpi(subset, 'all')
-								msk = u.(subset){condID,scoreID}==true;
-								firing = firing(msk);
-							end
-							avg(i) = nanmean(firing);
-							err(i) = nansem(firing);
+						col = colors2{unitID,end};
+						firing = cat(2, u.(field){condIDs,scoreID});
+						if ~strcmpi(subset, 'all')
+							msk = u.(subset){1,scoreID}==true;
+							firing = firing(msk, :);
 						end
+						firing(isinf(firing)) = nan;
+						avg = nanmean(firing, 1);
+						err = nansem(firing, 1);
 
-						patches(freqID) = patch([x fliplr(x)], ...
-							[avg+err fliplr(avg-err)], ...
-							col, 'edgecolor', 'none');
-						alpha(patches(freqID), .2);
 					else
-						if strcmpi(plotName, 'firing max')
-							avg = [u.firingMax{condIDs,scoreID}];
-						elseif strcmpi(plotName, 'firing mean')
-							avg = [u.firingMean{condIDs,scoreID}];
-						end
+						col = getColor(freqID+2);
+						avg = horzcat(u.(field){condIDs,scoreID});
+						err = nan(size(avg));
 					end
-					plots(freqID) = plot(x, avg, 'color', col, ...
-						'linewidth',3);
-				end
 
-				% push ribbons to the back of line plots
-				for freqID = length(u.targetFreqs):-1:1
-					if patches(freqID)
-						uistack(patches(freqID),'bottom');
-					end
+					plots(freqID) = errorbar(snrNogo, avg, err, '-o', ...
+						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
+						'linewidth', 1.5);
 				end
 
 				axis square tight;
+				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
-% 				ylim([0,firingUL]);
 				xlabel(snrLabel);
-				ylabel([plotTitle ' (1/s)']);
+				ylim([0 4.5]);
+				ylabel([plotTitle ' [1/s]']);
 				if length(freqsStr) > 1
 					legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				end
 				title(u.label);
-
+				
 
 			% Plot MFSL
 			elseif strcmpi(plotName, 'mfsl')
