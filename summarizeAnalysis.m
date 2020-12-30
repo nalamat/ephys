@@ -375,9 +375,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				change = (vsPeri10dB - vsPreMean) / vsPreMean;
 
 				% categorize based on average peri firing rate
-% 				firingMeanNogo = mean(u.psthMean{1,1}(u.peri));
-% 				firingMean10dB = mean(u.psthMean{end,1}(u.peri));
-% 				change = (firingMean10dB - firingMeanNogo) / firingMeanNogo;
+				firingMeanNogo = mean(u.psthMean{1,1}(u.peri));
+				firingMean10dB = mean(u.psthMean{end,1}(u.peri));
+				change = (firingMean10dB - firingMeanNogo) / firingMeanNogo;
 
 				if change < -.2
 					phasicSuppressing = true;
