@@ -22,9 +22,10 @@ library(ggplot2) # ggplot
 
 summaryFileHE = 'results/Summary-HE-All-Sorted.xlsx'
 summaryFileLE = 'results/Summary-LE-All-Sorted.xlsx'
+figsFolder = '../Drafts/MMR-Manuscript/figs/'
 
 save_plot = function(plot, file) {
-  # ggsave(plot, file=file, height=4, width=6, dpi=600)
+  ggsave(plot, file=file, height=4*2, width=6*2, dpi=600)
 }
 
 # ggplot config
@@ -156,7 +157,7 @@ p = ggplot(subset(data2, Category=='Phasic'),
   expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'ter-phasic.svg', sep=''))
 
 
 ylim = coord_cartesian(ylim=c(NaN,150))
@@ -178,7 +179,7 @@ p = ggplot(subset(data2, SubCategory %in%
   expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'ter-phasic-enhancing-suppressing.svg', sep=''))
 
 
 p = ggplot(subset(data2, Category=='Tonic'),
@@ -188,10 +189,11 @@ p = ggplot(subset(data2, Category=='Tonic'),
   facet_grid(rows=vars(Effort), cols=vars(Interval)) +
   labs_xy + labs(color='Mode', title='Tonic units') +
   color_manual +
-  ylim + expand_x + expand_y +
+  # ylim +
+  expand_x + expand_y +
   theme_my
 p
-save_plot(p, file=paste('figs/Summary/ter-tonic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'ter-tonic.svg', sep=''))
 
 
 #################
@@ -216,7 +218,7 @@ p = ggplot(subset(data2, Category=='Phasic'),
   expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'tep-phasic.svg', sep=''))
 
 
 p = ggplot(subset(data2, SubCategory %in%
@@ -237,7 +239,7 @@ p = ggplot(subset(data2, SubCategory %in%
   expand_x + expand_y +
   theme_my
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'tep-phasic-enhancing-suppressing.svg', sep=''))
 
 
 #################
@@ -271,7 +273,7 @@ p = ggplot(subset(data2, Category=='Phasic'),
   expand_x + expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'ter-phasic.svg', sep=''))
 
 
 p = ggplot(subset(data2, SubCategory %in%
@@ -291,7 +293,7 @@ p = ggplot(subset(data2, SubCategory %in%
   expand_x + expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/ter-phasic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'ter-phasic-enhancing-suppressing.svg', sep=''))
 
 p = ggplot(subset(data2, Category=='Tonic'),
            aes(x=SNR, y=dPrime, color=Mode, group=Mode)) +
@@ -303,7 +305,7 @@ p = ggplot(subset(data2, Category=='Tonic'),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 p
-save_plot(p, file=paste('figs/Summary/dp-tonic-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'dp-tonic.svg', sep=''))
 
 p = ggplot(subset(data2),
            aes(x=SNR, y=dPrime, color=Mode,
@@ -320,7 +322,7 @@ p = ggplot(subset(data2),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 p
-save_plot(p, file=paste('figs/Summary/dp-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'dp-tonic-phasic.svg', sep=''))
 
 
 #################
@@ -374,7 +376,7 @@ ylim = coord_cartesian(ylim=c(0,.6))
 #   coord_cartesian(ylim=c(0,.6)) +
 #   theme_my
 # p
-# save_plot(p, file=paste('figs/Summary/VSavg2-', gerbil, '.svg', sep=''))
+# save_plot(p, file=paste(figsFolder, 'VSavg2.svg', sep=''))
 
 # title = paste('Phasic Units ', length(unique(subset(data2)$UnitID)), ' (dp > ', dp, ')')
 
@@ -387,7 +389,7 @@ p = ggplot(subset(data2),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/VSperi-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi.svg', sep=''))
 
 # }
 
@@ -409,7 +411,7 @@ p = ggplot(subset(data2, SubCategory %in%
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/VSperi-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi-phasic-enhancing-suppressing.svg', sep=''))
 
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Enhancing'),
@@ -420,7 +422,7 @@ p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Enhancing'),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/VSperi-enhancing-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi-enhancing.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Suppressing'),
            aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
@@ -430,7 +432,7 @@ p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic Suppressing'),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/VSperi-suppressing-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi-suppressing.svg', sep=''))
 
 p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic No Change'),
            aes(x=SNR, y=VS10, color=Mode, group=Mode)) +
@@ -440,7 +442,7 @@ p = ggplot(subset(data2, Bin==2 & SubCategory=='Phasic No Change'),
   ylim + expand_x + no_expand_y +
   theme_my + grid_xy
 print(p)
-save_plot(p, file=paste('figs/Summary/VSperi-nochange-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi-nochange.svg', sep=''))
 
 
 # violin plot
@@ -453,7 +455,7 @@ p = ggplot(subset(data2, Bin==2),
   expand_x + no_expand_y +
   theme_my + grid_xy
 p
-save_plot(p, file=paste('figs/Summary/VSperi3-', gerbil, '.svg', sep=''))
+save_plot(p, file=paste(figsFolder, 'VSperi3.svg', sep=''))
 
 # ggplot(data2, aes(x=SNR, y=VS10)) +
 #   se_errorbar + mean_point +
@@ -530,4 +532,3 @@ dataSub$Fit <- fitted(model)
 mean(dataSub$TrialType == (dataSub$Fit>.5))
 r2 = cor(dataSub$TrialType, dataSub$Fit)^2
 r2
-
