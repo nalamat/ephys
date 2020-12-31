@@ -46,6 +46,8 @@ function viewAnalysis(analysis)
 		data.plotNames = {
 			'psth alt'
 			'psth corr alt'
+			'quad alt'
+			'quiver alt'
 			'ter alt'
 			'tep alt'
 			'dprime alt'
@@ -529,6 +531,145 @@ function refreshPlot(fig, d)
 
 			% skip to the end
 			error('my:break', '');
+
+		elseif strcmpi(plotName, 'quad alt')
+			plotTitle = 'Quadrant (peri)';
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+			if a.unitCount<2 || ...
+					~strncmpi(a.units{1}.label, 'Active MMR', 10) || ...
+					~strcmpi(a.units{2}.label, 'Passive MMR')
+				error('Only for active and passive MMR');
+			end
+
+			sameYLim = true;
+			sameXLim = true;
+
+			modeCount = 3;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+
+				% calculate average psth of nogo
+				vsFreq = u.vsFreqs==10;
+				firing = cat(3, u.firingMean{:,scoreID});
+				firing = squeeze(firing(:, u.i.id.peri, :));
+				vs = cat(4, u.vs{:,scoreID});
+				vs = squeeze(vs(:, vsFreq, u.i.id.peri, :));
+
+				for condID = 1:4
+					subplots{end+1} = subplot(modeCount, 4, ...
+						(modeCount-modeID)*4 + condID);
+					hold on;
+
+					subCats = {'Phasic Suppressing', 'Phasic Enhancing', ...
+						'Phasic No Change' 'None'};
+					cols = {[1 .4 0], [0 .3 1], [0 1 .3], [.4 .4 .4]};
+					plots = zeros(size(subCats));
+
+					for subCatID = 1:length(subCats)
+						msk = strcmpi(subCats{subCatID}, u.subCategory{1,1});
+						col = cols{subCatID};
+						plots(subCatID) = plot(firing(msk, condID), vs(msk, condID), ...
+							'o', 'color', col, 'markerfacecolor', col, 'markersize', 2);
+					end
+
+					if condID == 1
+						condStr = 'Nogo';
+					elseif u.maskerLevel
+						snr = u.targetLevels(condID-1) - u.maskerLevel;
+						condStr = num2str(snr, '%d dB SNR');
+					else
+						level = u.targetLevels(condID-1);
+						condStr = num2str(level, '%d dB SPL');
+					end
+
+% 					line([0 0], [-1e10 1e10], 'linestyle', ':', 'color', [.6 .6 .6]);
+% 					line([-1e10 1e10], [0 0], 'linestyle', ':', 'color', [.6 .6 .6]);
+					xlim([0 15]);
+					xlabel('Mean firing rate [1/s]');
+					ylim([0 .7]);
+					ylabel('VS @ 10Hz');
+					title([u.label ', ' condStr]);
+				end
+			end
+
+			ax = axes('Position',[0 0 1 1],'Visible','off');
+			legend(ax, plots, subCats, 'location', 'northeast');
+
+			% skip to the end
+			error('my:break', '');
+
+			
+		elseif strcmpi(plotName, 'quiver alt')
+			plotTitle = 'Quiver (peri)';
+			if ~strcmpi(a.type, 'summary')
+				error('Only for summary analysis');
+			end
+			if a.unitCount<2 || ...
+					~strncmpi(a.units{1}.label, 'Active MMR', 10) || ...
+					~strcmpi(a.units{2}.label, 'Passive MMR')
+				error('Only for active and passive MMR');
+			end
+
+			sameYLim = true;
+			sameXLim = true;
+
+			modeCount = 3;
+			for modeID = 1:modeCount
+				u = a.units{modeID};
+
+				% calculate average psth of nogo
+				vsFreq = u.vsFreqs==10;
+				firing = cat(3, u.firingMax{:,scoreID});
+				firing = squeeze(firing(:, u.i.id.peri, :));
+				vs = cat(4, u.vs{:,scoreID});
+				vs = squeeze(vs(:, vsFreq, u.i.id.peri, :));
+
+				for condID = 2:4
+					subplots{end+1} = subplot(modeCount, 3, ...
+						(modeCount-modeID)*3 + condID-1);
+					hold on;
+
+					subCats = {'Phasic Suppressing', 'Phasic Enhancing', ...
+						'Phasic No Change' 'None'};
+					cols = {[1 .4 0], [0 .3 1], [0 1 .3], [.4 .4 .4]};
+					plots = zeros(size(subCats));
+
+					for subCatID = 1:length(subCats)
+						msk = strcmpi(subCats{subCatID}, u.subCategory{1,1});
+						col = cols{subCatID};
+						plots(subCatID) = quiver(firing(msk, 1), vs(msk, 1), ...
+							firing(msk, condID) - firing(msk, 1), ...
+							vs(msk, condID) - vs(msk, 1), 'color', col);
+					end
+
+					if condID == 1
+						condStr = 'Nogo';
+					elseif u.maskerLevel
+						snr = u.targetLevels(condID-1) - u.maskerLevel;
+						condStr = num2str(snr, '%d dB SNR');
+					else
+						level = u.targetLevels(condID-1);
+						condStr = num2str(level, '%d dB SPL');
+					end
+
+% 					line([0 0], [-1e10 1e10], 'linestyle', ':', 'color', [.6 .6 .6]);
+% 					line([-1e10 1e10], [0 0], 'linestyle', ':', 'color', [.6 .6 .6]);
+% 					xlim([0 15]);
+					xlabel('Mean firing rate [1/s]');
+% 					ylim([0 .7]);
+					ylabel('VS @ 10Hz');
+					title([u.label ', ' condStr]);
+				end
+			end
+
+			ax = axes('Position',[0 0 1 1],'Visible','off');
+			legend(ax, plots, subCats, 'location', 'northeast');
+
+			% skip to the end
+			error('my:break', '');
+			
 
 		% target-evoked response and peak activation relative to nogo
 		elseif any(strcmpi(plotName, {'ter alt', 'tep alt', 'dprime alt'}))
