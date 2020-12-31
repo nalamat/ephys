@@ -172,16 +172,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.psthCenters        = u1.psthCenters;
 		u.psthCorrWindow     = u1.psthCorrWindow;
 		u.psthCorrTimes      = u1.psthCorrTimes;
-		u.gap                = u1.gap;
-		u.onset              = u1.onset;
-		u.peri               = u1.peri;
-		u.offset             = u1.offset;
-		u.periFull           = u1.periFull;
-		u.intervalNames      = u1.intervalNames;
-		u.intervals          = u1.intervals;
+		u.i                  = u1.i;
 		u.vsFreqs            = u1.vsFreqs;
-		u.vsBins             = u1.vsBins;
-		u.vsBinNames         = u1.vsBinNames;
 		u.vs10Window         = u1.vs10Window;
 		u.vs10Times          = u1.vs10Times;
 		u.mtsFreqs           = u1.mtsFreqs;
@@ -191,10 +183,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		init = @(sz)cellfun(@(c){nan(sz)}, c);
 		ct   = init([0, length(u.psthCenters)]);
 		cc   = init([0, length(u.psthCorrTimes)]);
-		ci   = init([0, length(u.intervals)]);
-		cv   = init([0, length(u.vsBins), length(u.vsFreqs)]);
+		ci   = init([0, u.i.count]);
+		cv   = init([0, length(u.vsFreqs), u.i.count]);
 		cv2  = init([0, length(u.vs10Times)]);
-		cm   = init([0, length(u.vsBins), length(u.mtsFreqs)]);
+		cm   = init([0, length(u.mtsFreqs), u.i.count]);
 		cl   = init([0, u.lfpBandCount, 3]);
 
 		u.animalNames        = c;
@@ -217,16 +209,18 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.dPrimeCQSum        = ct;
 		u.dPrimeIntervals    = ci;
 		u.dPrimeBehavior     = cell(s.condCount,1);
+		u.firingMax          = ci;
+		u.firingMean         = ci;
+		u.mutualInfo         = ci;
 		u.mfsl               = c;
 		u.mfslPhase          = c;
-		u.firingMax          = c;
-		u.firingMean         = c;
 		u.vs                 = cv;
 		u.vsPhase            = cv;
+		u.vsPVal             = cv;
 		u.vs10               = cv2;
 		u.vs10Phase          = cv2;
+		u.vs10PVal           = cv2;
 		u.mts                = cm;
-		u.mutualInfo         = c;
 		u.lfp                = cl;
 
 		s.units{modeID} = u;
@@ -262,7 +256,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					for intervalID = 1:length(u.intervals)-1
+					for intervalID = u.i.id.onsetPeriOffset
 						if u.dPrimeIntervals{uCondID,1}(intervalID) > ...
 								s.targetResponseThresh
 							targetResponse = targetResponse+1;
@@ -275,12 +269,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					for binID = 1:size(u.vsBins,1)
-						vs = u.vs{uCondID,1}(binID,vsFreq);
-						p = u.vsPVal{uCondID,1}(binID,vsFreq);
+					for intervalID = u.i.id.prePeriPost
+						vs = u.vs{uCondID,1}(vsFreq,intervalID);
+						p = u.vsPVal{uCondID,1}(vsFreq,intervalID);
 						if isnan(vs)
-							fprintf(['NAN: cond %d, bin %d, ' ...
-								'channel %d, %s\n'], uCondID, binID, ...
+							fprintf(['NAN: cond %d, interval %d, ' ...
+								'channel %d, %s\n'], uCondID, intervalID, ...
 								u.channel, u.dataFile);
 						end
 						if p < s.phasicThresh
@@ -368,15 +362,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				u = sessions{sessionID}{1}.units{unitID};
 
 				vsFreq = u.vsFreqs==10;
-				vs = cat(3, u.vs{:,1}); % bin x freq x snr
-				vs = squeeze(vs(:, vsFreq, :)); % bin x snr
-				vsPreMean = mean(vs(1,:));
-				vsPeri10dB = vs(2,end);
+				vs = cat(3, u.vs{:,1}); % freq x interval x snr
+				vs = squeeze(vs(vsFreq, :, :)); % interval x snr
+				vsPreMean = mean(vs(u.i.id.pre,:));
+				vsPeri10dB = vs(u.i.id.peri,end);
 				change = (vsPeri10dB - vsPreMean) / vsPreMean;
 
 				% categorize based on average peri firing rate
-				firingMeanNogo = mean(u.psthMean{1,1}(u.peri));
-				firingMean10dB = mean(u.psthMean{end,1}(u.peri));
+				firingMeanNogo = mean(u.psthMean{1,1}(u.i.mask.peri));
+				firingMean10dB = mean(u.psthMean{end,1}(u.i.mask.peri));
 				change = (firingMean10dB - firingMeanNogo) / firingMeanNogo;
 
 				if change < -.2
@@ -460,16 +454,16 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						% calculate target-evoked response and
 						% peak activation relative to nogo
 						if uCondID == 1 && scoreID == 1
-							ter = zeros(size(u.intervals));
-							tep = zeros(size(u.intervals));
+							ter = zeros(1, u.i.count);
+							tep = zeros(1, u.i.count);
 						else
-							ter = nan(size(u.intervals));
-							tep = nan(size(u.intervals));
-							for intervalID = 1:length(u.intervals)
-								interval = u.intervals{intervalID};
-								nogo = u.psthMean{1,1}(interval);
-								go = u.psthMean{uCondID,scoreID}(interval);
-% 								ter(intervalID) = trapz(u.psthCenters(interval), go-nogo);
+							ter = nan(1, u.i.count);
+							tep = nan(1, u.i.count);
+							for intervalID = 1:u.i.count
+								mask = u.i.masks{intervalID};
+								nogo = u.psthMean{1,1}(mask);
+								go = u.psthMean{uCondID,scoreID}(mask);
+% 								ter(intervalID) = trapz(u.psthCenters(mask), go-nogo);
 % 								ter(intervalID) = ter(intervalID) / mean(nogo); % normalize
 								ter(intervalID) = mean(go-nogo) / mean(nogo);
 								tep(intervalID) = (max(go) - max(nogo)) / max(nogo);
@@ -494,15 +488,31 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						su.dPrimeIntervals{sCondID,scoreID}(end+1,:) = ...
 							u.dPrimeIntervals{uCondID,scoreID};
 
+						% mean and max firing rate
+						su.firingMean{sCondID,scoreID}(end+1,:) = ...
+							u.firingMean{uCondID,scoreID};
+						su.firingMax{sCondID,scoreID}(end+1,:) = ...
+							u.firingMax{uCondID,scoreID};
+
+						% mutual information
+						su.mutualInfo{sCondID,scoreID}(end+1,:) = ...
+							u.mutualInfo{uCondID,scoreID};
+
 						% vector strength
 						su.vs{sCondID,scoreID}(end+1,:,:) = ...
 							u.vs{uCondID,scoreID};
+						su.vsPhase{sCondID,scoreID}(end+1,:,:) = ...
+							u.vsPhase{uCondID,scoreID};
+						su.vsPVal{sCondID,scoreID}(end+1,:,:) = ...
+							u.vsPVal{uCondID,scoreID};
 
 						% running vs at 10 Hz
 						su.vs10{sCondID,scoreID}(end+1,:) = ...
 							u.vs10{uCondID,scoreID};
 						su.vs10Phase{sCondID,scoreID}(end+1,:) = ...
 							u.vs10Phase{uCondID,scoreID};
+						su.vs10PVal{sCondID,scoreID}(end+1,:) = ...
+							u.vs10PVal{uCondID,scoreID};
 
 						% multi-taper spectrum peri-stimulus
 						su.mts{sCondID,scoreID}(end+1,:,:) = ...
@@ -513,16 +523,6 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							u.mfsl{uCondID,scoreID};
 						su.mfslPhase{sCondID,scoreID}(end+1,:) = ...
 							u.mfslPhase{uCondID,scoreID};
-
-						% mean and max firing rate
-						su.firingMean{sCondID,scoreID}(end+1,:) = ...
-							u.firingMean{uCondID,scoreID};
-						su.firingMax{sCondID,scoreID}(end+1,:) = ...
-							u.firingMax{uCondID,scoreID};
-
-						% mutual information
-						su.mutualInfo{sCondID,scoreID}(end+1,:) = ...
-							u.mutualInfo{uCondID,scoreID};
 
 						% local field potential
 						if isfield(u, 'lfp')

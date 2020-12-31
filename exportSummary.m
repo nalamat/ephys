@@ -17,10 +17,9 @@ function exportSummary(summaryFile)
 	headers = struct();
 	headers.Intervals = ...  % for onset/peri/offset
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'Interval' 'TER', 'TEP', 'dPrime'};
-	headers.Bins = ...     % for pre/peri/post
-		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'Bin' 'VS10' 'MTS10'};
+		'Mode' 'TargetLevel' 'Score' 'Interval' ...
+		'TER', 'TEP', 'dPrime', 'FiringMean', 'FiringMax', 'MutualInfo' ...
+		'VS10', 'MTS10'};
 	headers.Overall = ...     
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' ...
@@ -74,53 +73,40 @@ function exportSummary(summaryFile)
 					sessionID   = u.animalNames{condID,scoreID}{i}; % sessionID
 					category    = u.category{condID,scoreID}(i);
 					subCategory = u.subCategory{condID,scoreID}(i);
+					
+					vsFreq      = u.vsFreqs==10;
+					mtsFreq     = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
 
 					% for onset/peri/offset/perifull
-					for intervalID = 1:length(u.intervals)
-						interval = u.intervalNames{intervalID};
+					for interval = 1:u.i.count
+						intervalName = u.i.names{interval};
 
-						% target-evoked response
-						ter = u.ter{condID,scoreID}(i,intervalID);
-
-						% target-evoked peak
-						tep = u.tep{condID,scoreID}(i,intervalID);
-
-						% dPrime
-						dp = u.dPrimeIntervals{condID,scoreID}(i,intervalID);
+						ter = u.ter{condID,scoreID}(i,interval);
+						tep = u.tep{condID,scoreID}(i,interval);
+						dp = u.dPrimeIntervals{condID,scoreID}(i,interval);
+						firingMean = u.firingMean{condID,scoreID}(i,interval);
+						firingMax = u.firingMax{condID,scoreID}(i,interval);
+						mutualInfo = u.mutualInfo{condID,scoreID}(i,interval);
+						vs10  = u.vs{condID,scoreID}(i,vsFreq,interval);
+						mts10 = u.mts{condID,scoreID}(i,mtsFreq,interval);
+						mts10 = mean(mts10);
 
 						tables.Intervals(end+1,:) = ...
 							{sessionID unitID category subCategory ...
-							mode level score interval ter tep dp};
-					end
-
-					% for pre/peri/post
-					vsFreq = u.vsFreqs==10;
-					mtsFreq = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
-					for binID = 1:size(u.vsBins,1)
-						bin = u.vsBinNames{binID};
-						
-						% vector strength at 10Hz
-						vs  = u.vs{condID,scoreID}(i,binID,vsFreq);
-						
-						% multi-taper spectrum at 10Hz
-						mts = u.mts{condID,scoreID}(i,binID,mtsFreq);
-						mts = mean(mts);
-						
-						tables.Bins(end+1,:) = ...
-							{sessionID unitID category subCategory ...
-							mode level score bin vs mts};
+							mode level score intervalName ...
+							ter tep dp firingMean firingMax mutualInfo vs10 mts10};
 					end
 
 					% overall
 % 					firingMean = u.firingMean{condID,scoreID}(i);
 % 					firingMax  = u.firingMax{condID,scoreID}(i);
 
-					firingMeanOnset  = mean(u.psth{condID,scoreID}(i, u.onset ));
-					firingMeanPeri   = mean(u.psth{condID,scoreID}(i, u.peri  ));
-					firingMeanOffset = mean(u.psth{condID,scoreID}(i, u.offset));
-					firingMaxOnset   = max (u.psth{condID,scoreID}(i, u.onset ));
-					firingMaxPeri    = max (u.psth{condID,scoreID}(i, u.peri  ));
-					firingMaxOffset  = max (u.psth{condID,scoreID}(i, u.offset));
+					firingMeanOnset  = mean(u.psth{condID,scoreID}(i, u.i.mask.onset ));
+					firingMeanPeri   = mean(u.psth{condID,scoreID}(i, u.i.mask.peri  ));
+					firingMeanOffset = mean(u.psth{condID,scoreID}(i, u.i.mask.offset));
+					firingMaxOnset   = max (u.psth{condID,scoreID}(i, u.i.mask.onset ));
+					firingMaxPeri    = max (u.psth{condID,scoreID}(i, u.i.mask.peri  ));
+					firingMaxOffset  = max (u.psth{condID,scoreID}(i, u.i.mask.offset));
 					
 					% onset vector phase at 10Hz
 					[~, timeID] = min(abs(u.vs10Times-u.vs10Window/2));

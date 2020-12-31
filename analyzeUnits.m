@@ -41,24 +41,46 @@ function units = analyzeUnits(units)
 		u.psthWindow     = u.psthWindow / u.psthWin;      % normalize window
 
 		% designate different intervals related to the target
-		u.gap = 50e-3;
-		u.onset = 0<=u.psthCenters & u.psthCenters<u.gap*2;
-		u.peri = u.gap*2<=u.psthCenters & ...
-			u.psthCenters<u.targetDuration-u.gap;
-		u.offset = u.targetDuration-u.gap<=u.psthCenters & ...
-			u.psthCenters<u.targetDuration+u.gap;
-		u.periFull = 0<=u.psthCenters & u.psthCenters<u.targetDuration;
-		u.intervalNames = {'Onset', 'Peri', 'Offset', 'PeriFull'};
-		u.intervals = {u.onset, u.peri, u.offset, u.periFull};
+		u.i.gap = 50e-3;
+		u.i.names = {'Pre', 'Onset', 'Peri', 'Offset', 'Post', ...
+			'PrePoke', 'Poke', 'PeriHalf', 'PostHalf', ...
+			'PreFull', 'PeriFull', 'PostFull'};
+		u.i.bounds = [
+			u.viewBounds(1)+u.i.gap*2  0
+			0                          u.i.gap*2
+			u.i.gap*2                  u.targetDuration-u.i.gap
+			u.targetDuration-u.i.gap   u.targetDuration+u.i.gap
+			u.targetDuration+u.i.gap   u.viewBounds(2)-u.i.gap*2
+			
+			-900e-3                    -400e-3
+			-350e-3                    -50e-3
+			u.i.gap*2                  u.i.gap*2+500e-3
+			u.targetDuration+u.i.gap   u.targetDuration+u.i.gap+500e-3
+			
+			u.viewBounds(1)            0
+			0                          u.targetDuration
+			u.targetDuration           u.viewBounds(2);
+			];
+		u.i.count = length(u.i.names);
+		u.i.masks = cell(1, u.i.count);
+		for id = 1:u.i.count
+			name = u.i.names{id};
+			name(1) = lower(name(1));
+			u.i.id.(name) = id;
+			u.i.bound.(name) = u.i.bounds(id,:);
+			mask = u.i.bounds(id,1) <= u.psthCenters & ...
+				u.psthCenters < u.i.bounds(id,2);
+			u.i.masks{id} = mask;
+			u.i.mask.(name) = mask;
+		end
+		u.i.id.onsetPeriOffset = [u.i.id.onset u.i.id.peri u.i.id.offset];
+		u.i.id.prePeriPost = [u.i.id.pre u.i.id.peri u.i.id.post];
+		u.i.id.half = [u.i.id.prePoke u.i.id.poke ...
+			u.i.id.periHalf u.i.id.postHalf];
+		u.i.id.full = [u.i.id.preFull u.i.id.periFull u.i.id.postFull];
 
 		% vector strength parameters
 		u.vsFreqs    = 1:1:20;
-		u.vsBins     = [
-			u.viewBounds(1)     , 0
-			u.gap*2               , u.targetDuration-u.gap
-			u.targetDuration+u.gap, u.viewBounds(2)
-		];
-		u.vsBinNames = {'Pre','Peri','Post'};
 
 		u.vs10Window     = 300e-3;
 		u.vs10Times      = u.psthCenters( ... % center aligned windows
@@ -84,10 +106,10 @@ function units = analyzeUnits(units)
 		c1   = init(1, 1);
 		ct   = init(1, length(u.psthCenters));
 		cc   = init(1, length(u.psthCorrTimes));
-		ci   = init(1, length(u.intervals));
-		cv   = init(length(u.vsBins), length(u.vsFreqs));
+		ci   = init(1, u.i.count);
+		cv   = init(length(u.vsFreqs), u.i.count);
 		cv2  = init(1, length(u.vs10Times));
-		cm   = init(length(u.vsBins), length(u.mtsFreqs));
+		cm   = init(length(u.mtsFreqs), u.i.count);
 		u.psth             = init(0, length(u.psthCenters));
 		u.psthMean         = ct;
 		u.psthSTD          = ct;
@@ -98,13 +120,13 @@ function units = analyzeUnits(units)
 		u.dPrimeCQSum      = ct;  % cumulative quadratic sum versus time
 		u.dPrimeMQMean     = ct;  % moving quadratic mean versus time
 		u.dPrimeIntervals  = ci;  % quadratic mean for: onset/peri/offset...
-		u.lambda           = c1;
-		u.mutualInfo       = c1;
+		u.lambda           = ci;
+		u.mutualInfo       = ci;
+		u.firingMean       = ci;
+		u.firingMax        = ci;
+		u.firingSTD        = ci;
 		u.mfsl             = c1;  % minimum first spike latency
 		u.mfslPhase        = c1;  % phase of MFSL relative to masker
-		u.firingMax        = c1;
-		u.firingMean       = c1;
-		u.firingSTD        = c1;
 		u.vs               = cv;  % vector strength for pre/peri/post stim
 		u.vsPhase          = cv;  % phase
 		u.vsPVal           = cv;  % p values
@@ -181,7 +203,7 @@ function units = analyzeUnits(units)
 					u.dPrimeCQMean   {condID,scoreID} = zeros(size(u.psthCenters));
 					u.dPrimeCQSum    {condID,scoreID} = zeros(size(u.psthCenters));
 					u.dPrimeMQMean   {condID,scoreID} = zeros(size(u.psthCenters));
-					u.dPrimeIntervals{condID,scoreID} = zeros(size(u.intervals));
+					u.dPrimeIntervals{condID,scoreID} = zeros(1, u.i.count);
 					
 				else
 					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
@@ -209,10 +231,10 @@ function units = analyzeUnits(units)
 					u.dPrimeMQMean{condID,scoreID} = mqMean;
 
 					% quadratic mean for different intervals: pre/onset/peri ...
-					u.dPrimeIntervals{condID,scoreID} = zeros(size(u.intervals));
-					for intervalID = 1:length(u.intervals)
-						u.dPrimeIntervals{condID,scoreID}(intervalID) = ...
-							sqrt(mean(dPrime(u.intervals{intervalID}).^2));
+% 					u.dPrimeIntervals{condID,scoreID} = zeros(1, u.i.count);
+					for interval = 1:u.i.count
+						u.dPrimeIntervals{condID,scoreID}(interval) = ...
+							sqrt(mean(dPrime(u.i.masks{interval}).^2));
 					end
 
 					% cumulative mean
@@ -228,35 +250,31 @@ function units = analyzeUnits(units)
 		% 			cmean(mask) = sqrt(cumsum(dprime(mask).^2)./(1:sum(mask)));
 		% 			cmean(mask) = sqrt(cumsum(dprime(mask).^2));
 				end
+				
+				
+				for interval = 1:u.i.count
+					mask = u.i.masks{interval};
+					
+					% mean and max firing rate
+					u.firingMean{condID,scoreID}(interval) = mean(psthMean(mask));
+					u.firingMax {condID,scoreID}(interval) = max (psthMean(mask));
+					u.firingSTD {condID,scoreID}(interval) = std (psthMean(mask));
+					
+					% calculate the mean spiking rate "lambda"
+					% flooring divides the rate appropriately to adjust for the
+					% #samples in a window
+					% isi: inter-spike-interval
+					isi = cellfun(@(sp)diff( ...
+						sp(0<sp & sp<u.targetDuration) ), ...
+						spikeTimes, 'uniformoutput', false);
+					isi = [isi{:}];
+					lambda = floor(histogramFit(isi) / u.spikeDuration);
+					u.lambda{condID,scoreID}(interval) = lambda;
 
-				% cumulative psth
-	% 			psthCum = zeros(trials, bins);
-	% 			for binID = 1:bins
-	% 				t = u.psthCenters(binID);
-	% 				t0 = t - u.psthBin/2;
-	% 				t1 = t + u.psthBin/2;
-	% 				for trialID = 1:trials
-	% 					spikes = u.spikeTimesPerTrial{condID,trialID};
-	% 					psth(trialID, binID) = ...
-	% 						sum(t0<=spikes & spikes<t1) / u.psthBin;
-	% 					psthCum(trialID, binID) = ...
-	% 						sum(0<=spikes & spikes<t) / t;
-	% 				end
-	% 			end
-	% 			psthCumMean = mean(psthCum);
-	% 			psthCumSTD = std(psthCum);
-	% 			u.psthCumMean{condID} = psthCumMean;
-	% 			u.psthCumSTD{condID} = psthCumSTD;
-	% 			if condID==1
-	% 				u.psthCumDPrime{condID} = zeros(1, bins);
-	% 			else
-	% 				dprime = (psthCumMean - u.psthCumMean{1}) ./ ...
-	% 					((psthCumSTD + u.psthCumSTD{1}) / 2);
-	% 				dprime(dprime>4) = 4;
-	% 				dprime(dprime<-4) = -4;
-	% 				dprime(isnan(dprime)) = 0;
-	% 				u.psthCumDPrime{condID} = dprime;
-	% 			end
+					% calculate mutual information
+					u.mutualInfo{condID,scoreID}(interval) = mutualInfo( ...
+						lambda, u.lambda{1,1}(interval)); % vs nogo
+				end
 
 				% SVM classification
 	% 			if condID~=1
@@ -272,53 +290,16 @@ function units = analyzeUnits(units)
 	% 				end
 	% 			end
 
-	% 			% peri-stimulus response p-value compared to nogo
-	% 			psthPeri = 0<=u.psthCenters & u.psthCenters<=u.targetDuration;
-	% 			if condID==1 || u.trialCountPerCond(1)==0
-	% 				u.pvalPeri{condID} = 1;
-	% 			else
-	% 				[~, u.pvalPeri{condID}] = ttest( ...
-	% 					u.psth{1}(psthPeri), psthMean(psthPeri));
-	% 			end
-
-				% onset response z-score
-	% 			vals = psthMean(u.psthCenters < 0);
-	% 			val  = mean(psthMean(0<=u.psthCenters & u.psthCenters<50e-3));
-	% 			z    = zscore([val, vals]);
-	% 			u.zscoreOnset{condID} = z(1);
-
-				% offset response z-score
-	% 			vals = psthMean(50e-3<=u.psthCenters & ...
-	% 				u.psthCenters<u.targetDuration);
-	% 			val  = mean(psthMean(u.targetDuration<=u.psthCenters & ...
-	% 				u.psthCenters<u.targetDuration+50e-3));
-	% 			z    = zscore([val, vals]);
-	% 			u.zscoreOffset{condID} = z(1);
-
-				% calculate the mean spiking rate "lambda"
-				% flooring divides the rate appropriately to adjust for the
-				% #samples in a window
-				% isi: inter-spike-interval
-				isi = cellfun(@(sp)diff( ...
-					sp(0<sp & sp<u.targetDuration) ), ...
-					spikeTimes, 'uniformoutput', false);
-				isi = [isi{:}];
-				u.lambda{condID,scoreID} = floor(histogramFit(isi) / ...
-					u.spikeDuration);
-
-				% calculate mutual information
-				u.mutualInfo{condID,scoreID} = mutualInfo( ...
-					u.lambda{condID,scoreID}, u.lambda{1,1}); % vs nogo
-
 				% minimum first spike latency (MFSL) peri-stimulus
 				% assume no two peaks within 2*psthBin
-				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(u.periFull)); ...
+				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(u.i.mask.periFull));
 % 					'minpeakdistance',5);
 				if ~isempty(locs)
-					psthCentersPeri = u.psthCenters(u.periFull);
+					psthCentersPeri = u.psthCenters(u.i.mask.periFull);
 					mfsl = psthCentersPeri(locs(1));
 				else
-					warning('[analyzeUnits] no MFSL found for unit %s, cond %d, score %d', u.label, condID, scoreID);
+					fprintf('[analyzeUnits] no MFSL found for unit %s, cond %d, score %d\n', ...
+						u.label, condID, scoreID);
 					mfsl = nan;
 				end
 				u.mfsl{condID,scoreID} = mfsl;
@@ -327,85 +308,48 @@ function units = analyzeUnits(units)
 				phase = mfsl * u.maskerFrequency * 360 + u.phaseDelay;
 				u.mfslPhase{condID,scoreID} = phase;
 
-				% maximum firing rate peri-stimulus
-				u.firingMax {condID,scoreID} = ...
-					max (u.psthMean{condID,scoreID}(u.periFull));
-				u.firingMean{condID,scoreID} = ...
-					mean(u.psthMean{condID,scoreID}(u.periFull));
-				u.firingSTD {condID,scoreID} = ...
-					std (u.psthMean{condID,scoreID}(u.periFull));
-
 				% vector strength and multi-taper spectrum pre/peri/post-stimulus
 % 				spikeTimes = u.spikeTimes{condID,scoreID};
 				spikeTimesAll = [u.spikeTimes{condID,scoreID}{:}];
 				
-				for binID = 1:size(u.vsBins,1)
-					bin = u.vsBins(binID,:);
+				for interval = 1:u.i.count
+					bounds = u.i.bounds(interval, :);
 
-					spikeTimesBin = spikeTimesAll( ...
-						bin(1)<=spikeTimesAll & spikeTimesAll<bin(2));
+					spikeTimesInterval = spikeTimesAll( ...
+						bounds(1)<=spikeTimesAll & spikeTimesAll<bounds(2));
 					
 					% vector strength for each base frequency
 					for freqID = 1:length(u.vsFreqs)
-
-						% calculate VS trial by trial
-% 						vs = zeros(1,length(spikeTimes));
-% 						for trialID = 1:length(spikeTimes)
-% 							spikeTimesTrial = spikeTimes{trialID};
-% 							spikeTimesBin = spikeTimesTrial( ...
-% 								bin(1)<=spikeTimesTrial & ...
-% 								spikeTimesTrial<bin(2));
-% 							if isempty(spikeTimesBin)
-% 								vs(trialID) = 0;
-% 							else
-% 								X = spikeTimesBin * ...
-% 									u.vsFreqs(vsFreqID);
-% 								theta = (X-floor(X))*(2*pi);
-% 								xl = cos(theta);
-% 								yl = sin(theta);
-% 								vs(trialID) = ...
-% 									sqrt((sum(xl).^2)+(sum(yl).^2)) / ...
-% 									length(theta);
-% 							end
-% 						end
-% 						vs = mean(vs);
-
 						% calculate VS using spikes from all trials
-						if ~isempty(spikeTimesBin)
-							X = spikeTimesBin * u.vsFreqs(freqID);
-							theta = (X-floor(X))*(2*pi);
-							xl = cos(theta);
-							yl = sin(theta);
-							vs = sqrt((sum(xl).^2)+(sum(yl).^2)) / ...
-								length(theta);
-							c = xl + 1i.*yl;
-% 							vs2 = abs(mean(c));
-							theta2 = angle(mean(c));
-
-							n = length(spikeTimesBin);
-							pval = rayleighsz(vs, n);
-
-							u.vs{condID,scoreID}(binID,freqID) = vs;
-							u.vsPhase{condID,scoreID}(binID,freqID) = theta2;
-							u.vsPVal{condID,scoreID}(binID,freqID) = pval;
-						end
+						if isempty(spikeTimesInterval); continue; end
 						
-					end % freqID
+						X = spikeTimesInterval * u.vsFreqs(freqID);
+						theta = (X-floor(X))*(2*pi);
+						xl = cos(theta);
+						yl = sin(theta);
+						vs = sqrt((sum(xl).^2)+(sum(yl).^2)) / length(theta);
+						c = xl + 1i.*yl;
+% 							vs2 = abs(mean(c));
+						theta2 = angle(mean(c));
 
-					% masker response z-score across all base frequencies
-	% 				z = zscore([u.vs{condID,scoreID}{binID,:}]);
-	% 				u.vsZScore{condID,scoreID}{binID,:} = num2cell(z);
+						n = length(spikeTimesInterval);
+						pval = rayleighsz(vs, n);
+
+						u.vs{condID,scoreID}(freqID,interval) = vs;
+						u.vsPhase{condID,scoreID}(freqID,interval) = theta2;
+						u.vsPVal{condID,scoreID}(freqID,interval) = pval;
+					end % freqID
 	
 					% multi-taper spectrum
-					if length(spikeTimesBin)>10
-						mts = mtspectrumpt(spikeTimesBin - min(spikeTimesBin), ...
-							u.mtsParams)';
+					if length(spikeTimesInterval)>10
+						mts = mtspectrumpt(spikeTimesInterval - ...
+							min(spikeTimesInterval), u.mtsParams)';
 						if length(mts) == length(u.mtsFreqs)
-							u.mts{condID,scoreID}(binID,:) = mts;
+							u.mts{condID,scoreID}(:,interval) = mts;
 						end
 					end
 					
-				end % binID
+				end % intervalID
 
 				% running vector strength at 10Hz as a function of time
 				vsFreq = 10;
@@ -414,14 +358,14 @@ function units = analyzeUnits(units)
 
 				for timeID = 1:length(u.vs10Times)
 					time = u.vs10Times(timeID);
-					spikeTimesBin = spikeTimesAll( ... % center aligned windows
+					spikeTimesInterval = spikeTimesAll( ... % center aligned windows
 						time - u.vs10Window/2 <= spikeTimesAll & ...
 						spikeTimesAll < time + u.vs10Window/2);
 
 					% calculate VS using spikes from all trials
-					if ~isempty(spikeTimesBin)
-						n = length(spikeTimesBin);
-						X = spikeTimesBin * vsFreq;
+					if ~isempty(spikeTimesInterval)
+						n = length(spikeTimesInterval);
+						X = spikeTimesInterval * vsFreq;
 						theta = (X-floor(X))*(2*pi);
 						xl = cos(theta);
 						yl = sin(theta);

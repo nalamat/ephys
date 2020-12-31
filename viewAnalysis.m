@@ -578,10 +578,10 @@ function refreshPlot(fig, d)
 				avgEnh = squeeze(nanmean(vals(enh, :, :), 1));
 				errEnh = squeeze(nansem(vals(enh, :, :), 1));
 
-				intervalCount = 3;
-				for intervalID = 1:intervalCount
-					subplots{end+1} = subplot(modeCount, intervalCount, ...
-						(modeCount-modeID)*3 + intervalID);
+				for id = 1:length(u.i.id.onsetPeriOffset)
+					intervalID = u.i.id.onsetPeriOffset(id);
+					subplots{end+1} = subplot(modeCount, 3, ...
+						(modeCount-modeID)*3 + id);
 					hold on;
 					errorbar(conds, avgSup(intervalID,:), errSup(intervalID,:), ...
 						'-o', 'color', [1 .4 0], 'markerfacecolor', [1 .4 0], ...
@@ -601,7 +601,7 @@ function refreshPlot(fig, d)
 					ylabel([plotTitle ' [%]']);
 					leg = legend({'Phasic Suppressing', 'Phasic Enhancing'}, ...
 						'location', 'northeast', 'fontsize',8);
-					title([u.label ', ' u.intervalNames{intervalID}]);
+					title([u.label ', ' u.i.names{intervalID}]);
 				end
 			end
 
@@ -622,15 +622,15 @@ function refreshPlot(fig, d)
 			end
 
 			% sort according to active mode, peri, +10 dB SNR
-			dPrime = a.units{1}.dPrimeIntervals{end,scoreID}(:,2);
+			u = a.units{1};
+			dPrime = u.dPrimeIntervals{end,scoreID}(:,u.i.id.peri);
 			if ~strcmpi(subset, 'all')
-				msk = a.units{1}.(subset){1,scoreID}==true;
+				msk = u.(subset){1,scoreID}==true;
 				dPrime = dPrime(msk);
 			end
 			[~, i] = sort(dPrime);
 
 			modeCount = 2;
-			intervalCount = length(a.units{1}.intervals)-1;    % no perifull
 			for modeID = 1:modeCount
 				u = a.units{modeID};
 
@@ -651,9 +651,10 @@ function refreshPlot(fig, d)
 				end
 				units = 1:size(dPrime,1);
 
-				for intervalID = 1:intervalCount
-					subplot(modeCount, intervalCount, ...
-						(modeCount-modeID)*3 + intervalID);
+				for id = 1:length(u.i.id.prePeriPost)
+					intervalID = u.i.id.prePeriPost(id);
+					subplot(modeCount, 3, ...
+						(modeCount-modeID)*3 + id);
 
 					[x, y] = meshgrid(snrs, units);
 					waterfall(x, y, squeeze(dPrime(:,intervalID,:)));
@@ -669,7 +670,7 @@ function refreshPlot(fig, d)
 					ylabel('Unit number');
 					zlabel('d''');
 
-					title([u.label ', ' u.intervalNames{intervalID} ' d''']);
+					title([u.label ', ' u.i.names{intervalID} ' d''']);
 				end
 			end
 
@@ -691,10 +692,11 @@ function refreshPlot(fig, d)
 			end
 
 			% sort according to active mode, peri, +10 dB SNR
-			freq = a.units{1}.vsFreqs == 10;
-			vs = squeeze(a.units{1}.vs{end,scoreID}(:,2,freq));
+			u = a.units{1};
+			freq = u.vsFreqs == 10;
+			vs = squeeze(u.vs{end,scoreID}(:,freq,u.i.id.peri));
 			if ~strcmpi(subset, 'all')
-				msk = a.units{1}.(subset){1,scoreID}==true;
+				msk = u.(subset){1,scoreID}==true;
 				vs = vs(msk, :);
 			end
 			[~, i] = sort(vs);
@@ -704,6 +706,8 @@ function refreshPlot(fig, d)
 				u = a.units{modeID};
 
 				freq = u.vsFreqs == 10;
+				intervalIDs = u.i.id.prePeriPost;
+
 				for snrID = 1:length(u.targetLevels)
 					if u.maskerLevel
 						snr = u.targetLevels(snrID) - u.maskerLevel;
@@ -713,26 +717,26 @@ function refreshPlot(fig, d)
 						condStr = num2str(level, '%d dB SPL');
 					end
 
-					vs = squeeze(u.vs{snrID+1,scoreID}(:,:,freq));
+					vs = squeeze(u.vs{snrID+1,scoreID}(:,freq,intervalIDs));
 					if ~strcmpi(subset, 'all')
 						msk = u.(subset){1,scoreID}==true;
 						vs = vs(msk, :);
 					end
 
-% 					[~, i] = sort(vs(:, 2));
+					% sort in the same order as above
 					vs = vs(i, :);
 
-					bins = 1:size(vs,2);
+					ids = 1:length(intervalIDs);
 					units = 1:size(vs,1);
 
 					subplot(modeCount, length(u.targetLevels), ...
 						(modeCount-modeID)*3 + snrID);
 
-					[x, y] = meshgrid(bins, units);
+					[x, y] = meshgrid(ids, units);
 					waterfall(x, y, vs);
 
-					xticks(bins);
-					xticklabels(u.vsBinNames);
+					xticks(ids);
+					xticklabels(u.i.names(intervalIDs));
 					ylim([units(1) units(end)]);
 					zlim([0 1]);
 					ylabel('Unit number');
@@ -1616,12 +1620,13 @@ function refreshPlot(fig, d)
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
-				bins = 1:size(u.vsBins,1);
+				intervalIDs = u.i.id.prePeriPost;
+				ids = 1:length(intervalIDs);
 				freq = u.vsFreqs==10;
 				for condID = 1:u.condCount
 % 					if condID >= u.condCount-2; continue; end
 					if strcmpi(a.type, 'summary')
-						vs = squeeze(u.vs{condID,scoreID}(:,:,freq));
+						vs = squeeze(u.vs{condID,scoreID}(:,freq,intervalIDs));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(msk,:);
@@ -1632,28 +1637,22 @@ function refreshPlot(fig, d)
 						if isempty(avg); continue; end
 
 						col = getColor(condID);
-% 						plots(condID) = plot(bins, avg, ...
-% 							'color', col, 'linewidth', 2);
-% 						patches(condID) = patch([bins fliplr(bins)], ...
-% 							[avg+err fliplr(avg-err)], ...
-% 							col, 'edgecolor', 'none');
-% 						alpha(patches(condID), .2);
-						plots(condID) = errorbar(bins, avg, err, '-o', ...
+						plots(condID) = errorbar(ids, avg, err, '-o', ...
 							'color', col, 'markerfacecolor', col, 'markersize', 4, ...
 							'linewidth', 1.5);
 					else
-						strength = u.vs{condID,scoreID}(:,freq);
-						pval = u.vsPVal{condID,scoreID}(:,freq);
+						strength = u.vs{condID,scoreID}(freq,intervalIDs);
+						pval = u.vsPVal{condID,scoreID}(freq,intervalIDs);
 % 						zscore = [u.vsZScore{ ...
 % 							condID,scoreID}{:,freq}];
 						sig = pval < .001;
 % 						thr = abs(zscore) > 1;
-						plots(condID) = plot(bins, strength, ...
+						plots(condID) = plot(ids, strength, ...
 							'color', getColor(condID), ...
 							'linewidth', 2);
-% 						plot(bins(sig & ~thr), strength(sig & ~thr),'x',...
+% 						plot(intervalIDs(sig & ~thr), strength(sig & ~thr),'x',...
 % 							'color', getColor(condID));
-						plot(bins(sig), strength(sig), '*', ...
+						plot(ids(sig), strength(sig), '*', ...
 							'color', getColor(condID));
 					end
 				end
@@ -1666,12 +1665,9 @@ function refreshPlot(fig, d)
 				end
 
 				axis square tight;
-				xlim([.9, bins(end)+.1]);
-				xticks(bins);
-				if strcmp(u.vsBinNames{2}, 'Intra')
-					u.vsBinNames{2} = 'Peri';
-				end
-				xticklabels(u.vsBinNames);
+				xlim([.9, ids(end)+.1]);
+				xticks(ids);
+				xticklabels(u.i.names(intervalIDs));
 				ylim([0,vectorUL]);
 				ylabel('Vector strength at 10 Hz');
 				if strcmpi(a.type, 'summary')
@@ -1746,7 +1742,7 @@ function refreshPlot(fig, d)
 
 				axis square tight;
 				if contains(plotName, 'phase')
-					ylim([-90,90]);
+					ylim([-150,150]);
 					ylabel('Vector phase [\circ]');
 				else
 					ylim([0,vectorUL]);
@@ -1762,16 +1758,13 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% Vector strength vs frequency for the given bin
+			% Vector strength vs frequency for the given interval
 			elseif strncmpi(plotName, 'vs', 2)
-				if strcmp(u.vsBinNames{2}, 'Intra') % compatibility
-					u.vsBinNames{2} = 'Peri';
-				end
-				binID = find(strcmpi(u.vsBinNames, ...
+				intervalID = find(strcmpi(u.i.names, ...
 					plotName(length('vs')+2:end)));
-				binName = u.vsBinNames{binID};
+				intervalName = u.i.names{intervalID};
 
-				plotTitle = [binName '-stimulus vector strength'];
+				plotTitle = [intervalName '-stimulus vector strength'];
 
 				plots = zeros(u.condCount,1);
 
@@ -1779,7 +1772,7 @@ function refreshPlot(fig, d)
 					if strcmpi(a.type, 'summary')
 						% hack: showing average of all bins
 % 						vs = squeeze(mean(u.vs{condID,scoreID}, 2));
-						vs = squeeze(u.vs{condID,scoreID}(:,binID,:));
+						vs = squeeze(u.vs{condID,scoreID}(:,:,intervalID));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							vs = vs(msk,:);
@@ -1799,9 +1792,8 @@ function refreshPlot(fig, d)
 						alpha(patches(condID), .2);
 
 					else
-						strength = u.vs{condID,scoreID}(binID,:);
-						pval     = u.vsPVal{condID,scoreID}(binID,:);
-	% 					zscore   = [u.vsZScore{condID,scoreID}{binID,:}];
+						strength = u.vs{condID,scoreID}(:,intervalID);
+						pval     = u.vsPVal{condID,scoreID}(:,intervalID);
 						sig      = pval < .001;
 	% 					thr      = abs(zscore) > 1;
 						plots(condID) = plot(u.vsFreqs, strength, ...
@@ -1816,7 +1808,7 @@ function refreshPlot(fig, d)
 				axis square tight;
 				ylim([0,vectorUL]);
 				xlabel('Base frequency (Hz)');
-				ylabel(['Vector strength (' binName ')']);
+				ylabel(['Vector strength (' intervalName ')']);
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else
@@ -1832,13 +1824,14 @@ function refreshPlot(fig, d)
 				sameYLim = true;
 
 				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
-				bins = 1:length(u.vsBins);
+				intervalIDs = u.i.id.prePeriPost;
+				ids = 1:length(intervalIDs);
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mts = u.mts{condID,scoreID}(:,:,freqs);
+						mts = u.mts{condID,scoreID}(:,freqs,intervalIDs);
 						mts = 10*log10(mts);
-						mts = squeeze(mean(mts, 3));
+						mts = squeeze(mean(mts, 2)); % unit x interval
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							mts = mts(msk,:);
@@ -1846,13 +1839,13 @@ function refreshPlot(fig, d)
 						err = nansem(mts, 1);
 						mts = nanmean(mts, 1);
 					else
-						mts = u.mts{condID,scoreID}(:,freqs);
+						mts = u.mts{condID,scoreID}(freqs,intervalIDs);
 						mts = 10*log10(mts);
-						mts = mean(mts, 2);
+						mts = mean(mts, 1);
 						err = nan(size(mts));
 					end
 
-					errorbar(bins, mts, err, '-o', ...
+					errorbar(ids, mts, err, '-o', ...
 						'color', getColor(condID), ...
 						'markerfacecolor', getColor(condID), ...
 						'markersize', 4, ...
@@ -1860,9 +1853,9 @@ function refreshPlot(fig, d)
 				end
 
 				axis square tight;
-				xticks(bins);
-				xticklabels(u.vsBinNames);
-				xlim([min(bins)-.25 max(bins)+.25]);
+				xticks(ids);
+				xticklabels(u.i.names(intervalIDs));
+				xlim([min(ids)-.25 max(ids)+.25]);
 % 				xlabel(snrLabel);
 				ylabel('MTS power at 10 Hz [dB]');
 				if strcmpi(a.type, 'summary')
@@ -1876,11 +1869,11 @@ function refreshPlot(fig, d)
 
 			% multi-taper spectrum
 			elseif strncmpi(plotName, 'mts', 3)
-				binID = find(strcmpi(u.vsBinNames, ...
+				intervalID = find(strcmpi(u.i.names, ...
 					plotName(length('mts')+2:end)));
-				binName = u.vsBinNames{binID};
+				intervalName = u.i.names{intervalID};
 
-				plotTitle = [binName '-stimulus MTS'];
+				plotTitle = [intervalName '-stimulus MTS'];
 
 				plots = zeros(u.condCount, 1);
 				patches = zeros(u.condCount, 1);
@@ -1889,7 +1882,7 @@ function refreshPlot(fig, d)
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mts = squeeze(u.mts{condID,scoreID}(:,binID,:));
+						mts = squeeze(u.mts{condID,scoreID}(:,:,intervalID));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){condID,scoreID}==true;
 							mts = mts(msk, :);
@@ -1898,7 +1891,7 @@ function refreshPlot(fig, d)
 						avg = nanmean(mts, 1);
 						err = nansem(mts, 1);
 					else
-						avg = 10*log10(u.mts{condID,scoreID}(binID,:));
+						avg = 10*log10(u.mts{condID,scoreID}(:,intervalID));
 					end
 					avg = avg - median(avg(20<u.mtsFreqs));
 					col = getColor(condID);
@@ -1966,17 +1959,18 @@ function refreshPlot(fig, d)
 					field = 'firingMean';
 				end
 				sameYLim = true;
-				
+
 				plots = zeros(length(u.targetFreqs),1);
 
 				for freqID = 1:length(u.targetFreqs)
 					levelIDs = 1:length(u.targetLevels);
 					condIDs = [1, ... % add nogo
 						(freqID-1)*length(u.targetLevels) + levelIDs+1];
-					
+
 					if strcmpi(a.type,'summary')
 						col = colors2{unitID,end};
-						firing = cat(2, u.(field){condIDs,scoreID});
+						firing = cat(3, u.(field){condIDs,scoreID});
+						firing = squeeze(firing(:, u.i.id.peri, :));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){1,scoreID}==true;
 							firing = firing(msk, :);
@@ -1987,7 +1981,8 @@ function refreshPlot(fig, d)
 
 					else
 						col = getColor(freqID+2);
-						avg = horzcat(u.(field){condIDs,scoreID});
+						firing = cat(1, u.(field){condIDs,scoreID});
+						avg = firing(:,u.i.id.peri);
 						err = nan(size(avg));
 					end
 
@@ -2007,7 +2002,7 @@ function refreshPlot(fig, d)
 					legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				end
 				title(u.label);
-				
+
 
 			% Plot MFSL
 			elseif strcmpi(plotName, 'mfsl')
@@ -2164,10 +2159,11 @@ function refreshPlot(fig, d)
 					levelIDs = 1:length(u.targetLevels);
 					condIDs = [1, ... % add nogo
 						(freqID-1)*length(u.targetLevels) + levelIDs+1];
-					
+
 					if strcmpi(a.type,'summary')
 						col = colors2{unitID,end};
-						mutualInfo = cat(2, u.mutualInfo{condIDs,scoreID});
+						mutualInfo = cat(3, u.mutualInfo{condIDs,scoreID});
+						mutualInfo = squeeze(mutualInfo(:, u.i.id.peri, :));
 						if ~strcmpi(subset, 'all')
 							msk = u.(subset){1,scoreID}==true;
 							mutualInfo = mutualInfo(msk, :);
@@ -2188,6 +2184,7 @@ function refreshPlot(fig, d)
 				end
 
 				axis square tight;
+				grid on;
 				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
@@ -2330,21 +2327,21 @@ function markTarget(u, markPoke)
 
 	% mark target without onset
 	rect = rectangle( ...
-		'position', [50e-3 -100 u.targetDuration-100e-3 500], ...
+		'position', [50e-3 -500 u.targetDuration-100e-3 1000], ...
 		'facecolor', targetRectColor2, ...
 		'linestyle', 'none');
 	uistack(rect, 'bottom');
 
 	% mark target duration
 	rect = rectangle( ...
-		'position', [0 -100 u.targetDuration 500], ...
+		'position', [0 -500 u.targetDuration 1000], ...
 		'facecolor', targetRectColor, 'linestyle', 'none');
 	uistack(rect, 'bottom');
 
 	if markPoke
 		% mark poke
 		rect = rectangle( ...
-			'position', [-.35 -100 .1 500], ...
+			'position', [-.35 -500 .1 1000], ...
 			'facecolor', pokeRectColor, 'linestyle', 'none');
 		uistack(rect, 'bottom');
 	end
