@@ -15,17 +15,11 @@ function exportSummary(summaryFile)
 
 	% prep table headers
 	headers = struct();
-	headers.Intervals = ...  % for onset/peri/offset
+	headers.Intervals = ...  % per interval: onset/peri/offset ...
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Interval' ...
 		'TER', 'TEP', 'dPrime', 'FiringMean', 'FiringMax', 'MutualInfo' ...
-		'VS10', 'MTS10'};
-	headers.Overall = ...     
-		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' ...
-		'FiringMeanOnset' 'FiringMeanPeri' 'FiringMeanOffset' ...
-		'FiringMaxOnset' 'FiringMaxPeri' 'FiringMaxOffset' ...
-		'VS10Phase' 'PSTHCorr'};
+		'VS10', 'MTS10', 'PSTHCorr'};
 
 	% prep tables as empty cells
 	tableNames = fieldnames(headers);
@@ -73,55 +67,27 @@ function exportSummary(summaryFile)
 					sessionID   = u.animalNames{condID,scoreID}{i}; % sessionID
 					category    = u.category{condID,scoreID}(i);
 					subCategory = u.subCategory{condID,scoreID}(i);
-					
-					vsFreq      = u.vsFreqs==10;
-					mtsFreq     = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
 
 					% for onset/peri/offset/perifull
-					for interval = 1:u.i.count
-						intervalName = u.i.names{interval};
+					for intervalID = 1:u.i.count
+						intervalName = u.i.names{intervalID};
 
-						ter = u.ter{condID,scoreID}(i,interval);
-						tep = u.tep{condID,scoreID}(i,interval);
-						dp = u.dPrimeIntervals{condID,scoreID}(i,interval);
-						firingMean = u.firingMean{condID,scoreID}(i,interval);
-						firingMax = u.firingMax{condID,scoreID}(i,interval);
-						mutualInfo = u.mutualInfo{condID,scoreID}(i,interval);
-						vs10  = u.vs{condID,scoreID}(i,vsFreq,interval);
-						mts10 = u.mts{condID,scoreID}(i,mtsFreq,interval);
-						mts10 = mean(mts10);
+						ter = u.ter{condID,scoreID}(i,intervalID);
+						tep = u.tep{condID,scoreID}(i,intervalID);
+						dp = u.dPrimeInts{condID,scoreID}(i,intervalID);
+						firingMean = u.firingMean{condID,scoreID}(i,intervalID);
+						firingMax = u.firingMax{condID,scoreID}(i,intervalID);
+						mutualInfo = u.mutualInfo{condID,scoreID}(i,intervalID);
+						vs10  = u.vs10Ints{condID,scoreID}(i,intervalID);
+						mts10 = u.mts10{condID,scoreID}(i,intervalID);
+						psthCorr = u.PSTHCorrIntsR{condID,scoreID}(i,intervalID);
 
 						tables.Intervals(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score intervalName ...
-							ter tep dp firingMean firingMax mutualInfo vs10 mts10};
+							ter tep dp firingMean firingMax mutualInfo ...
+							vs10 mts10 psthCorr};
 					end
-
-					% overall
-% 					firingMean = u.firingMean{condID,scoreID}(i);
-% 					firingMax  = u.firingMax{condID,scoreID}(i);
-
-					firingMeanOnset  = mean(u.psth{condID,scoreID}(i, u.i.mask.onset ));
-					firingMeanPeri   = mean(u.psth{condID,scoreID}(i, u.i.mask.peri  ));
-					firingMeanOffset = mean(u.psth{condID,scoreID}(i, u.i.mask.offset));
-					firingMaxOnset   = max (u.psth{condID,scoreID}(i, u.i.mask.onset ));
-					firingMaxPeri    = max (u.psth{condID,scoreID}(i, u.i.mask.peri  ));
-					firingMaxOffset  = max (u.psth{condID,scoreID}(i, u.i.mask.offset));
-					
-					% onset vector phase at 10Hz
-					[~, timeID] = min(abs(u.vs10Times-u.vs10Window/2));
-					vs10Phase = u.vs10{condID,scoreID}(i, timeID);
-					
-					% psth pearson's correlation
-					[~, timeID] = min(abs(u.psthCorrTimes-u.psthCorrWindow/2));
-					psthCorr = u.psthCorrR{condID,scoreID}(i, timeID);
-					
-					tables.Overall(end+1,:) = ...
-							{sessionID unitID category subCategory ...
-							mode level score ...
-							firingMeanOnset firingMeanPeri firingMeanOffset ...
-							firingMaxOnset firingMaxPeri firingMaxOffset ...
-							vs10Phase psthCorr};
 				end
 			end
 		end
