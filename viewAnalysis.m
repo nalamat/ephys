@@ -696,7 +696,7 @@ function refreshPlot(fig, d)
 				elseif strcmpi(plotName, 'tep alt')
 					vals = u.tep;
 				elseif strcmpi(plotName, 'dprime alt')
-					vals = u.dPrimeIntervals;
+					vals = u.dPrimeInts;
 				end
 
 				if u.maskerLevel
@@ -764,7 +764,7 @@ function refreshPlot(fig, d)
 
 			% sort according to active mode, peri, +10 dB SNR
 			u = a.units{1};
-			dPrime = u.dPrimeIntervals{end,scoreID}(:,u.i.id.peri);
+			dPrime = u.dPrimeInts{end,scoreID}(:,u.i.id.peri);
 			if ~strcmpi(subset, 'all')
 				msk = u.(subset){1,scoreID}==true;
 				dPrime = dPrime(msk);
@@ -776,7 +776,7 @@ function refreshPlot(fig, d)
 				u = a.units{modeID};
 
 				% dimensions: unit x interval x snr
-				dPrime = cat(3, u.dPrimeIntervals{2:end,scoreID});
+				dPrime = cat(3, u.dPrimeInts{2:end,scoreID});
 				if ~strcmpi(subset, 'all')
 					msk = u.(subset){1,scoreID}==true;
 					dPrime = dPrime(msk, :, :);
