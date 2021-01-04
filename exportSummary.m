@@ -19,7 +19,7 @@ function exportSummary(summaryFile)
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Interval' ...
 		'TER', 'TEP', 'dPrime', 'FiringMean', 'FiringMax', 'MutualInfo' ...
-		'VS10', 'MTS10', 'PSTHCorr'};
+		'VS10', 'VS10Phase', 'VS10PVal', 'MTS10', 'PSTHCorrR', 'PSTHCorrP'};
 
 	% prep tables as empty cells
 	tableNames = fieldnames(headers);
@@ -79,14 +79,17 @@ function exportSummary(summaryFile)
 						firingMax = u.firingMax{condID,scoreID}(i,intervalID);
 						mutualInfo = u.mutualInfo{condID,scoreID}(i,intervalID);
 						vs10  = u.vs10Ints{condID,scoreID}(i,intervalID);
+						vs10Phase = u.vs10IntsPhase{condID,scoreID}(i,intervalID);
+						vs10PVal = u.vs10IntsPVal{condID,scoreID}(i,intervalID);
 						mts10 = u.mts10{condID,scoreID}(i,intervalID);
-						psthCorr = u.PSTHCorrIntsR{condID,scoreID}(i,intervalID);
+						psthCorrR = u.psthCorrIntsR{condID,scoreID}(i,intervalID);
+						psthCorrP = u.psthCorrIntsP{condID,scoreID}(i,intervalID);
 
 						tables.Intervals(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score intervalName ...
 							ter tep dp firingMean firingMax mutualInfo ...
-							vs10 mts10 psthCorr};
+							vs10 vs10Phase vs10PVal mts10 psthCorrR psthCorrP};
 					end
 				end
 			end
