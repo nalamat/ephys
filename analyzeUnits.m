@@ -41,22 +41,38 @@ function units = analyzeUnits(units)
 		u.psthWindow     = u.psthWindow / u.psthWin;      % normalize window
 
 		% designate different intervals related to the target
+		% all metrics calculated for these intervals will also be assigned
+		% to the same struct: u.i
 		u.i.gap = 50e-3;
 		u.i.names = {'Pre', 'Onset', 'Peri', 'Offset', 'Post', ...
-			'PrePoke', 'Poke', 'PeriHalf', 'PostHalf', ...
+			'Pre200', 'Poke200', 'Onset200' 'Peri200', 'Offset200', 'Post200',...
+			'Pre300', 'Poke300', 'Onset300' 'Peri300', 'Offset300', 'Post300',...
 			'PreFull', 'PeriFull', 'PostFull'};
 		u.i.bounds = [
-			u.viewBounds(1)+u.i.gap*2  0
+			% pre/onset/peri/offset/post (all + during)
+			u.viewBounds(1)+u.i.gap*2  -u.i.gap
 			0                          u.i.gap*2
 			u.i.gap*2                  u.targetDuration-u.i.gap
 			u.targetDuration-u.i.gap   u.targetDuration+u.i.gap
 			u.targetDuration+u.i.gap   u.viewBounds(2)-u.i.gap*2
 			
-			-900e-3                    -400e-3
-			-350e-3                    -50e-3
-			u.i.gap*2                  u.i.gap*2+500e-3
-			u.targetDuration+u.i.gap   u.targetDuration+u.i.gap+500e-3
+			% all 200
+			-700e-3                    -500e-3
+			-350e-3                    -150e-3
+			0                          200e-3
+			500e-3                     700e-3
+			u.targetDuration-50e-3     u.targetDuration+150e-3
+			u.targetDuration+500e-3    u.targetDuration+700e-3
 			
+			% all 300
+			-800e-3                    -500e-3
+			-350e-3                    -50e-3
+			0                          300e-3
+			500e-3                     800e-3
+			u.targetDuration-50e-3     u.targetDuration+250e-3
+			u.targetDuration+500e-3    u.targetDuration+800e-3
+			
+			% full
 			u.viewBounds(1)            0
 			0                          u.targetDuration
 			u.targetDuration           u.viewBounds(2);
@@ -73,10 +89,12 @@ function units = analyzeUnits(units)
 			u.i.masks{id} = mask;
 			u.i.mask.(name) = mask;
 		end
-		u.i.id.onsetPeriOffset = [u.i.id.onset u.i.id.peri u.i.id.offset];
-		u.i.id.prePeriPost = [u.i.id.pre u.i.id.peri u.i.id.post];
-		u.i.id.half = [u.i.id.prePoke u.i.id.poke ...
-			u.i.id.periHalf u.i.id.postHalf];
+		u.i.id.during = [u.i.id.onset u.i.id.peri u.i.id.offset];
+		u.i.id.all    = [u.i.id.pre u.i.id.peri u.i.id.post];
+		u.i.id.all200 = [u.i.id.pre200 u.i.id.poke200 u.i.id.onset200 ...
+			u.i.id.peri200 u.i.id.offset200 u.i.id.post200];
+		u.i.id.all300 = [u.i.id.pre300 u.i.id.poke300 u.i.id.onset300 ...
+			u.i.id.peri300 u.i.id.offset300 u.i.id.post300];
 		u.i.id.full = [u.i.id.preFull u.i.id.periFull u.i.id.postFull];
 
 		% vector strength parameters
@@ -96,7 +114,6 @@ function units = analyzeUnits(units)
 		u.mtsParams.trialave = 1;
 		[~, u.mtsFreqs]      = mtspectrumpt(rand(1,50), u.mtsParams);
 		u.mtsFreqs10         = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
-
 
 % 		u.svmTimes       = 10e-3:10e-3:1;
 % 		u.svmScores      = [];
