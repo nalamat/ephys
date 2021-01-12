@@ -23,16 +23,16 @@ function units = analyzeUnits(units)
 		% few basic parameters for analysis
 		u.psthBin        = 10e-3; % bin size for calculating PSTH
 		% -1s before onset and +1s after offset of tone
+		u.psthCenters    = u.viewBounds(1) : u.psthBin : u.viewBounds(2);
 		u.psthEdges      = u.viewBounds(1)-u.psthBin/2 : u.psthBin : ...
 			u.viewBounds(2)+u.psthBin/2;
-		u.psthCenters    = u.psthEdges(1:end-1)+u.psthBin/2;
 		psthBinCount     = length(u.psthCenters);
 		
 		% running pearson's correlation between nogo and go
-		u.psthCorrWindow = 200e-3;
-		u.psthCorrTimes  = u.psthCenters( ... % center aligned windows
-			u.viewBounds(1)+u.psthCorrWindow/2 <= u.psthCenters & ...
-			u.psthCenters <= u.viewBounds(2)-u.psthCorrWindow/2);
+		u.corrWindow = 300e-3;
+		u.corrTimes  = u.psthCenters( ... % center aligned windows
+			u.viewBounds(1)+u.corrWindow/2 <= u.psthCenters & ...
+			u.psthCenters <= u.viewBounds(2)-u.corrWindow/2);
 
 		% convolution window for smoothing PSTH
 		u.psthWin        = 50e-3;                         % window size
