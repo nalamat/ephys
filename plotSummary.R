@@ -1,3 +1,5 @@
+options(java.parameters = "-Xmx8000m")
+
 library(nlme) # lme
 library(lme4) # lmer
 library(xlsx) # read.xlsx
@@ -26,6 +28,10 @@ figsFolder = '../Drafts/MMR-Manuscript/figs/'
 
 save_plot = function(plot, file) {
   ggsave(plot, file=file, height=4*2, width=6*2, dpi=600)
+}
+
+jgc <- function() {
+  .jcall('java/lang/System', method='gc')
 }
 
 # ggplot config
