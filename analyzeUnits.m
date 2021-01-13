@@ -28,6 +28,9 @@ function units = analyzeUnits(units)
 			u.viewBounds(2)+u.psthBin/2;
 		psthBinCount     = length(u.psthCenters);
 		
+		u.dPrimeBin      = u.psthBin;
+		u.dPrimeTimes    = 0 : u.dPrimeBin : u.viewBounds(2);
+		
 		% running pearson's correlation between nogo and go
 		u.corrWindow = 300e-3;
 		u.corrTimes  = u.psthCenters( ... % center aligned windows
@@ -123,7 +126,7 @@ function units = analyzeUnits(units)
 		init = @(sz1, sz2)cellfun(@(c){nan(sz1, sz2)}, c);
 		c1   = init(1, 1);
 		ct   = init(1, length(u.psthCenters));
-		cc   = init(1, length(u.psthCorrTimes));
+		cdp  = init(1, length(u.dPrimeTimes));
 		cc   = init(1, length(u.corrTimes));
 		ci   = init(1, u.i.count);
 		cii  = init(u.i.count, u.i.count);
@@ -203,23 +206,35 @@ function units = analyzeUnits(units)
 				
 				% running pearson's correlation between go and nogo versus time
 				if condID == 1 && scoreID == 1
-					R = ones(size(u.psthCorrTimes));
-					P = zeros(size(u.psthCorrTimes));
+					R = ones(size(u.corrTimes));
+					P = zeros(size(u.corrTimes));
 				else
-					R = zeros(size(u.psthCorrTimes));
-					P = ones(size(u.psthCorrTimes));
-					for timeID = 1:length(u.psthCorrTimes)
-						time = u.psthCorrTimes(timeID);
+					R = zeros(size(u.corrTimes));
+					P = ones(size(u.corrTimes));
+					for timeID = 1:length(u.corrTimes)
+						time = u.corrTimes(timeID);
 						% center aligned window
-						win = time - u.psthCorrWindow/2 <= u.psthCenters & ...
-							u.psthCenters < time + u.psthCorrWindow/2;
+						win = time - u.corrWindow/2 <= u.psthCenters & ...
+							u.psthCenters < time + u.corrWindow/2;
 						[r, p] = corrcoef(u.psthMean{1,1}(win), psthMean(win));
 						R(timeID) = r(1,2);
 						P(timeID) = p(1,2);
 					end
 				end
-				u.psthCorrR{condID,scoreID} = R;
-				u.psthCorrP{condID,scoreID} = P;
+				u.corrR{condID,scoreID} = R;
+				u.corrP{condID,scoreID} = P;
+				
+				% running auto-correlation in reference to pre300 versus time
+				psthPre300 = psthMean(u.i.mask.pre300);
+				for timeID = 1:length(u.corrTimes)
+					% center aligned window
+					win = timeID:timeID+length(psthPre300)-1;
+					[r, p] = corrcoef(psthPre300, psthMean(win));
+					u.autocorrR{condID,scoreID}(timeID) = r(1,2);
+					u.autocorrP{condID,scoreID}(timeID) = p(1,2);
+				end
+				u.corrR{condID,scoreID} = R;
+				u.corrP{condID,scoreID} = P;
 				
 				% pearson's correlation between go and nogo per interval
 				if condID == 1 && scoreID == 1
@@ -235,49 +250,107 @@ function units = analyzeUnits(units)
 						P(intervalID) = p(1,2);
 					end
 				end
-				u.psthCorrIntsR{condID,scoreID} = R;
-				u.psthCorrIntsP{condID,scoreID} = P;
+				u.i.corrR{condID,scoreID} = R;
+				u.i.corrP{condID,scoreID} = P;
+				
+				% auto-correlation per all interval pairs (if same length)
+				for intervalID1 = 1:u.i.count
+					mask1 = u.i.masks{intervalID1};
+					psth1 = u.psthMean{condID,scoreID}(mask1);
+					for intervalID2 = 1:u.i.count
+						mask2 = u.i.masks{intervalID2};
+						psth2 = u.psthMean{condID,scoreID}(mask2);
+						if length(psth1) == length(psth2)
+							[r, p] = corrcoef(psth1, psth2);
+							u.i.autocorrR{condID,scoreID}(intervalID1,intervalID2) = r(1,2);
+							u.i.autocorrP{condID,scoreID}(intervalID1,intervalID2) = p(1,2);
+						end
+					end
+				end
 
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
 % 				if ~any(isnan(u.psthMean{1,1}))
 				if condID == 1 && scoreID == 1
-					u.dPrime         {condID,scoreID} = zeros(size(u.psthCenters));
-					u.dPrimeCQMean   {condID,scoreID} = zeros(size(u.psthCenters));
-					u.dPrimeCQSum    {condID,scoreID} = zeros(size(u.psthCenters));
-					u.dPrimeMQMean   {condID,scoreID} = zeros(size(u.psthCenters));
-					u.dPrimeInts{condID,scoreID} = zeros(1, u.i.count);
+					u.dPrime  {condID,scoreID} = zeros(size(u.dPrimeTimes));
+					u.i.dPrime{condID,scoreID} = zeros(1, u.i.count);
 					
 				else
-					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
-						((psthSTD + u.psthSTD{1,1}) / 2);
-					dPrime(dPrime>4) = 4;
-					dPrime(dPrime<-4) = -4;
-					dPrime(isnan(dPrime)) = 0;
-					u.dPrime{condID,scoreID} = dPrime;
+					for i = 1:length(u.dPrimeTimes)
+						t = u.dPrimeTimes(i);
+						if t == 0
+							u.dPrime{condID,scoreID}(i) = 0;
+							continue;
+						end
+						frGo = zeros(size(spikeTimes));
+						for trialID = 1:length(spikeTimes)
+							frGo(trialID) = sum(0 <= spikeTimes{trialID} & ...
+								spikeTimes{trialID} < t) / t;
+						end
+						spikesNogo = u.spikeTimes{1,1};
+						frNogo = zeros(size(spikesNogo));
+						for trialID = 1:length(spikesNogo)
+							frNogo(trialID) = sum(0 <= spikesNogo{trialID} & ...
+								spikesNogo{trialID} < t) / t;
+						end
+						avgGo = mean(frGo);
+						avgNogo = mean(frNogo);
+						errGo = std(frGo);
+						errNogo = std(frNogo);
+						u.dPrime{condID,scoreID}(i) = ...
+							(avgGo - avgNogo) / (.5 * (errGo + errNogo));
+					end
+					
+					% old d' metrics
+% 					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
+% 						((psthSTD + u.psthSTD{1,1}) / 2);
+% 					dPrime(dPrime>4) = 4;
+% 					dPrime(dPrime<-4) = -4;
+% 					dPrime(isnan(dPrime)) = 0;
+% 					u.dPrime{condID,scoreID} = dPrime;
+% 
+% 					% cumulative quadratic mean of d'
+% 					cqMean = sqrt(cumsum(dPrime.^2) ./ ...
+% 						(1:length(dPrime)));
+% 					pre = find(u.psthCenters < 0);
+% 					cqMean = cqMean - cqMean(pre(end));
+% 					u.dPrimeCQMean{condID,scoreID} = cqMean;
+% 
+% 					% cumulative sum of squares
+% 					cqSum = sqrt(cumsum(dPrime.^2));
+% 					pre = find(u.psthCenters < 0);
+% 					cqSum = cqSum - cqSum(pre(end));
+% 					u.dPrimeCQSum{condID,scoreID} = cqSum;
+% 
+% 					% quadratic mean of d' in 50ms bins
+% 					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
+% 					u.dPrimeMQMean{condID,scoreID} = mqMean;
 
-					% cumulative quadratic mean of d'
-					cqMean = sqrt(cumsum(dPrime.^2) ./ ...
-						(1:length(dPrime)));
-					pre = find(u.psthCenters < 0);
-					cqMean = cqMean - cqMean(pre(end));
-					u.dPrimeCQMean{condID,scoreID} = cqMean;
-
-					% cumulative sum of squares
-					cqSum = sqrt(cumsum(dPrime.^2));
-					pre = find(u.psthCenters < 0);
-					cqSum = cqSum - cqSum(pre(end));
-					u.dPrimeCQSum{condID,scoreID} = cqSum;
-
-					% quadratic mean of d' in 50ms bins
-					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
-					u.dPrimeMQMean{condID,scoreID} = mqMean;
-
-					% quadratic mean for different intervals: pre/onset/peri ...
-% 					u.dPrimeInts{condID,scoreID} = zeros(1, u.i.count);
 					for intervalID = 1:u.i.count
-						u.dPrimeInts{condID,scoreID}(intervalID) = ...
-							sqrt(mean(dPrime(u.i.masks{intervalID}).^2));
+						bound = u.i.bounds(intervalID,:);
+						dur = bound(2) - bound(1);
+						frGo = zeros(size(spikeTimes));
+						for trialID = 1:length(spikeTimes)
+							frGo(trialID) = sum(bound(1) <= spikeTimes{trialID} & ...
+								spikeTimes{trialID} < bound(2)) / dur;
+						end
+						spikesNogo = u.spikeTimes{1,1};
+						frNogo = zeros(size(spikesNogo));
+						for trialID = 1:length(spikesNogo)
+							frNogo(trialID) = sum(bound(1) <= spikesNogo{trialID} & ...
+								spikesNogo{trialID} < bound(2)) / dur;
+						end
+						avgGo = mean(frGo);
+						avgNogo = mean(frNogo);
+						errGo = std(frGo);
+						errNogo = std(frNogo);
+						u.i.dPrime{condID,scoreID}(intervalID) = ...
+							(avgGo - avgNogo) / (.5 * (errGo + errNogo));
+						
+						% old d' metric
+						% quadratic mean for different intervals: pre/onset/peri ...
+% 						u.i.dPrime{condID,scoreID}(intervalID) = ...
+% 							sqrt(mean(dPrime(u.i.masks{intervalID}).^2));
 					end
 
 					% cumulative mean
