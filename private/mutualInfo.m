@@ -1,12 +1,12 @@
-function [ I ] = mutual_info( lambda1, lambda2 )
+function [ I ] = mutualInfo( lambda1, lambda2 )
 %MUTUAL_INFO Calculate Mutual Information through numerical approximation
 %
   w1=0.5; w2=0.5; %weights
   I = poisson_mixture(lambda1, lambda2) - cond_entropy(w1,lambda1, w2,lambda2);
   I = I*log2(exp(1)); %convert into 'bits' log base 2
   % Maximum MI for equal weights = 1 bit
-  if isnan(I)
-        I = 0;
+  if isinf(I)
+        I = nan;
   end
 end
 
@@ -27,7 +27,7 @@ end
 
 function [ H_Yx ] = cond_entropy(w1, lambda1, w2, lambda2)
 %Calculates the conditional entropy
-H_Yx = 0.5*entropy(lambda1) + 0.5*entropy(lambda2);
+H_Yx = w1*entropy(lambda1) + w2*entropy(lambda2);
 end
 
 
