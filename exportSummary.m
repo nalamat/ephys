@@ -18,8 +18,8 @@ function exportSummary(summaryFile)
 	headers.Intervals = ...  % per interval: onset/peri/offset ...
 		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
 		'Mode' 'TargetLevel' 'Score' 'Interval' ...
-		'TER', 'TEP', 'dPrime', 'FiringMean', 'FiringMax', 'MutualInfo' ...
-		'VS10', 'VS10Phase', 'VS10PVal', 'MTS10', 'PSTHCorrR', 'PSTHCorrP'};
+		'TER', 'TEP', 'dPrime', 'FRMean', 'FRMax', 'MutualInfo' ...
+		'VS10', 'VS10Phase', 'VS10PVal', 'MTS10', 'CorrR', 'CorrP'};
 
 	% prep tables as empty cells
 	tableNames = fieldnames(headers);
@@ -72,24 +72,25 @@ function exportSummary(summaryFile)
 					for intervalID = 1:u.i.count
 						intervalName = u.i.names{intervalID};
 
-						ter = u.ter{condID,scoreID}(i,intervalID);
-						tep = u.tep{condID,scoreID}(i,intervalID);
-						dp = u.dPrimeInts{condID,scoreID}(i,intervalID);
-						firingMean = u.firingMean{condID,scoreID}(i,intervalID);
-						firingMax = u.firingMax{condID,scoreID}(i,intervalID);
-						mutualInfo = u.mutualInfo{condID,scoreID}(i,intervalID);
-						vs10  = u.vs10Ints{condID,scoreID}(i,intervalID);
-						vs10Phase = u.vs10IntsPhase{condID,scoreID}(i,intervalID);
-						vs10PVal = u.vs10IntsPVal{condID,scoreID}(i,intervalID);
-						mts10 = u.mts10{condID,scoreID}(i,intervalID);
-						psthCorrR = u.psthCorrIntsR{condID,scoreID}(i,intervalID);
-						psthCorrP = u.psthCorrIntsP{condID,scoreID}(i,intervalID);
+						ter = u.i.ter{condID,scoreID}(i,intervalID);
+						tep = u.i.tep{condID,scoreID}(i,intervalID);
+						dp = u.i.dPrime{condID,scoreID}(i,intervalID);
+						firingMean = u.i.frMean{condID,scoreID}(i,intervalID);
+						firingMax = u.i.frMax{condID,scoreID}(i,intervalID);
+						mutualInfo = u.i.mutualInfo{condID,scoreID}(i,intervalID);
+						if isinf(mutualInfo); mutualInfo = nan; end
+						vs10  = u.i.vs10{condID,scoreID}(i,intervalID);
+						vs10Phase = u.i.vs10Phase{condID,scoreID}(i,intervalID);
+						vs10PVal = u.i.vs10PVal{condID,scoreID}(i,intervalID);
+						mts10 = u.i.mts10{condID,scoreID}(i,intervalID);
+						corrR = u.i.corrR{condID,scoreID}(i,intervalID);
+						corrP = u.i.corrP{condID,scoreID}(i,intervalID);
 
 						tables.Intervals(end+1,:) = ...
 							{sessionID unitID category subCategory ...
 							mode level score intervalName ...
 							ter tep dp firingMean firingMax mutualInfo ...
-							vs10 vs10Phase vs10PVal mts10 psthCorrR psthCorrP};
+							vs10 vs10Phase vs10PVal mts10 corrR corrP};
 					end
 				end
 			end

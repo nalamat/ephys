@@ -170,8 +170,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u.psthWin            = u1.psthWin;
 		u.psthEdges          = u1.psthEdges;
 		u.psthCenters        = u1.psthCenters;
-		u.psthCorrWindow     = u1.psthCorrWindow;
-		u.psthCorrTimes      = u1.psthCorrTimes;
+		u.dPrimeTimes        = u1.dPrimeTimes;
+		u.corrWindow         = u1.corrWindow;
+		u.corrTimes          = u1.corrTimes;
 		u.i                  = u1.i;
 		u.vsFreqs            = u1.vsFreqs;
 		u.vs10Window         = u1.vs10Window;
@@ -183,52 +184,56 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		c    = cell(u.condCount, 5); % {conds x scores}
 		init = @(sz)cellfun(@(c){nan(sz)}, c);
 		ct   = init([0, length(u.psthCenters)]);
-		cc   = init([0, length(u.psthCorrTimes)]);
+		cdp  = init([0, length(u.dPrimeTimes)]);
+		cc   = init([0, length(u.corrTimes)]);
 		ci   = init([0, u.i.count]);
+		cii  = init([0, u.i.count, u.i.count]);
 		cv   = init([0, length(u.vsFreqs), u.i.count]);
 		cv2  = init([0, length(u.vs10Times)]);
 		cm   = init([0, length(u.mtsFreqs), u.i.count]);
 		cl   = init([0, u.lfpBandCount, 3]);
 
-		u.animalNames        = c;
-		u.sessionIDs         = c;
-		u.unitIDs            = c;
-		u.unitTypes          = c;   % single/multi
-		u.phasic             = c;
-		u.tonic              = c;
-		u.category           = c;   % phasic/tonic
-		u.phasicSuppressing  = c;
-		u.phasicEnhancing    = c;
-		u.phasicNoChange     = c;
-		u.subCategory        = c;   % suppressing/enhancing/no-change
-		u.psth               = ct;  % function of time
-		u.psthCorrR          = cc;  % running correlation, function of time
-		u.psthCorrP          = cc;  % p-value of correlation, function of time
-		u.psthCorrIntsR      = ci;  % per interval
-		u.psthCorrIntsP      = ci;  % per interval
-		u.ter                = ci;  % per interval
-		u.tep                = ci;  % per interval
-		u.dPrimeCQMean       = ct;  % function of time
-		u.dPrimeCQSum        = ct;  % function of time
-		u.dPrimeInts         = ci;  % quadratic mean of d' for each interval
-		u.dPrimeBehavior     = cell(s.condCount,1);
-		u.firingMax          = ci;  % per interval
-		u.firingMean         = ci;  % per interval
-		u.mutualInfo         = ci;  % per interval
-		u.mfsl               = c;
-		u.mfslPhase          = c;
-		u.vs                 = cv;  % vector strength: frequency x interval
-		u.vsPhase            = cv;  % frequency x interval
-		u.vsPVal             = cv;  % frequency x interval
-		u.vs10Ints           = ci;  % vs @ 10Hz per interval, same as above
-		u.vs10IntsPhase      = ci;  % per interval
-		u.vs10IntsPVal       = ci;  % per interval
-		u.vs10               = cv2; % running vs @ 10Hz, as a function of time
-		u.vs10Phase          = cv2; % as a function of time
-		u.vs10PVal           = cv2; % as a function of time
-		u.mts                = cm;  % mt spectrum: frequency x interval
-		u.mts10              = ci;  % mt spectrum @ 10hz per interval
-		u.lfp                = cl;
+		u.animalNames     = c;
+		u.sessionIDs      = c;
+		u.unitIDs         = c;
+		u.unitTypes       = c;   % single/multi
+		u.phasic          = c;
+		u.tonic           = c;
+		u.category        = c;   % phasic/tonic
+		u.subCategory     = c;   % suppressing/enhancing
+		u.subCategory2    = c;   % onset/offset/sustained
+		u.subCategory3    = c;   % onset/offset/sustained
+		u.psth            = ct;  % function of time
+		u.corrR           = cc;  % running correlation, function of time
+		u.corrP           = cc;  % p-value of correlation, function of time
+		u.autocorrR       = cc;  % running auto-correlation, function of time
+		u.autocorrP       = cc;  % p-value of correlation, function of time
+		u.i.corrR         = ci;  % per interval
+		u.i.corrP         = ci;  % per interval
+		u.i.autocorrR     = cii; % interval x interval
+		u.i.autocorrP     = cii; % interval x interval
+		u.i.ter           = ci;  % per interval
+		u.i.tep           = ci;  % per interval
+		u.dPrime          = cdp; % rate d' as function of time
+		u.i.dPrime        = ci;  % rate d' for each interval
+		u.dPrimeBehavior  = cell(s.condCount,1);
+		u.i.frMax         = ci;  % per interval
+		u.i.frMean        = ci;  % per interval
+		u.i.mutualInfo    = ci;  % per interval
+		u.mfsl            = c;
+		u.mfslPhase       = c;
+		u.i.vs            = cv;  % vector strength: frequency x interval
+		u.i.vsPhase       = cv;  % frequency x interval
+		u.i.vsPVal        = cv;  % frequency x interval
+		u.i.vs10          = ci;  % vs @ 10Hz per interval, same as above
+		u.i.vs10Phase     = ci;  % per interval
+		u.i.vs10PVal      = ci;  % per interval
+		u.vs10            = cv2; % running vs @ 10Hz, as a function of time
+		u.vs10Phase       = cv2; % as a function of time
+		u.vs10PVal        = cv2; % as a function of time
+		u.i.mts           = cm;  % mt spectrum: frequency x interval
+		u.i.mts10         = ci;  % mt spectrum @ 10hz per interval
+		u.lfp             = cl;
 
 		s.units{modeID} = u;
 	end % modeID
@@ -263,8 +268,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					for intervalID = u.i.id.onsetPeriOffset
-						if u.dPrimeInts{uCondID,1}(intervalID) > ...
+					for intervalID = u.i.id.during  % onset/peri/offset
+						if abs(u.i.dPrime{uCondID,1}(intervalID)) > ...
 								s.targetResponseThresh
 							targetResponse = targetResponse+1;
 						end
@@ -276,9 +281,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					sCondID = mapCondID(uCondID, u, s);
 					if sCondID==0; continue; end % for omitted conditions
 
-					for intervalID = u.i.id.prePeriPost
-						vs = u.vs{uCondID,1}(vsFreq,intervalID);
-						p = u.vsPVal{uCondID,1}(vsFreq,intervalID);
+					for intervalID = u.i.id.all   % per/peri/post
+						vs = u.i.vs{uCondID,1}(vsFreq,intervalID);
+						p = u.i.vsPVal{uCondID,1}(vsFreq,intervalID);
 						if isnan(vs)
 							fprintf(['NAN: cond %d, interval %d, ' ...
 								'channel %d, %s\n'], uCondID, intervalID, ...
@@ -453,16 +458,24 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							u.psthMean{uCondID,scoreID};
 
 						% running correlation, function of time
-						su.psthCorrR{sCondID,scoreID}(end+1,:) = ...
-							u.psthCorrR{uCondID,scoreID};
-						su.psthCorrP{sCondID,scoreID}(end+1,:) = ...
-							u.psthCorrP{uCondID,scoreID};
+						su.corrR{sCondID,scoreID}(end+1,:) = ...
+							u.corrR{uCondID,scoreID};
+						su.corrP{sCondID,scoreID}(end+1,:) = ...
+							u.corrP{uCondID,scoreID};
+						su.autocorrR{sCondID,scoreID}(end+1,:) = ...
+							u.autocorrR{uCondID,scoreID};
+						su.autocorrP{sCondID,scoreID}(end+1,:) = ...
+							u.corrP{uCondID,scoreID};
 						
 						% correlation per interval
-						su.psthCorrIntsR{sCondID,scoreID}(end+1,:) = ...
-							u.psthCorrIntsR{uCondID,scoreID};
-						su.psthCorrIntsP{sCondID,scoreID}(end+1,:) = ...
-							u.psthCorrIntsP{uCondID,scoreID};
+						su.i.corrR{sCondID,scoreID}(end+1,:) = ...
+							u.i.corrR{uCondID,scoreID};
+						su.i.corrP{sCondID,scoreID}(end+1,:) = ...
+							u.i.corrP{uCondID,scoreID};
+						su.i.autocorrR{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.autocorrR{uCondID,scoreID};
+						su.i.autocorrP{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.autocorrP{uCondID,scoreID};
 
 						% calculate target-evoked response and
 						% peak activation relative to nogo
@@ -484,49 +497,42 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						ter(isinf(ter)) = nan;
 						tep(isinf(tep)) = nan;
-						su.ter{sCondID,scoreID}(end+1,:) = ter;
-						su.tep{sCondID,scoreID}(end+1,:) = tep;
+						su.i.ter{sCondID,scoreID}(end+1,:) = ter;
+						su.i.tep{sCondID,scoreID}(end+1,:) = tep;
 
-						% cumulative quadratic mean of d' as a function of time
-						su.dPrimeCQMean{sCondID,scoreID}(end+1,:) = ...
-							u.dPrimeCQMean{uCondID,scoreID};
+						% neurometric rate d' as a function of time
+						su.dPrime{sCondID,scoreID}(end+1,:) = ...
+							u.dPrime{uCondID,scoreID};
 
-						% cumulative quadratic sum of d' as a function of time
-						dPrime = u.dPrimeCQSum{uCondID,scoreID};
-						% reference dPrime to tone onset
-						pre = find(u.psthCenters < 0);
-						dPrime = dPrime - dPrime(pre(end));
-						su.dPrimeCQSum{sCondID,scoreID}(end+1,:) = dPrime;
-
-						% quadratic mean of d' for intervals
-						su.dPrimeInts{sCondID,scoreID}(end+1,:) = ...
-							u.dPrimeInts{uCondID,scoreID};
+						% neurometric rate d' for intervals
+						su.i.dPrime{sCondID,scoreID}(end+1,:) = ...
+							u.i.dPrime{uCondID,scoreID};
 
 						% mean and max firing rate
-						su.firingMean{sCondID,scoreID}(end+1,:) = ...
-							u.firingMean{uCondID,scoreID};
-						su.firingMax{sCondID,scoreID}(end+1,:) = ...
-							u.firingMax{uCondID,scoreID};
+						su.i.frMean{sCondID,scoreID}(end+1,:) = ...
+							u.i.frMean{uCondID,scoreID};
+						su.i.frMax{sCondID,scoreID}(end+1,:) = ...
+							u.i.frMax{uCondID,scoreID};
 
 						% mutual information
-						su.mutualInfo{sCondID,scoreID}(end+1,:) = ...
-							u.mutualInfo{uCondID,scoreID};
+						su.i.mutualInfo{sCondID,scoreID}(end+1,:) = ...
+							u.i.mutualInfo{uCondID,scoreID};
 
 						% vector strength: base frequency x interval
-						su.vs{sCondID,scoreID}(end+1,:,:) = ...
-							u.vs{uCondID,scoreID};
-						su.vsPhase{sCondID,scoreID}(end+1,:,:) = ...
-							u.vsPhase{uCondID,scoreID};
-						su.vsPVal{sCondID,scoreID}(end+1,:,:) = ...
-							u.vsPVal{uCondID,scoreID};
+						su.i.vs{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.vs{uCondID,scoreID};
+						su.i.vsPhase{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.vsPhase{uCondID,scoreID};
+						su.i.vsPVal{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.vsPVal{uCondID,scoreID};
 						
 						% vs @ 10hz per interval (same as above)
-						su.vs10Ints{sCondID,scoreID}(end+1,:) = ...
-							u.vs10Ints{uCondID,scoreID};
-						su.vs10IntsPhase{sCondID,scoreID}(end+1,:) = ...
-							u.vs10IntsPhase{uCondID,scoreID};
-						su.vs10IntsPVal{sCondID,scoreID}(end+1,:) = ...
-							u.vs10IntsPVal{uCondID,scoreID};
+						su.i.vs10{sCondID,scoreID}(end+1,:) = ...
+							u.i.vs10{uCondID,scoreID};
+						su.i.vs10Phase{sCondID,scoreID}(end+1,:) = ...
+							u.i.vs10Phase{uCondID,scoreID};
+						su.i.vs10PVal{sCondID,scoreID}(end+1,:) = ...
+							u.i.vs10PVal{uCondID,scoreID};
 
 						% running vs @ 10hz as a function of time
 						su.vs10{sCondID,scoreID}(end+1,:) = ...
@@ -537,10 +543,10 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 							u.vs10PVal{uCondID,scoreID};
 
 						% multi-taper spectrum peri-stimulus per interval
-						su.mts{sCondID,scoreID}(end+1,:,:) = ...
-							u.mts{uCondID,scoreID};
-						su.mts10{sCondID,scoreID}(end+1,:) = ...
-							u.mts10{uCondID,scoreID};
+						su.i.mts{sCondID,scoreID}(end+1,:,:) = ...
+							u.i.mts{uCondID,scoreID};
+						su.i.mts10{sCondID,scoreID}(end+1,:) = ...
+							u.i.mts10{uCondID,scoreID};
 
 						% mfsl (minimum first spike latency)
 						su.mfsl{sCondID,scoreID}(end+1,:) = ...
@@ -624,9 +630,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 				u.vs10Mean{condID,scoreID} = nanmean(vs);
 % 				u.vs10SEM{condID,scoreID} = nansem(vs);
 %
-% 				mts = u.mts{condID,scoreID};
-% 				u.mtsMean{condID,scoreID} = nanmean(mts);
-% 				u.mtsSEM{condID,scoreID} = nansem(mts);
+% 				mts = u.i.mts{condID,scoreID};
+% 				u.i.mtsMean{condID,scoreID} = nanmean(mts);
+% 				u.i.mtsSEM{condID,scoreID} = nansem(mts);
 %
 % 				% mfsl (minimum first spike latency)
 % 				mfsl = u.mfsl{condID,scoreID};
@@ -639,14 +645,14 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 % 				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
 %
 % 				% max firing rate
-% 				firingMax = u.firingMax{condID,scoreID};
-% 				u.firingMaxMean{condID,scoreID} = nanmean(firingMax);
-% 				u.firingMaxSEM{condID,scoreID} = nansem(firingMax);
+% 				firingMax = u.i.frMax{condID,scoreID};
+% 				u.i.frMaxMean{condID,scoreID} = nanmean(firingMax);
+% 				u.i.frMaxSEM{condID,scoreID} = nansem(firingMax);
 %
 % 				% mean firing rate
-% 				firingMean = u.firingMean{condID,scoreID};
-% 				u.firingMeanMean{condID,scoreID} = nanmean(firingMean);
-% 				u.firingMeanSEM{condID,scoreID} = nansem(firingMean);
+% 				firingMean = u.i.frMean{condID,scoreID};
+% 				u.i.frMeanMean{condID,scoreID} = nanmean(firingMean);
+% 				u.i.frMeanSEM{condID,scoreID} = nansem(firingMean);
 %
 % 				% pack
 % 				s.units{modeID} = u;
