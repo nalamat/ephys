@@ -124,52 +124,55 @@ function units = analyzeUnits(units)
 		c1   = init(1, 1);
 		ct   = init(1, length(u.psthCenters));
 		cc   = init(1, length(u.psthCorrTimes));
+		cc   = init(1, length(u.corrTimes));
 		ci   = init(1, u.i.count);
+		cii  = init(u.i.count, u.i.count);
 		cv   = init(length(u.vsFreqs), u.i.count);
 		cv2  = init(1, length(u.vs10Times));
 		cm   = init(length(u.mtsFreqs), u.i.count);
-		u.psth             = init(0, length(u.psthCenters)); % per trial
-		u.psthMean         = ct;  % average firing rate versus time
-		u.psthSTD          = ct;  % standard deviation of firing versus time
-		u.psthCorrR        = cc;  % running correlation with nogo versus time
-		u.psthCorrP        = cc;  % p-value of correlation versus time
-		u.psthCorrIntsR    = ci;  % correlation with nogo per interval
-		u.psthCorrIntsP    = ci;  % p-value of correlation per interval
-		u.dPrime           = ct;  % d' as a function of time (psth centers)
-		u.dPrimeCQMean     = ct;  % cumulative quadratic mean of d' versus time
-		u.dPrimeCQSum      = ct;  % cumulative quadratic sum of d' versus time
-		u.dPrimeMQMean     = ct;  % moving quadratic mean of d' versus time
-		u.dPrimeInts       = ci;  % quadratic mean of d' per interval
-		u.lambda           = ci;  % est. lambda of poisson process per interval
-		u.mutualInfo       = ci;  % mutual info relative to nogo per interval
-		u.firingMean       = ci;  % average firing rate per interval
-		u.firingMax        = ci;  % maximum firing rate per interval
-		u.firingSTD        = ci;  % standard deviation of firing per interval
-		u.mfsl             = c1;  % minimum first spike latency
-		u.mfslPhase        = c1;  % phase of MFSL relative to masker
-		u.vs               = cv;  % vector strength: base frequency x interval
-		u.vsPhase          = cv;  % phase of VS: base frequency x interval
-		u.vsPVal           = cv;  % p-value of VS: base frequency x interval
-		u.vs10Ints         = ci;  % VS @ 10hz per interval
-		u.vs10IntsPhase    = ci;  % phase of VS @ 10hz per interval
-		u.vs10IntsPVal     = ci;  % p-value of VS @ 10hz per interval
-		u.vs10             = cv2; % running vector strength @ 10hz versus time
-		u.vs10Phase        = cv2; % phase of running VS @ 10hz versus time
-		u.vs10PVal         = cv2; % p values of running VS at 10hz versus time
-		u.mts              = cm;  % multi-taper spectrum: frequency x interval
-		u.mts10            = ci;  % mts @ 10hz per interval (same as above)
+		u.psth           = init(0, length(u.psthCenters)); % per trial
+		u.psthMean       = ct;  % average firing rate versus time
+		u.psthSTD        = ct;  % standard deviation of firing versus time
+		u.corrR          = cc;  % running correlation ref. nogo vs. time
+		u.corrP          = cc;  % p-value of correlation versus time
+		u.autocorrR      = cc;  % running auto-correlation ref. pre300 vs. time
+		u.autocorrP      = cc;  % p-value of correlation versus time
+		u.i.corrR        = ci;  % correlation ref. nogo per interval
+		u.i.corrP        = ci;  % p-value of correlation per interval
+		u.i.autocorrR    = cii; % auto-correlation between all interval pairs
+		u.i.autocorrP    = cii; % 
+		u.dPrime         = cdp; % neurometric rate d' as a function of time
+		u.i.dPrime       = ci;  % neurometric rate d' per interval
+		u.i.lambda       = ci;  % est. lambda of poisson process per interval
+		u.i.mutualInfo   = ci;  % mutual info relative to nogo per interval
+		u.i.frMean       = ci;  % average firing rate per interval
+		u.i.frMax        = ci;  % maximum firing rate per interval
+		u.i.frSTD        = ci;  % standard deviation of firing per interval
+		u.mfsl           = c1;  % minimum first spike latency
+		u.mfslPhase      = c1;  % phase of MFSL relative to masker
+		u.i.vs           = cv;  % vector strength: base frequency x interval
+		u.i.vsPhase      = cv;  % phase of VS: base frequency x interval
+		u.i.vsPVal       = cv;  % p-value of VS: base frequency x interval
+		u.i.vs10         = ci;  % VS @ 10hz per interval
+		u.i.vs10Phase    = ci;  % phase of VS @ 10hz per interval
+		u.i.vs10PVal     = ci;  % p-value of VS @ 10hz per interval
+		u.vs10           = cv2; % running vector strength @ 10hz versus time
+		u.vs10Phase      = cv2; % phase of running VS @ 10hz versus time
+		u.vs10PVal       = cv2; % p values of running VS at 10hz versus time
+		u.i.mts          = cm;  % multi-taper spectrum: frequency x interval
+		u.i.mts10        = ci;  % mts @ 10hz per interval (same as above)
 		if isfield(u, 'lfp')
 			% {conds x scores}[bands x bins]
-			cl   = init(u.lfpBandCount, 3);
-			u.lfpMean          = cl;
-			u.lfpSTD           = cl;
-			u.lfpSEM           = cl;
+			cl = init(u.lfpBandCount, 3);
+			u.lfpMean      = cl;
+			u.lfpSTD       = cl;
+			u.lfpSEM       = cl;
 		end
 
 		c = cell(length(u.targetFreqs), 3);
-		u.rlf              = c;
-		u.threshold        = c;
-		u.nonmonotonic     = c;
+		u.rlf            = c;
+		u.threshold      = c;
+		u.nonmonotonic   = c;
 
 		% per all stimulus conditions
 		for condID = 1:u.condCount
@@ -296,9 +299,9 @@ function units = analyzeUnits(units)
 					mask = u.i.masks{intervalID};
 					
 					% mean and max firing rate
-					u.firingMean{condID,scoreID}(intervalID) = mean(psthMean(mask));
-					u.firingMax {condID,scoreID}(intervalID) = max (psthMean(mask));
-					u.firingSTD {condID,scoreID}(intervalID) = std (psthMean(mask));
+					u.i.frMean{condID,scoreID}(intervalID) = mean(psthMean(mask));
+					u.i.frMax {condID,scoreID}(intervalID) = max (psthMean(mask));
+					u.i.frSTD {condID,scoreID}(intervalID) = std (psthMean(mask));
 					
 					% calculate the mean spiking rate "lambda"
 					% flooring divides the rate appropriately to adjust for the
@@ -309,11 +312,11 @@ function units = analyzeUnits(units)
 						spikeTimes, 'uniformoutput', false);
 					isi = [isi{:}];
 					lambda = floor(histogramFit(isi) / u.spikeDuration);
-					u.lambda{condID,scoreID}(intervalID) = lambda;
+					u.i.lambda{condID,scoreID}(intervalID) = lambda;
 
 					% calculate mutual information
-					u.mutualInfo{condID,scoreID}(intervalID) = mutualInfo( ...
-						lambda, u.lambda{1,1}(intervalID)); % vs nogo
+					u.i.mutualInfo{condID,scoreID}(intervalID) = mutualInfo( ...
+						lambda, u.i.lambda{1,1}(intervalID)); % vs nogo
 				end
 
 				% SVM classification
@@ -375,28 +378,28 @@ function units = analyzeUnits(units)
 						n = length(spikeTimesInterval);
 						pval = rayleighsz(vs, n);
 
-						u.vs{condID,scoreID}(freqID,intervalID) = vs;
-						u.vsPhase{condID,scoreID}(freqID,intervalID) = theta2;
-						u.vsPVal{condID,scoreID}(freqID,intervalID) = pval;
+						u.i.vs{condID,scoreID}(freqID,intervalID) = vs;
+						u.i.vsPhase{condID,scoreID}(freqID,intervalID) = theta2;
+						u.i.vsPVal{condID,scoreID}(freqID,intervalID) = pval;
 					end % freqID
 					
 					% vs @ 10hz per interval (same as above)
 					freqID = u.vsFreqs==10;
-					u.vs10Ints{condID,scoreID}(intervalID) = ...
-						u.vs{condID,scoreID}(freqID,intervalID);
-					u.vs10IntsPhase{condID,scoreID}(intervalID) = ...
-						u.vsPhase{condID,scoreID}(freqID,intervalID);
-					u.vs10IntsPVal{condID,scoreID}(intervalID) = ...
-						u.vsPVal{condID,scoreID}(freqID,intervalID);
+					u.i.vs10{condID,scoreID}(intervalID) = ...
+						u.i.vs{condID,scoreID}(freqID,intervalID);
+					u.i.vs10Phase{condID,scoreID}(intervalID) = ...
+						u.i.vsPhase{condID,scoreID}(freqID,intervalID);
+					u.i.vs10PVal{condID,scoreID}(intervalID) = ...
+						u.i.vsPVal{condID,scoreID}(freqID,intervalID);
 	
 					% multi-taper spectrum at different frequencies, per interval
 					if length(spikeTimesInterval)>10
 						mts = mtspectrumpt(spikeTimesInterval - ...
 							min(spikeTimesInterval), u.mtsParams)';
 						if length(mts) == length(u.mtsFreqs)
-							u.mts{condID,scoreID}(:,intervalID) = mts;
+							u.i.mts{condID,scoreID}(:,intervalID) = mts;
 							% mts only @ 10hz (within a band of 1hz)
-							u.mts10{condID,scoreID}(intervalID) = ...
+							u.i.mts10{condID,scoreID}(intervalID) = ...
 								mean(mts(u.mtsFreqs10));
 						end
 					end
@@ -452,20 +455,21 @@ function units = analyzeUnits(units)
 		% per each frequency
 		for freqID = 1:length(u.targetFreqs)
 			% all levels with the current frequency
-			levelID = 1:length(u.targetLevels);
-			condID  = (freqID-1)*length(u.targetLevels) + levelID + 1;   % +1 for nogo
+			levelIDs = 1:length(u.targetLevels);
+			condIDs  = (freqID-1)*length(u.targetLevels)+levelIDs+1;  % +1 for nogo
 
 			for scoreID = 1:5
 				% rate-level function (RLF) peri-stimulus
-				rlf = [u.firingMean{condID,scoreID}];
-				if length(rlf) ~= length(condID); continue; end
+				rlf = vertcat(u.i.frMean{condIDs,scoreID});  % conds x intervals
+				rlf = squeeze(rlf(:,u.i.id.peri)); % conds
+				if length(rlf) ~= length(condIDs); continue; end
 				u.rlf{freqID,scoreID} = rlf;
 
 				% threshold based on RLF
 				threshold = nan;
 				for levelID = 1:length(u.targetLevels)
-					if ~isnan(rlf(levelID)) && levelID+1<=length(u.targetLevels) && ...
-							rlf(levelID)*1.2<rlf(levelID+1)   % 20% increase
+					if ~isnan(rlf(levelID)) && levelID+1<=length(u.targetLevels) ...
+							&& rlf(levelID)*1.2<rlf(levelID+1)   % 20% increase
 						threshold = u.targetLevels(levelID);
 					end
 				end % levelID
