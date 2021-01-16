@@ -116,8 +116,9 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	end
 
 
-	%% get all target stimulus conditions
+	%% get all target stimulus conditions, and count all units
 	for sessionID = 1:length(sessions)
+		s.allUnits = s.allUnits + sessions{sessionID}{1}.unitCount;
 		for modeID = 1:length(sessions{sessionID})
 			a = sessions{sessionID}{modeID};
 			if isempty(a); continue; end      % for missing passive quiet
@@ -189,15 +190,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 		c    = cell(u.condCount, 5); % {conds x scores}
 		init = @(sz)cellfun(@(c){nan(sz)}, c);
-		ct   = init([0, length(u.psthCenters)]);
-		cdp  = init([0, length(u.dPrimeTimes)]);
-		cc   = init([0, length(u.corrTimes)]);
-		ci   = init([0, u.i.count]);
-		cii  = init([0, u.i.count, u.i.count]);
-		cv   = init([0, length(u.vsFreqs), u.i.count]);
-		cv2  = init([0, length(u.vs10Times)]);
-		cm   = init([0, length(u.mtsFreqs), u.i.count]);
-		cl   = init([0, u.lfpBandCount, 3]);
+		ct   = init([s.allUnits, length(u.psthCenters)]);
+		cdp  = init([s.allUnits, length(u.dPrimeTimes)]);
+		cc   = init([s.allUnits, length(u.corrTimes)]);
+		ci   = init([s.allUnits, u.i.count]);
+		cii  = init([s.allUnits, u.i.count, u.i.count]);
+		cv   = init([s.allUnits, length(u.vsFreqs), u.i.count]);
+		cv2  = init([s.allUnits, length(u.vs10Times)]);
+		cm   = init([s.allUnits, length(u.mtsFreqs), u.i.count]);
+		cl   = init([s.allUnits, u.lfpBandCount, 3]);
 
 		u.animalNames     = c;
 		u.sessionIDs      = c;
@@ -245,14 +246,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	end % modeID
 
 
-	%% select target responding units and gather their activation metrics
-	s.singleUnits = 0;
-
+	%% gather unit activation metrics
+	sUnitID = 0;
+	
 	for sessionID = 1:length(sessions)
 		for unitID = 1:sessions{sessionID}{1}.unitCount
 			%% check if unit responds to target and determine its category
+			sUnitID = sUnitID + 1;
 			% is it phasic or tonic?
-			targetResponse = 0;
+% 			targetResponse = 0;
 			phasic = 0;
 			% don't use passive quiet for categorizing units for now
 			% only use active mmr and passive mmr
@@ -260,17 +262,17 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				a = sessions{sessionID}{modeID};
 	% 			if isempty(a); continue; end
 				u = a.units{unitID};
-				for uCondID = 2:u.condCount
-					sCondID = mapCondID(uCondID, u, s);
-					if sCondID==0; continue; end % for omitted conditions
-
-					for intervalID = u.i.id.during  % onset/peri/offset
-						if abs(u.i.dPrime{uCondID,1}(intervalID)) > ...
-								s.targetResponseThresh
-							targetResponse = targetResponse+1;
-						end
-					end
-				end
+% 				for uCondID = 2:u.condCount
+% 					sCondID = mapCondID(uCondID, u, s);
+% 					if sCondID==0; continue; end % for omitted conditions
+% 
+% 					for intervalID = u.i.id.during  % onset/peri/offset
+% 						if abs(u.i.dPrime{uCondID,1}(intervalID)) > ...
+% 								s.targetResponseThresh
+% 							targetResponse = targetResponse+1;
+% 						end
+% 					end
+% 				end
 
 				vsFreq = u.vsFreqs==10;
 				for uCondID = 1:u.condCount
@@ -293,21 +295,20 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			end
 
 			% does unit respond to target?
-			if targetResponse < s.targetResponseThreshCount; continue; end
+% 			if targetResponse < s.targetResponseThreshCount
+% 				s.rejectUnits = s.rejectUnits + 1;
+% 				continue
+% 			end
 
 			if isfield(sessions{sessionID}{1}, 'spikeConfig') && ...
 					strcmpi(sessions{sessionID}{1}.spikeConfig, 'sorted')
 				unitType = sessions{sessionID}{1}.units{unitID}.type;
 				if strcmpi(unitType, 'single')
-					unitType2 = 1;
 					s.singleUnits = s.singleUnits + 1;
 				elseif strcmpi(unitType, 'multi')
-					unitType2 = 2;
 					s.multiUnits = s.multiUnits + 1;
 				end
 			else
-				disp('Unsorted units');
-				unitType2 = 2;
 				s.multiUnits = s.multiUnits + 1;
 			end
 
@@ -401,43 +402,41 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 					for scoreID = 1:5
 						% keep a list of summarized animal names & unit IDs
 						% (different unit numbering scheme)
-						su.animalNames{sCondID,scoreID}{end+1} = a.animalName;
-						su.sessionIDs{sCondID,scoreID}(end+1) = sessionID;
-						su.unitIDs{sCondID,scoreID}(end+1) = s.targetRespondingUnits;
-						su.unitTypes{sCondID,scoreID}{end+1} = u.type;
+						su.animalNames{sCondID,scoreID}{sUnitID} = a.animalName;
+						su.sessionIDs{sCondID,scoreID}(sUnitID) = sessionID;
+						su.unitIDs{sCondID,scoreID}(sUnitID) = sUnitID;
+						su.unitTypes{sCondID,scoreID}{sUnitID} = u.type;
 
 						% does unit respond to masker?
-						su.tonic{sCondID,scoreID}(end+1) = ~phasic;
-						su.phasic{sCondID,scoreID}(end+1) = phasic;
-						su.category{sCondID,scoreID}{end+1} = category;
-						su.phasicSuppressing{sCondID,scoreID}(end+1) = ...
+						su.tonic{sCondID,scoreID}(sUnitID) = ~phasic;
+						su.phasic{sCondID,scoreID}(sUnitID) = phasic;
+						su.category{sCondID,scoreID}{sUnitID} = category;
+						su.subCategory{sCondID,scoreID}{sUnitID} = subCategory;
 							phasicSuppressing;
 						su.phasicEnhancing{sCondID,scoreID}(end+1) = phasicEnhancing;
-						su.phasicNoChange{sCondID,scoreID}(end+1) = phasicNoChange;
-						su.subCategory{sCondID,scoreID}{end+1} = subCategory;
 
 						% psth
-						su.psth{sCondID,scoreID}(end+1,:) = ...
+						su.psth{sCondID,scoreID}(sUnitID,:) = ...
 							u.psthMean{uCondID,scoreID};
 
 						% running correlation, function of time
-						su.corrR{sCondID,scoreID}(end+1,:) = ...
+						su.corrR{sCondID,scoreID}(sUnitID,:) = ...
 							u.corrR{uCondID,scoreID};
-						su.corrP{sCondID,scoreID}(end+1,:) = ...
+						su.corrP{sCondID,scoreID}(sUnitID,:) = ...
 							u.corrP{uCondID,scoreID};
-						su.autocorrR{sCondID,scoreID}(end+1,:) = ...
+						su.autocorrR{sCondID,scoreID}(sUnitID,:) = ...
 							u.autocorrR{uCondID,scoreID};
-						su.autocorrP{sCondID,scoreID}(end+1,:) = ...
+						su.autocorrP{sCondID,scoreID}(sUnitID,:) = ...
 							u.corrP{uCondID,scoreID};
 						
 						% correlation per interval
-						su.i.corrR{sCondID,scoreID}(end+1,:) = ...
+						su.i.corrR{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.corrR{uCondID,scoreID};
-						su.i.corrP{sCondID,scoreID}(end+1,:) = ...
+						su.i.corrP{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.corrP{uCondID,scoreID};
-						su.i.autocorrR{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.autocorrR{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.autocorrR{uCondID,scoreID};
-						su.i.autocorrP{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.autocorrP{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.autocorrP{uCondID,scoreID};
 
 						% calculate target-evoked response and
@@ -460,69 +459,69 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						end
 						ter(isinf(ter)) = nan;
 						tep(isinf(tep)) = nan;
-						su.i.ter{sCondID,scoreID}(end+1,:) = ter;
-						su.i.tep{sCondID,scoreID}(end+1,:) = tep;
+						su.i.ter{sCondID,scoreID}(sUnitID,:) = ter;
+						su.i.tep{sCondID,scoreID}(sUnitID,:) = tep;
 
 						% neurometric rate d' as a function of time
-						su.dPrime{sCondID,scoreID}(end+1,:) = ...
+						su.dPrime{sCondID,scoreID}(sUnitID,:) = ...
 							u.dPrime{uCondID,scoreID};
 
 						% neurometric rate d' for intervals
-						su.i.dPrime{sCondID,scoreID}(end+1,:) = ...
+						su.i.dPrime{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.dPrime{uCondID,scoreID};
 
 						% mean and max firing rate
-						su.i.frMean{sCondID,scoreID}(end+1,:) = ...
+						su.i.frMean{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.frMean{uCondID,scoreID};
-						su.i.frMax{sCondID,scoreID}(end+1,:) = ...
+						su.i.frMax{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.frMax{uCondID,scoreID};
 
 						% mutual information
-						su.i.mutualInfo{sCondID,scoreID}(end+1,:) = ...
+						su.i.mutualInfo{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.mutualInfo{uCondID,scoreID};
 
 						% vector strength: base frequency x interval
-						su.i.vs{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.vs{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.vs{uCondID,scoreID};
-						su.i.vsPhase{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.vsPhase{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.vsPhase{uCondID,scoreID};
-						su.i.vsPVal{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.vsPVal{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.vsPVal{uCondID,scoreID};
 						
 						% vs @ 10hz per interval (same as above)
-						su.i.vs10{sCondID,scoreID}(end+1,:) = ...
+						su.i.vs10{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.vs10{uCondID,scoreID};
-						su.i.vs10Phase{sCondID,scoreID}(end+1,:) = ...
+						su.i.vs10Phase{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.vs10Phase{uCondID,scoreID};
-						su.i.vs10PVal{sCondID,scoreID}(end+1,:) = ...
+						su.i.vs10PVal{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.vs10PVal{uCondID,scoreID};
 
 						% running vs @ 10hz as a function of time
-						su.vs10{sCondID,scoreID}(end+1,:) = ...
+						su.vs10{sCondID,scoreID}(sUnitID,:) = ...
 							u.vs10{uCondID,scoreID};
-						su.vs10Phase{sCondID,scoreID}(end+1,:) = ...
+						su.vs10Phase{sCondID,scoreID}(sUnitID,:) = ...
 							u.vs10Phase{uCondID,scoreID};
-						su.vs10PVal{sCondID,scoreID}(end+1,:) = ...
+						su.vs10PVal{sCondID,scoreID}(sUnitID,:) = ...
 							u.vs10PVal{uCondID,scoreID};
 
 						% multi-taper spectrum peri-stimulus per interval
-						su.i.mts{sCondID,scoreID}(end+1,:,:) = ...
+						su.i.mts{sCondID,scoreID}(sUnitID,:,:) = ...
 							u.i.mts{uCondID,scoreID};
-						su.i.mts10{sCondID,scoreID}(end+1,:) = ...
+						su.i.mts10{sCondID,scoreID}(sUnitID,:) = ...
 							u.i.mts10{uCondID,scoreID};
 
 						% mfsl (minimum first spike latency)
-						su.mfsl{sCondID,scoreID}(end+1,:) = ...
+						su.mfsl{sCondID,scoreID}(sUnitID,:) = ...
 							u.mfsl{uCondID,scoreID};
-						su.mfslPhase{sCondID,scoreID}(end+1,:) = ...
+						su.mfslPhase{sCondID,scoreID}(sUnitID,:) = ...
 							u.mfslPhase{uCondID,scoreID};
 
 						% local field potential
 						if isfield(u, 'lfp')
-							su.lfp{sCondID,scoreID}(end+1,:,:) = ...
+							su.lfp{sCondID,scoreID}(sUnitID,:,:) = ...
 								u.lfpMean{uCondID,scoreID};
 						else
-							su.lfp{sCondID,scoreID}(end+1,:,:) = nan;
+							su.lfp{sCondID,scoreID}(sUnitID,:,:) = nan;
 						end
 					end
 
@@ -532,7 +531,8 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 						s.unitCountPerCond{sCondID} = s.unitCountPerCond{sCondID} + 1;
 					end
 
-					su.dPrimeBehavior{sCondID}(end+1) = a.dPrimeBehavior{uCondID};
+					su.dPrimeBehavior{sCondID}(sUnitID,:) = ...
+						a.dPrimeBehavior{uCondID};
 				end
 
 				s.units{modeID} = su;    % repack summary unit
