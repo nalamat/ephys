@@ -16,7 +16,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	% summary struct
 	s = struct();
 	s.type = 'summary';
-	s.effort = effort;
+	s.group = group;
 	s.unitCount = modeCount;
 	s.units = cell(s.unitCount, 1);
 	s.targetFreqs = [];
@@ -27,6 +27,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.targetResponseThreshCount = 2;
 	s.phasicThresh = .001;
 	s.phasicThreshCount = 2;
+	s.subCategories = {'FR+ VS+', 'FR+ VS-', 'FR- VS+', 'FR- VS-', 'Tonic'};
+	s.singleUnits = 0;
+	s.multiUnits  = 0;
+	s.allUnits    = 0;
+	s.tonicUnits  = 0;
+	s.phasicUnits = 0;
 
 
 	%% select matching active and passive sessions from analysis
@@ -147,7 +153,7 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 		u = struct();
 		u.spikeConfig        = u1.spikeConfig;
 		u.type               = 'Summary';
-		u.effort             = s.effort;
+		u.group              = s.group;
 		u.condCount          = s.condCount;
 		u.targetFreqs        = s.targetFreqs;
 		u.targetLevels       = s.targetLevels;
@@ -241,16 +247,6 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 	%% select target responding units and gather their activation metrics
 	s.singleUnits = 0;
-	s.multiUnits = 0;
-	s.targetRespondingUnits = 0;
-	s.targetRespondingUnits2 = [0 0]; % count single/multi-units separately
-	s.tonicUnits = 0;
-	s.tonicUnits2 = [0 0];            % count single/multi-units separately
-	s.phasicUnits = 0;
-	s.phasicUnits2 = [0 0];           % count single/multi-units separately
-	s.phasicSuppressingUnits = 0;
-	s.phasicEnhancingUnits = 0;
-	s.phasicNoChangeUnits = 0;
 
 	for sessionID = 1:length(sessions)
 		for unitID = 1:sessions{sessionID}{1}.unitCount
@@ -333,91 +329,58 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 			phasic = phasic >= s.phasicThreshCount;
 			if phasic
 				s.phasicUnits = s.phasicUnits + 1;
-				s.phasicUnits2(unitType2) = s.phasicUnits2(unitType2) + 1;
 				category = 'Phasic';
 			else
 				s.tonicUnits = s.tonicUnits + 1;
-				s.tonicUnits2(unitType2) = s.tonicUnits2(unitType2) + 1;
 				category = 'Tonic';
 			end
 
 			%% determine unit sub-category
-			% is it phasic suppressing, enhancing, or no-change?
-			phasicSuppressing = false;
-			phasicEnhancing = false;
-			phasicNoChange = false;
-
-			% compare vector strength between passive and active
-% 			if phasic
-% 				u1 = sessions{sessionID}{1}.units{unitID};
-% 				u2 = sessions{sessionID}{2}.units{unitID};
-% 				vsFreq = u.vsFreqs==10;
-%
-% 				for binID = 1:size(u.vsBins,1)
-% 					vs1 = cellfun(@(c)c{binID,vsFreq}, ...
-% 						u1.vs(:,1));
-% 					vs2 = cellfun(@(c)c{binID,vsFreq}, ...
-% 						u2.vs(:,1));
-% 					if ttest(vs1, vs2)
-% 						if mean(vs1) < mean(vs2)
-% 							phasicSuppressing = true;
-% 						else
-% 							phasicEnhancing = true;
-% 						end
-% 					end
-% 				end
-% 				phasicNoChange = ~phasicSuppressing && ~phasicEnhancing;
-% 			end
-
-			% compare 10Hz VS of pre versus peri in active at +10 dB SNR
+			% is it suppressing or enhancing firing rate and vector strength?
+			% compare average of pre for all conditions
+			% versus peri at +10 dB SNR in active mode
 			if phasic
 				u = sessions{sessionID}{1}.units{unitID};
+				
+				% categorize based on change in firing rate
+				fr = squeeze(cat(3, u.i.frMean{:,1})); % interval x snr
+				frPreMean = mean(fr(u.i.id.pre, :));
+				frPeri10dB = fr(u.i.id.peri, end);
+				frChange = (frPeri10dB - frPreMean) / frPreMean;
 
+				% categorize based on change in vector strength @ 10hz
 				vsFreq = u.vsFreqs==10;
-				vs = cat(3, u.vs{:,1}); % freq x interval x snr
+				vs = cat(3, u.i.vs{:,1}); % freq x interval x snr
 				vs = squeeze(vs(vsFreq, :, :)); % interval x snr
-				vsPreMean = mean(vs(u.i.id.pre,:));
-				vsPeri10dB = vs(u.i.id.peri,end);
-				change = (vsPeri10dB - vsPreMean) / vsPreMean;
+				vsPreMean = mean(vs(u.i.id.pre, :));
+				vsPeri10dB = vs(u.i.id.peri, end);
+				vsChange = (vsPeri10dB - vsPreMean) / vsPreMean;
 
-				% categorize based on average peri firing rate
-				firingMeanNogo = mean(u.psthMean{1,1}(u.i.mask.peri));
-				firingMean10dB = mean(u.psthMean{end,1}(u.i.mask.peri));
-				change = (firingMean10dB - firingMeanNogo) / firingMeanNogo;
-
-				if change < -.2
-					phasicSuppressing = true;
-				elseif change > .2
-					phasicEnhancing = true;
-				else
-					phasicNoChange = true;
+				if frChange > 0 && vsChange > 0
+					subCategory = 'FR+ VS+';
+				elseif frChange < 0 && vsChange > 0
+					subCategory = 'FR- VS+';
+				elseif frChange > 0 && vsChange < 0
+					subCategory = 'FR+ VS-';
+				elseif frChange < 0 && vsChange < 0
+					subCategory = 'FR- VS-';
 				end
-			end
-
-			if phasicSuppressing
-				s.phasicSuppressingUnits = s.phasicSuppressingUnits + 1;
-				subCategory = 'Phasic Suppressing';
-			elseif phasicEnhancing
-				s.phasicEnhancingUnits = s.phasicEnhancingUnits + 1;
-				subCategory = 'Phasic Enhancing';
-			elseif phasicNoChange
-				s.phasicNoChangeUnits = s.phasicNoChangeUnits + 1;
-				subCategory = 'Phasic No Change';
+			
 			else
-				subCategory = 'None'; % for tonics
+					subCategory = 'Tonic';
 			end
 
 			if sorted
-				fprintf('Selecting unit %d.%d from %s on %s as %s\n', ...
+				fprintf('Selecting unit %d.%d from %s on %s as %s / %s\n', ...
 					sessions{sessionID}{1}.units{unitID}.channel, ...
 					sessions{sessionID}{1}.units{unitID}.number, ...
 					sessions{sessionID}{1}.animalName, ...
-					sessions{sessionID}{1}.timeStr, category);
+					sessions{sessionID}{1}.timeStr, category, subCategory);
 			else
-				fprintf('Selecting channel %d from %s on %s as %s\n', ...
+				fprintf('Selecting channel %d from %s on %s as %s / %s\n', ...
 					sessions{sessionID}{1}.channels(unitID), ...
 					sessions{sessionID}{1}.animalName, ...
-					sessions{sessionID}{1}.timeStr, category);
+					sessions{sessionID}{1}.timeStr, category, subCategory);
 			end
 
 			%% map unit analysis to summary
