@@ -451,31 +451,31 @@ function btnCallback(btn, ~)
 		case 'summarize'
 			% default aggregate file name
 			if length(d.animalList.Value)==1
-				sumFile = d.animalList.String{d.animalList.Value};
+				sumFile = ['-' d.animalList.String{d.animalList.Value}];
 			else
-				sumFile = 'All';
+				sumFile = ''; %'-All';
 			end
 			
-			% determine effort condition (HE/LE) of selected animals
-			HE = {'CMR05Fluffy', 'CMR05Tail', 'D2Right', 'E1Right'};
-			LE = {'CMR08Tail', 'CMR08Head'};
+			% determine group (Trained/Naive) of selected gerbils
+			trained = {'CMR05Fluffy', 'CMR05Tail', 'D2Right', 'E1Right'};
+			naive = {'CMR08Tail', 'CMR08Head'};
 			
 			strcmplist = @(s1,s2) arrayfun(@(s) any(strcmpi(s, s2)), s1);
 			animalList = d.animalList.String(d.animalList.Value);
-			if all(strcmplist(animalList, HE))
-				effort = 'HE';
-			elseif all(strcmplist(animalList, LE))
-				effort = 'LE';
+			if all(strcmplist(animalList, trained))
+				group = 'Trained';
+			elseif all(strcmplist(animalList, naive))
+				group = 'Naive';
 			else
-				effort = '';
+				group = '';
 			end
 			
-			% include effort condition (HE/LE) in the default summary file
-			if effort
-				sumFile = sprintf('results/Summary-%s-%s-%s.mat', ...
-					effort, sumFile, d.spikeConfig);
+			% include group (Trained/Naive) in the default summary file
+			if group
+				sumFile = sprintf('results/Summary-%s%s-%s.mat', ...
+					group, sumFile, d.spikeConfig);
 			else
-				sumFile = sprintf('results/Summary-%s-%s.mat', ...
+				sumFile = sprintf('results/Summary-%s%s.mat', ...
 					sumFile, d.spikeConfig);
 			end
 			
@@ -491,7 +491,7 @@ function btnCallback(btn, ~)
 			analysis = loadSelectedAnalysis(d);
 			
 			if ~isempty(analysis)
-				summarizeAnalysis(analysis, sumFile, effort);
+				summarizeAnalysis(analysis, sumFile, group);
 				exportSummary(sumFile)
 				d = loadSummaries(d);
 			end
