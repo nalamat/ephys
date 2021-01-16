@@ -1,10 +1,10 @@
-function summarizeAnalysis(analysis, summaryFile, effort)
+function summarizeAnalysis(analysis, summaryFile, group)
 	%% summarize active MMR vs. passive MMR (+ passive quiet)
 
 	fprintf('Summarizing analysis\n');
 
 	recordingModeLabels = {
-		['Active MMR ' effort]
+		'Active MMR'
 		'Passive MMR'
 		'Passive Quiet'
 		};
@@ -26,13 +26,15 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 	s.targetResponseThresh = .3;
 	s.targetResponseThreshCount = 2;
 	s.phasicThresh = .001;
-	s.phasicThreshCount = 2;
+	s.phasicThreshCount = 1;
+	s.categories = {'Tonic', 'Phasic', 'Reject'};
 	s.subCategories = {'FR+ VS+', 'FR+ VS-', 'FR- VS+', 'FR- VS-', 'Tonic'};
 	s.singleUnits = 0;
 	s.multiUnits  = 0;
 	s.allUnits    = 0;
 	s.tonicUnits  = 0;
 	s.phasicUnits = 0;
+	s.rejectUnits = 0;
 
 
 	%% select matching active and passive sessions from analysis
@@ -322,12 +324,12 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 				strcmpi(sessions{sessionID}{1}.units{unitID}.type, ...
 				'single');
 
-			s.targetRespondingUnits = s.targetRespondingUnits + 1;
-			s.targetRespondingUnits2(unitType2) = ...
-				s.targetRespondingUnits2(unitType2) + 1;
-
 			% does unit respond to masker?
 			phasic = phasic >= s.phasicThreshCount;
+% 			if targetResponse < s.targetResponseThreshCount
+% 				s.rejectUnits = s.rejectUnits + 1;
+% 				category = 'Reject';
+% 			else
 			if phasic
 				s.phasicUnits = s.phasicUnits + 1;
 				category = 'Phasic';
@@ -542,86 +544,17 @@ function summarizeAnalysis(analysis, summaryFile, effort)
 
 	end % sessionID
 
-	fprintf(['Selected %d target responding, %d tonic, %d phasic, ' ...
-		'%d phasic suppressing, %d phasic enhancing & ' ...
-		'%d phasic no-change units\n'], ...
-		s.targetRespondingUnits, s.tonicUnits, s.phasicUnits, ...
-		s.phasicSuppressingUnits, s.phasicEnhancingUnits, ...
-		s.phasicNoChangeUnits);
+	fprintf(['Selected %d target responding, %d tonic, %d phasic\n'], ...
+		s.allUnits, s.tonicUnits, s.phasicUnits);
 
 	% display counts for single/multi-units separately
 	if sorted
-		fprintf('       Single  Multi\n');
-		fprintf('Total:  %3d    %3d  \n', s.targetRespondingUnits2);
-		fprintf('Phasic: %3d    %3d  \n', s.phasicUnits2);
-		fprintf('Tonic:  %3d    %3d  \n', s.tonicUnits2);
+% 		fprintf('\n');
+		fprintf('All:    %3d  \n', s.allUnits);
+		fprintf('Phasic: %3d  \n', s.phasicUnits);
+		fprintf('Tonic:  %3d  \n', s.tonicUnits);
+		fprintf('Reject: %3d  \n', s.rejectUnits);
 	end
-
-
-	%% calculate mean and sem of psth, d', etc
-% 	for modeID = 1:s.unitCount
-% 		for condID = 1:s.condCount
-% 			for scoreID = 1:5
-% 				% unpack
-% 				u = s.units{modeID};
-%
-% 				% psth
-% 				psth = u.psth{condID,scoreID};
-% 				u.psthMean{condID,scoreID} = nanmean(psth);
-% 				u.psthSEM{condID,scoreID} = nansem(psth);
-%
-% 				% cumulative quadratic mean of d'
-% 				dPrime = u.dPrimeCQMean{condID,scoreID};
-% 				u.dPrimeCQMeanMean{condID,scoreID} = nanmean(dPrime, 1);
-% 				u.dPrimeCQMeanSEM{condID,scoreID} = nansem(dPrime, 1);
-%
-% 				% vector strength
-% 				for binID = 1:size(u.vsBins,1)
-% 					for vsFreqID = 1:length(u.vsFreqs)
-% 						vec = u.vs{condID,scoreID}{binID,vsFreqID};
-% 						u.vectorStrengthMean{ ...
-% 							condID,scoreID}{binID,vsFreqID} = ...
-% 							nanmean(vec);
-% 						u.vectorStrengthSEM{ ...
-% 							condID,scoreID}{binID,vsFreqID} = ...
-% 							nansem(vec);
-% 					end
-% 				end
-%
-% 				% running vs at 10 hz
-% 				vs = u.vs10{condID,scoreID};
-% 				u.vs10Mean{condID,scoreID} = nanmean(vs);
-% 				u.vs10SEM{condID,scoreID} = nansem(vs);
-%
-% 				mts = u.i.mts{condID,scoreID};
-% 				u.i.mtsMean{condID,scoreID} = nanmean(mts);
-% 				u.i.mtsSEM{condID,scoreID} = nansem(mts);
-%
-% 				% mfsl (minimum first spike latency)
-% 				mfsl = u.mfsl{condID,scoreID};
-% 				u.mfslMean{condID,scoreID} = nanmean(mfsl);
-% 				u.mfslSEM{condID,scoreID} = nansem(mfsl);
-%
-% 				% mfsl phase
-% 				phase = u.mfslPhase{condID,scoreID};
-% 				u.mfslPhaseMean{condID,scoreID} = nanmean(phase);
-% 				u.mfslPhaseSEM{condID,scoreID} = nansem(phase);
-%
-% 				% max firing rate
-% 				firingMax = u.i.frMax{condID,scoreID};
-% 				u.i.frMaxMean{condID,scoreID} = nanmean(firingMax);
-% 				u.i.frMaxSEM{condID,scoreID} = nansem(firingMax);
-%
-% 				% mean firing rate
-% 				firingMean = u.i.frMean{condID,scoreID};
-% 				u.i.frMeanMean{condID,scoreID} = nanmean(firingMean);
-% 				u.i.frMeanSEM{condID,scoreID} = nansem(firingMean);
-%
-% 				% pack
-% 				s.units{modeID} = u;
-% 			end
-% 		end
-% 	end
 
 
 	%% save merged analysis in a .mat file
@@ -634,7 +567,7 @@ end
 %% helper functions
 function res = recordingMode(a)
 	res = 0;
-	% poke training is the low-effort condition
+	% poke training is for the naive gerbils (only go)
 	if any(strcmpi(a.experimentMode, {'go nogo', 'poke training'})) && ...
 			strcmpi(a.maskerFile, 'supermasker.wav') && ...
 			a.maskerLevel == 50 && ...
