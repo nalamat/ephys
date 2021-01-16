@@ -29,6 +29,8 @@ function summarizeAnalysis(analysis, summaryFile, group)
 	s.phasicThreshCount = 1;
 	s.categories = {'Tonic', 'Phasic', 'Reject'};
 	s.subCategories = {'FR+ VS+', 'FR+ VS-', 'FR- VS+', 'FR- VS-', 'Tonic'};
+% 	s.subCategories2 = {'Onset Offset', 'Onset', 'Offset', 'Sustained'};
+% 	s.subCategories3 = {'Enh', 'Sup'};
 	s.singleUnits = 0;
 	s.multiUnits  = 0;
 	s.allUnits    = 0;
@@ -372,6 +374,30 @@ function summarizeAnalysis(analysis, summaryFile, group)
 			else
 					subCategory = 'Tonic';
 			end
+			
+			% alternate sub-category based on quiet response
+% 			u = sessions{sessionID}{3}.units{unitID};
+% 			dp = vertcat(u.i.dPrime{2:end,1});
+% 			fr = vertcat(u.i.frMean{:,1});
+% 			fr = fr(:,u.i.id.peri);
+% 			onset  = dp(:,u.i.id.onset) > .3;
+% 			offset = dp(:,u.i.id.offset) > .3;
+% 			
+% 			if onset(end) && offset(end)
+% 				subCategory2 = 'Onset Offset';
+% 			elseif onset(end)
+% 				subCategory2 = 'Onset';
+% 			elseif offset(end)
+% 				subCategory2 = 'Offset';
+% 			else
+% 				subCategory2 = 'Sustained';
+% 			end
+% 			
+% 			if fr(end) > fr(1)
+% 				subCategory3 = 'Enh';
+% 			else
+% 				subCategory3 = 'Sup';
+% 			end
 
 			if sorted
 				fprintf('Selecting unit %d.%d from %s on %s as %s / %s\n', ...
@@ -414,8 +440,8 @@ function summarizeAnalysis(analysis, summaryFile, group)
 						su.phasic{sCondID,scoreID}(sUnitID) = phasic;
 						su.category{sCondID,scoreID}{sUnitID} = category;
 						su.subCategory{sCondID,scoreID}{sUnitID} = subCategory;
-							phasicSuppressing;
-						su.phasicEnhancing{sCondID,scoreID}(end+1) = phasicEnhancing;
+% 						su.subCategory2{sCondID,scoreID}{sUnitID} = subCategory2;
+% 						su.subCategory3{sCondID,scoreID}{sUnitID} = subCategory3;
 
 						% psth
 						su.psth{sCondID,scoreID}(sUnitID,:) = ...
