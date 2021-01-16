@@ -5,6 +5,7 @@ function exportSummary(summaryFile)
 		error('[exportSummary] Need a .mat file');
 	end
 	exportFile = [summaryFile(1:end-4) '.xlsx'];
+	exportFile2 = [summaryFile(1:end-4) '.csv'];
 
 	fprintf('Exporting as excel to %s\n', exportFile);
 
@@ -14,22 +15,25 @@ function exportSummary(summaryFile)
 	scoresNogo = {'All', 'CA', 'FA'};
 
 	% prep table headers
-	headers = struct();
-	headers.Intervals = ...  % per interval: onset/peri/offset ...
-		{'SubjectID' 'UnitID' 'Category' 'SubCategory' ...
-		'Mode' 'TargetLevel' 'Score' 'Interval' ...
-		'TER', 'TEP', 'dPrime', 'FRMean', 'FRMax', 'MutualInfo' ...
-		'VS10', 'VS10Phase', 'VS10PVal', 'MTS10', 'CorrR', 'CorrP'};
+% 	headers = struct();
+% 	headers.Intervals = ...  % per interval: onset/peri/offset ...
+% 		{'SubjectID' 'UnitID' 'Group' 'Category' 'SubCategory' ...
+% 		'Mode' 'TargetLevel' 'Score' 'Interval' ...
+% 		'TER' 'TEP' 'dPrime' 'FRMean' 'FRMax' 'MutualInfo' ...
+% 		'VS10' 'VS10Phase' 'VS10PVal' 'MTS10' 'CorrR' 'CorrP'};
 
 	% prep tables as empty cells
-	tableNames = fieldnames(headers);
-	tables = struct();
-	for tableID = 1:length(tableNames)
-		tables.(tableNames{tableID}) = {};
-	end
+% 	tableNames = fieldnames(headers);
+% 	tables = struct();
+% 	for tableID = 1:length(tableNames)
+% 		tables.(tableNames{tableID}) = {};
+% 	end
 
-	% f = fopen('AnalysisNJIT/Summary.csv', 'w');
-	% fprintf(f, 'RecMode, UnitID, TargetLevel, Score, Time, dPrime\n');
+	f = fopen(exportFile2, 'w');
+	fprintf(f, ['SubjectID,UnitID,Group,Category,SubCategory,' ...
+		'Mode,TargetLevel,Score,Interval,' ...
+		'TER,TEP,dPrime,FRMean,FRMax,MutualInfo,' ...
+		'VS10,VS10Phase,VS10PVal,MTS10,CorrR,CorrP\n']);
 
 	% load summary analysis
 	load(summaryFile, 'analysis');
@@ -63,10 +67,11 @@ function exportSummary(summaryFile)
 				end
 
 				for i = 1:length(unitIDs)
+					subjectID   = u.animalNames{condID,scoreID}{i}; % subjectID
 					unitID      = unitIDs(i);
-					sessionID   = u.animalNames{condID,scoreID}{i}; % sessionID
-					category    = u.category{condID,scoreID}(i);
-					subCategory = u.subCategory{condID,scoreID}(i);
+					group       = u.group;
+					category    = u.category{condID,scoreID}{i};
+					subCategory = u.subCategory{condID,scoreID}{i};
 
 					% for onset/peri/offset/perifull
 					for intervalID = 1:u.i.count
@@ -86,11 +91,20 @@ function exportSummary(summaryFile)
 						corrR = u.i.corrR{condID,scoreID}(i,intervalID);
 						corrP = u.i.corrP{condID,scoreID}(i,intervalID);
 
-						tables.Intervals(end+1,:) = ...
-							{sessionID unitID category subCategory ...
-							mode level score intervalName ...
-							ter tep dp firingMean firingMax mutualInfo ...
-							vs10 vs10Phase vs10PVal mts10 corrR corrP};
+% 						tables.Intervals(end+1,:) = ...
+% 							{animaName unitID category subCategory ...
+% 							mode level score intervalName ...
+% 							ter tep dp firingMean firingMax mutualInfo ...
+% 							vs10 vs10Phase vs10PVal mts10 corrR corrP};
+						
+						fprintf(f, ['%s,%d,%s,%s,%s,' ...
+							'%s,%d,%s,%s,' ...
+							'%d,%d,%d,%d,%d,%d, ' ...
+							'%d,%d,%d,%d,%d,%d\n'], ...
+							subjectID, unitID, group, category, subCategory, ...
+							mode, level, score, intervalName, ...
+							ter, tep, dp, firingMean, firingMax, mutualInfo, ...
+							vs10, vs10Phase, vs10PVal, mts10, corrR, corrP);
 					end
 				end
 			end
@@ -98,13 +112,13 @@ function exportSummary(summaryFile)
 	end
 
 	% write tables to excel file
-	warning( 'off', 'MATLAB:xlswrite:AddSheet');
-	if exist(exportFile, 'file'); delete(exportFile); end
-	for tableID = 1:length(tableNames)
-		name = tableNames{tableID};
-		t = cell2table(tables.(name), 'variablenames', headers.(name));
-		writetable(t, exportFile, 'sheet', name);
-	end
+% 	warning( 'off', 'MATLAB:xlswrite:AddSheet');
+% 	if exist(exportFile, 'file'); delete(exportFile); end
+% 	for tableID = 1:length(tableNames)
+% 		name = tableNames{tableID};
+% 		t = cell2table(tables.(name), 'variablenames', headers.(name));
+% 		writetable(t, exportFile, 'sheet', name);
+% 	end
 
-	% fclose(f);
+	fclose(f);
 end
