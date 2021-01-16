@@ -40,9 +40,13 @@ function viewAnalysis(analysis)
 	data.scores     = {'All', 'HIT+CR', 'MISS+FA', 'HIT+FA', 'MISS+CR'};
 	data.pageID     = 1;
 	data.subsetID   = 1;    % only for summary analysis
-	data.subsets = {'all', 'tonic', 'phasic', 'phasicSuppressing', ...
-		'phasicEnhancing', 'phasicNoChange'};
 	if strcmpi(data.analysis{1}.type, 'summary')
+		data.subsets = [{'All'}, data.analysis{1}.categories, ...
+			data.analysis{1}.subCategories, ...
+			...data.analysis{1}.subCategories2, ...
+			...data.analysis{1}.subCategories3, ...
+			];
+	
 		data.plotNames = {
 			'psth alt'
 			'psth corr alt'
@@ -2405,37 +2409,24 @@ function refreshPlot(fig, d)
 			levelsNogoStrdB, a.unitCountPerCond, 'uniformoutput', false);
 		unitCount = strjoin(unitCount, ', ');
 
-		if strcmpi(subset, 'all')
-			subsetInfo = 'Showing target responding units';
-		elseif strcmpi(subset, 'tonic')
-			subsetInfo = 'Showing tonic units';
-		elseif strcmpi(subset, 'phasic')
-			subsetInfo = 'Showing phasic units';
-		elseif strcmpi(subset, 'phasicSuppressing')
-			subsetInfo = 'Showing phasic suppressing units';
-		elseif strcmpi(subset, 'phasicEnhancing')
-			subsetInfo = 'Showing phasic enhancing units';
-		elseif strcmpi(subset, 'phasicNoChange')
-			subsetInfo = 'Showing phasic no-change units';
-		end
-		subsetInfo = [subsetInfo ' [\Uparrow\Downarrow], '];
+		subsetCount = sum(getSubset(a, a.units{1}, subset));
+		subsetInfo = sprintf('%s units (n=%d) [\\Uparrow\\Downarrow], ', ...
+			subset, subsetCount);
 
 		mtitle = sprintf(...
-			['%s analysis summary, %s, %d sessions, %d animals: %s\n' ...
-			'%d target responding (%d single, %d multi), %d tonic, ' ...
-			'%d phasic, %d phasic suppressing, %d phasic enhancing & ' ...
-			'%d phasic no-change units\n' ...
+			['%s, %s analysis summary, %d sessions, %d %s gerbils: %s\n' ...
+			...'%d target responding, %d tonic, %d phasic\n' ...
 			... 'Unit count per condition: %s\n' ...
 			'Plot %d/%d [\\uparrow\\downarrow], %s%s trials [1-5]'], ...
-			a.spikeConfig, plotTitle, sessionCount, ...
-			length(animalNames), animalInfo, ...
-			a.targetRespondingUnits, a.singleUnits, a.multiUnits, ...
-			a.tonicUnits, a.phasicUnits, a.phasicSuppressingUnits, ...
-			a.phasicEnhancingUnits, a.phasicNoChangeUnits, ...
+			plotTitle, a.spikeConfig, sessionCount, ...
+			length(animalNames), a.group, animalInfo, ...
+			... a.targetRespondingUnits, ...
+			... a.tonicUnits, a.phasicUnits, ...
 			... unitCount, ...
 			d.plotID, length(d.plotNames), ...
 			subsetInfo, d.scores{scoreID});
-		figtitle = sprintf('%s for %s, %s units', plotTitle, animalInfo, subset);
+		figtitle = sprintf('%s for %s gerbils, %s units', ...
+			plotTitle, a.group, subset);
 	else
 		mtitle = 'Unknown analysis type';
 		figtitle = mtitle;
@@ -2454,7 +2445,38 @@ function refreshPlot(fig, d)
 end
 
 % helper functions
-function markTarget(u, markPoke)
+function msk = getSubset(a, u, subset)
+% only for summary analysis
+	if strcmpi(subset, 'all')
+		msk = true(size(u.category{1,1}));
+	elseif any(strcmpi(subset, a.categories))
+		msk = strcmpi(subset, u.category{1,1});
+	elseif any(strcmpi(subset, a.subCategories))
+		msk = strcmpi(subset, u.subCategory{1,1});
+	elseif any(strcmpi(subset, a.subCategories2))
+		msk = strcmpi(subset, u.subCategory2{1,1});
+	elseif any(strcmpi(subset, a.subCategories3))
+		msk = strcmpi(subset, u.subCategory3{1,1});
+	else
+		error('Invalid subset');
+	end
+end
+
+function lines(xs, ys)
+	xlims = xlim();
+	ylims = ylim();
+	for x = xs
+		h = line([x x], [-1e10 1e10], 'linestyle', ':', 'color', [.6 .6 .6]);
+% 		uistack(h, 'bottom');
+	end
+	for y = ys
+		h = line([-1e10 1e10], [y y], 'linestyle', ':', 'color', [.6 .6 .6]);
+% 		uistack(h, 'bottom');
+	end
+	xlim(xlims);
+	ylim(ylims);
+end
+					
 	if nargin < 2
 		markPoke = true;
 	end
