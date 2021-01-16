@@ -2477,39 +2477,80 @@ function lines(xs, ys)
 	ylim(ylims);
 end
 					
+
+function markEpochs(u, darkPoke)
 	if nargin < 2
-		markPoke = true;
+		darkPoke = true;
 	end
 
-	targetRectColor = [0 0 .4 .08];
-	targetRectColor2 = targetRectColor .* [1 1 1 .5];
-	pokeRectColor = [0 .8 0 .15];
-% 	pokeRectColor = [216 229 141 130]/255;
+	targetColor = [204 235 246]/255;
+	targetColor2 = targetColor + (1-targetColor)*.5;
+% 	pokeColor = [0.35 0.73 0.28 .3];
+	pokeColor = [216 229 141 130]/255;
 
-	ylimits = ylim;
+	ylims = ylim;
 
 	% mark target without onset
 	rect = rectangle( ...
-		'position', [50e-3 -500 u.targetDuration-100e-3 1000], ...
-		'facecolor', targetRectColor2, ...
+		'position', [50e-3 -1e10 u.targetDuration-100e-3 2e10], ...
+		'facecolor', targetColor, ...
 		'linestyle', 'none');
 	uistack(rect, 'bottom');
 
 	% mark target duration
 	rect = rectangle( ...
-		'position', [0 -500 u.targetDuration 1000], ...
-		'facecolor', targetRectColor, 'linestyle', 'none');
+		'position', [0 -1e10 u.targetDuration 2e10], ...
+		'facecolor', targetColor2, 'linestyle', 'none');
 	uistack(rect, 'bottom');
 
-	if markPoke
+	if darkPoke
 		% mark poke
 		rect = rectangle( ...
-			'position', [-.35 -500 .1 1000], ...
-			'facecolor', pokeRectColor, 'linestyle', 'none');
+			'position', [-.35 -1e10 .1 2e10], ...
+			'facecolor', pokeColor, 'linestyle', 'none');
 		uistack(rect, 'bottom');
 	end
 
-	ylim(ylimits);
+	ylim(ylims);
+end
+
+
+function drawStim(u, snrID, ylims)
+	ycenter = mean(ylims);
+	targetColor = [103 200 229]/255;
+	maskerColor = [194 170 163]/255;
+	maskerHeight = diff(ylims) / 3;
+	
+	targetYLims = ycenter + (ylims-ycenter) * snrID / 3;
+	
+	targetH = fill([0, 50e-3, u.targetDuration-50e-3, ...
+		u.targetDuration, u.targetDuration-50e-3, 50e-3], ...
+		[ycenter, targetYLims(2), targetYLims(2), ...
+		ycenter, targetYLims(1), targetYLims(1)], ...
+		targetColor, 'edgecolor', 'none');
+	
+	if u.maskerLevel ~= 0	
+		maskerH1 = line(u.viewBounds, [ycenter ycenter], ...
+			'color', maskerColor, 'linewidth', 1.5);
+	
+		reps = diff(u.viewBounds)*10 + 1;
+		x = repmat([0 10e-3 40e-3 50e-3], reps, 1)' + ...
+			(u.viewBounds(1):100e-3:u.viewBounds(2)) - 45/380*100e-3;
+		x = x(:)';
+		x = [x flip(x(2:end-1))];
+		x(x>u.viewBounds(2)) = u.viewBounds(2);
+		y = repmat([0 1 1 0], 1, reps);
+		y = [y*maskerHeight -y(2:end-1)*maskerHeight] + ycenter;
+		maskerH2 = fill(x, y, maskerColor, 'edgecolor', 'none');
+	else
+% 		lines([], mean(ylims));
+	end
+	
+% 	if u.maskerLevel ~= 0
+% 		uistack(maskerH2, 'bottom');
+% 		uistack(maskerH1, 'bottom');
+% 	end
+% 	uistack(targetH, 'bottom');
 end
 
 
