@@ -1760,21 +1760,28 @@ function refreshPlot(fig, d)
 
 
 			% Vector strength as a function of level at 10 Hz
-			elseif strcmpi(plotName, 'vs 10')
-				plotTitle = 'Vector strength at 10 Hz';
+			elseif any(strcmpi(plotName, {'vs 10' 'vs 10 phase'}))
+				if contains(plotName, 'phase')
+					plotTitle = 'Vector phase at 10 Hz';
+					field = 'vs10Phase';
+				else
+					plotTitle = 'Vector strength at 10 Hz';
+					field = 'vs10';
+				end
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
-				intervalIDs = u.i.id.prePeriPost;
+% 				intervalIDs = u.i.id.during;
+				intervalIDs = u.i.id.all200;
 				ids = 1:length(intervalIDs);
-				freq = u.vsFreqs==10;
 				for condID = 1:u.condCount
 % 					if condID >= u.condCount-2; continue; end
 					if strcmpi(a.type, 'summary')
-						vs = squeeze(u.vs{condID,scoreID}(:,freq,intervalIDs));
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							vs = vs(msk,:);
+						vs = squeeze(u.i.(field){condID,scoreID}(:,intervalIDs));
+						msk = getSubset(a, u, subset);
+						vs = vs(msk,:);
+						if contains(plotName, 'phase')
+							vs = vs * 180 / pi;
 						end
 						avg = nanmean(vs, 1);
 						err = nansem(vs, 1);
@@ -1786,18 +1793,21 @@ function refreshPlot(fig, d)
 							'color', col, 'markerfacecolor', col, 'markersize', 4, ...
 							'linewidth', 1.5);
 					else
-						strength = u.vs{condID,scoreID}(freq,intervalIDs);
-						pval = u.vsPVal{condID,scoreID}(freq,intervalIDs);
+						vs = u.i.(field){condID,scoreID}(:,intervalIDs);
+						if contains(plotName, 'phase')
+							vs = vs * 180 / pi;
+						end
+						pval = u.i.vs10PVal{condID,scoreID}(:,intervalIDs);
 % 						zscore = [u.vsZScore{ ...
 % 							condID,scoreID}{:,freq}];
 						sig = pval < .001;
 % 						thr = abs(zscore) > 1;
-						plots(condID) = plot(ids, strength, ...
+						plots(condID) = plot(ids, vs, ...
 							'color', getColor(condID), ...
 							'linewidth', 2);
 % 						plot(intervalIDs(sig & ~thr), strength(sig & ~thr),'x',...
 % 							'color', getColor(condID));
-						plot(ids(sig), strength(sig), '*', ...
+						plot(ids(sig), vs(sig), '*', ...
 							'color', getColor(condID));
 					end
 				end
@@ -1813,8 +1823,13 @@ function refreshPlot(fig, d)
 				xlim([.9, ids(end)+.1]);
 				xticks(ids);
 				xticklabels(u.i.names(intervalIDs));
-				ylim([0,vectorUL]);
-				ylabel('Vector strength at 10 Hz');
+				if contains(plotName, 'phase')
+					ylim([-150,150]);
+					ylabel('Vector phase [\circ]');
+				else
+					ylim([0,vectorUL]);
+					ylabel('Vector strength at 10 Hz');
+				end
 				if strcmpi(a.type, 'summary')
 					loc = 'northeast';
 				else
@@ -1914,12 +1929,10 @@ function refreshPlot(fig, d)
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
 						% hack: showing average of all bins
-% 						vs = squeeze(mean(u.vs{condID,scoreID}, 2));
-						vs = squeeze(u.vs{condID,scoreID}(:,:,intervalID));
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							vs = vs(msk,:);
-						end
+% 						vs = squeeze(mean(u.i.vs{condID,scoreID}, 2));
+						msk = getSubset(a, u, subset);	
+						vs = squeeze(u.i.vs{condID,scoreID}(:,:,intervalID));
+						vs = vs(msk,:);
 						avg = nanmean(vs, 1);
 						err = nansem(vs, 1);
 
@@ -1935,8 +1948,8 @@ function refreshPlot(fig, d)
 						alpha(patches(condID), .2);
 
 					else
-						strength = u.vs{condID,scoreID}(:,intervalID);
-						pval     = u.vsPVal{condID,scoreID}(:,intervalID);
+						strength = u.i.vs{condID,scoreID}(:,intervalID);
+						pval     = u.i.vsPVal{condID,scoreID}(:,intervalID);
 						sig      = pval < .001;
 	% 					thr      = abs(zscore) > 1;
 						plots(condID) = plot(u.vsFreqs, strength, ...
