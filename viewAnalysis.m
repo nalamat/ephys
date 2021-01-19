@@ -1538,39 +1538,38 @@ function refreshPlot(fig, d)
 
 
 			% Neurometric d'
-			elseif strcmpi(plotName, 'dprime') || ...
-					strcmpi(plotName, 'dprime cqmean') || ...
-					strcmpi(plotName, 'dprime cqsum') || ...
-					strcmpi(plotName, 'dprime mqmean')
+			elseif strcmpi(plotName, 'dprime')
+% 					strcmpi(plotName, 'dprime cqmean') || ...
+% 					strcmpi(plotName, 'dprime cqsum') || ...
+% 					strcmpi(plotName, 'dprime mqmean')
 				dPrimeErr = [];
-				if strcmpi(plotName, 'dprime')
-					plotTitle = 'Neurometric d''';
-					dPrime = u.dPrime;
-				elseif strcmpi(plotName, 'dprime cqmean')
-					plotTitle = 'Neurometric d'' Cumulative Quadratic Mean';
-					dPrime = u.dPrimeCQMean;
-				elseif strcmpi(plotName, 'dprime cqsum')
-					plotTitle = 'Neurometric d'' Cumulative Quadratic Sum';
-					dPrime = u.dPrimeCQSum;
-				elseif strcmpi(plotName, 'dprime mqmean')
-					plotTitle = 'Neurometric d'' Moving Quadratic Mean';
-					dPrime = u.dPrimeMQMean;
-				end
+				plotTitle = 'Neurometric rate d''';
+% 				if strcmpi(plotName, 'dprime')
+% 					plotTitle = 'Neurometric d''';
+% 					dPrime = u.dPrime;
+% 				elseif strcmpi(plotName, 'dprime cqmean')
+% 					plotTitle = 'Neurometric d'' Cumulative Quadratic Mean';
+% 					dPrime = u.dPrimeCQMean;
+% 				elseif strcmpi(plotName, 'dprime cqsum')
+% 					plotTitle = 'Neurometric d'' Cumulative Quadratic Sum';
+% 					dPrime = u.dPrimeCQSum;
+% 				elseif strcmpi(plotName, 'dprime mqmean')
+% 					plotTitle = 'Neurometric d'' Moving Quadratic Mean';
+% 					dPrime = u.dPrimeMQMean;
+% 				end
 				sameYLim = true;
 
 				plots = zeros(u.condCount,1);
 				patches = zeros(u.condCount,1);
 				axis square tight;
 				for condID = 2:u.condCount
-					tab = u.psthCenters;
+					times = u.dPrimeTimes;
 
-					dp = dPrime{condID,scoreID};
+					dp = u.dPrime{condID,scoreID};
 					if strcmpi(a.type, 'summary')
 						dp = vertcat(dp);
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							dp = dp(msk, :);
-						end
+						msk = getSubset(a, u, subset);
+						dp = dp(msk, :);
 						avg = nanmean(dp, 1);
 						err = nansem(dp, 1);
 					else
@@ -1580,10 +1579,10 @@ function refreshPlot(fig, d)
 					if isempty(avg); continue; end
 
 					col = getColor(condID);
-					plots(condID) = plot(tab, avg, 'color', col, ...
+					plots(condID) = plot(times, avg, 'color', col, ...
 						'linewidth', 2);
 					if strcmpi(a.type, 'summary')
-						patches(condID) = patch([tab fliplr(tab)], ...
+						patches(condID) = patch([times fliplr(times)], ...
 							[avg+err fliplr(avg-err)], ...
 							col, 'edgecolor', 'none');
 						alpha(patches(condID), .2);
@@ -1603,30 +1602,24 @@ function refreshPlot(fig, d)
 
 				ylimits = ylim;
 
-				markTarget(u);
+				markEpochs(u);
 
-				xticks(u.viewBounds(1):1:u.viewBounds(2));
-% 				xticks(u.psthCenters(1:50:length(u.psthCenters)));
-% 				xticklabels(-1:.5:2);
+				xticks(u.viewBounds(1):u.viewBounds(2));
+				xlim(u.viewBounds);
 				if strcmpi(a.type, 'summary')
-					xlim([-.3, 1.3]);
-% 					ylim([0, 0.15]);
+					yticks(-1:.5:1);
+					ylim([-1.3 1.3]);
 				else
-% 					xlim(u.viewBounds);
-					xlim([-.3, 2]);
-% 					ylim(ylimits);
-% 					ylim([0 ylimits(2)]);
-% 					ylim([0 .3]);
+					yticks(-3:1:3);
+					ylim([-3 3]);
 				end
-				ylim([0 ylimits(2)]);
-				ylim([0, 0.15]);
-				sameYLim = false;
+				grid on;
 
-				ylabel('Sensitivity index (d'')');
-				xlabel('Time (s)');
+				ylabel('Neurometric rate d''');
+				xlabel('Time [s]');
 				msk = plots~=0;
 				legend(plots(msk), condsStr(msk), ...
-					'location', 'northwest');
+					'location', 'northeastoutside');
 				title(u.label);
 
 
