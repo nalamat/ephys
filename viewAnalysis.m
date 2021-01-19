@@ -1883,7 +1883,7 @@ function refreshPlot(fig, d)
 					end
 				end
 
-				markTarget(u);
+				markEpochs(u);
 
 				axis square tight;
 				if contains(plotName, 'phase')
@@ -2073,35 +2073,18 @@ function refreshPlot(fig, d)
 				title(u.label);
 
 
-			% Plot RLF
-			elseif strcmpi(plotName, 'rlf')
-				plotTitle = 'RLF';
-
-				for freqID = 1:length(u.targetFreqs)
-					rlf = u.rlf{freqID,scoreID};
-					rlf = [u.firingMean{1,scoreID}, rlf]; % Add nogo
-					plot(snrNogo, rlf, 'color', getColor(freqID));
-				end
-
-				axis square tight;
-				xticks(snrNogo);
-				xticklabels(snrNogoStr);
-				xlabel(snrLabel);
-				ylabel('Mean firing rate (1/s)');
-				if length(freqsStr) > 1
-					legend(freqsStrHz, 'location', 'northeastoutside');
-				end
-				title(u.label);
-
-
 			% Plot mean and max of firing rate
-			elseif strncmpi(plotName, 'firing', 6)
+			elseif strncmpi(plotName, 'firing', 6) || ...
+					any(strcmpi(plotName, {'dprime int'}))
 				if contains(plotName, 'max')
 					plotTitle = 'Maximum firing rate';
-					field = 'firingMax';
+					field = 'frMax';
 				elseif contains(plotName, 'mean')
 					plotTitle = 'Average firing rate';
-					field = 'firingMean';
+					field = 'frMean';
+				elseif contains(plotName, 'dprime')
+					plotTitle = 'Neurometric d''';
+					field = 'dPrime';
 				end
 				sameYLim = true;
 
@@ -2114,20 +2097,18 @@ function refreshPlot(fig, d)
 
 					if strcmpi(a.type,'summary')
 						col = colors2{unitID,end};
-						firing = cat(3, u.(field){condIDs,scoreID});
-						firing = squeeze(firing(:, u.i.id.peri, :));
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){1,scoreID}==true;
-							firing = firing(msk, :);
-						end
-						firing(isinf(firing)) = nan;
-						avg = nanmean(firing, 1);
-						err = nansem(firing, 1);
+						fr = cat(3, u.i.(field){condIDs,scoreID});
+						fr = squeeze(fr(:, u.i.id.peri, :));
+						msk = getSubset(a, u, subset);
+						fr = fr(msk, :);
+						fr(isinf(fr)) = nan;
+						avg = nanmean(fr, 1);
+						err = nansem(fr, 1);
 
 					else
 						col = getColor(freqID+2);
-						firing = cat(1, u.(field){condIDs,scoreID});
-						avg = firing(:,u.i.id.peri);
+						fr = cat(1, u.i.(field){condIDs,scoreID});
+						avg = fr(:,u.i.id.peri);
 						err = nan(size(avg));
 					end
 
@@ -2137,12 +2118,18 @@ function refreshPlot(fig, d)
 				end
 
 				axis square tight;
+				grid on;
 				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
 				xticks(snrNogo);
 				xticklabels(snrNogoStr);
 				xlabel(snrLabel);
-				ylim([0 4.5]);
-				ylabel([plotTitle ' [1/s]']);
+				if contains(plotName, 'dprime')
+					ylim([-2 2]);
+					ylabel('Neurometric d''');
+				else
+					ylim([0 4.5]);
+					ylabel([plotTitle ' [1/s]']);
+				end
 				if length(freqsStr) > 1
 					legend(plots, freqsStrHz, 'location', 'northeastoutside');
 				end
