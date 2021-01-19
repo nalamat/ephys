@@ -1841,10 +1841,8 @@ function refreshPlot(fig, d)
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
 						vs = u.(field){condID,scoreID};
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							vs = vs(msk,:);
-						end
+						msk = getSubset(a, u, subset);
+						vs = vs(msk,:);
 						if contains(plotName, 'phase')
 							vs = vs * 180 / pi;
 						end
@@ -1969,22 +1967,20 @@ function refreshPlot(fig, d)
 				sameYLim = true;
 
 				freqs = 9.5<=u.mtsFreqs & u.mtsFreqs<=10.5;
-				intervalIDs = u.i.id.prePeriPost;
+				intervalIDs = u.i.id.all;   % per/peri/post
 				ids = 1:length(intervalIDs);
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mts = u.mts{condID,scoreID}(:,freqs,intervalIDs);
+						mts = u.i.mts{condID,scoreID}(:,freqs,intervalIDs);
 						mts = 10*log10(mts);
 						mts = squeeze(mean(mts, 2)); % unit x interval
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							mts = mts(msk,:);
-						end
+						msk = getSubset(a, u, subset);
+						mts = mts(msk,:);
 						err = nansem(mts, 1);
 						mts = nanmean(mts, 1);
 					else
-						mts = u.mts{condID,scoreID}(freqs,intervalIDs);
+						mts = u.i.mts{condID,scoreID}(freqs,intervalIDs);
 						mts = 10*log10(mts);
 						mts = mean(mts, 1);
 						err = nan(size(mts));
@@ -2027,16 +2023,14 @@ function refreshPlot(fig, d)
 
 				for condID = 1:u.condCount
 					if strcmpi(a.type, 'summary')
-						mts = squeeze(u.mts{condID,scoreID}(:,:,intervalID));
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){condID,scoreID}==true;
-							mts = mts(msk, :);
-						end
+						mts = squeeze(u.i.mts{condID,scoreID}(:,:,intervalID));
+						msk = getSubset(a, u, subset);
+						mts = mts(msk, :);
 						mts = 10*log10(mts);
 						avg = nanmean(mts, 1);
 						err = nansem(mts, 1);
 					else
-						avg = 10*log10(u.mts{condID,scoreID}(:,intervalID));
+						avg = 10*log10(u.i.mts{condID,scoreID}(:,intervalID));
 					end
 					avg = avg - median(avg(20<u.mtsFreqs));
 					col = getColor(condID);
