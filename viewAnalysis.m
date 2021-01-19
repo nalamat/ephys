@@ -2302,37 +2302,37 @@ function refreshPlot(fig, d)
 
 				for freqID = 1:length(u.targetFreqs)
 					levelIDs = 1:length(u.targetLevels);
-					condIDs = [1, ... % add nogo
+					condIDs = [...1, ... % add nogo
 						(freqID-1)*length(u.targetLevels) + levelIDs+1];
 
 					if strcmpi(a.type,'summary')
 						col = colors2{unitID,end};
-						mutualInfo = cat(3, u.mutualInfo{condIDs,scoreID});
+						mutualInfo = cat(3, u.i.mutualInfo{condIDs,scoreID});
 						mutualInfo = squeeze(mutualInfo(:, u.i.id.peri, :));
-						if ~strcmpi(subset, 'all')
-							msk = u.(subset){1,scoreID}==true;
-							mutualInfo = mutualInfo(msk, :);
-						end
+						msk = getSubset(a, u, subset);
+						mutualInfo = mutualInfo(msk, :);
 						mutualInfo(isinf(mutualInfo)) = nan;
 						avg = nanmean(mutualInfo, 1);
 						err = nansem(mutualInfo, 1);
 
 					else
 						col = getColor(freqID+2);
-						avg = horzcat(u.mutualInfo{condIDs,scoreID});
+						mutualInfo = cat(3, u.i.mutualInfo{condIDs,scoreID});
+						mutualInfo = squeeze(mutualInfo(:, u.i.id.peri, :));
+						avg = mutualInfo;
 						err = nan(size(avg));
 					end
 
-					plots(freqID) = errorbar(snrNogo, avg, err, '-o', ...
+					plots(freqID) = errorbar(snr, avg, err, '-o', ...
 						'color', col, 'markerfacecolor', col, 'markersize', 4, ...
 						'linewidth', 1.5);
 				end
 
 				axis square tight;
 				grid on;
-				xlim([min(snrNogo)-2.5, max(snrNogo)+2.5]);
-				xticks(snrNogo);
-				xticklabels(snrNogoStr);
+				xlim([min(snr)-2.5, max(snr)+2.5]);
+				xticks(snr);
+				xticklabels(snrStr);
 				xlabel(snrLabel);
 				ylim([0, 1]);
 				ylabel('Mutual information');
