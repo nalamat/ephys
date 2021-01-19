@@ -370,6 +370,7 @@ function units = analyzeUnits(units)
 				
 				for intervalID = 1:u.i.count
 					mask = u.i.masks{intervalID};
+					bound = u.i.bounds(intervalID,:);
 					
 					% mean and max firing rate
 					u.i.frMean{condID,scoreID}(intervalID) = mean(psthMean(mask));
@@ -380,8 +381,9 @@ function units = analyzeUnits(units)
 					% flooring divides the rate appropriately to adjust for the
 					% #samples in a window
 					% isi: inter-spike-interval
+					
 					isi = cellfun(@(sp)diff( ...
-						sp(0<sp & sp<u.targetDuration) ), ...
+						sp(bound(1)<sp & sp<bound(2)) ), ...
 						spikeTimes, 'uniformoutput', false);
 					isi = [isi{:}];
 					lambda = floor(histogramFit(isi) / u.spikeDuration);
