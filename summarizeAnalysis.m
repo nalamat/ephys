@@ -219,6 +219,7 @@ function summarizeAnalysis(analysis, summaryFile, group)
 		u.corrP           = cc;  % p-value of correlation, function of time
 		u.autocorrR       = cc;  % running auto-correlation, function of time
 		u.autocorrP       = cc;  % p-value of correlation, function of time
+		u.decorrDPrime    = c1;  % decorrelation d' of onset300 vs poke300
 		u.i.corrR         = ci;  % per interval
 		u.i.corrP         = ci;  % per interval
 		u.i.autocorrR     = cii; % interval x interval
@@ -455,7 +456,21 @@ function summarizeAnalysis(analysis, summaryFile, group)
 						su.autocorrR{sCondID,scoreID}(sUnitID,:) = ...
 							u.autocorrR{uCondID,scoreID};
 						su.autocorrP{sCondID,scoreID}(sUnitID,:) = ...
-							u.corrP{uCondID,scoreID};
+							u.autocorrP{uCondID,scoreID};
+						
+						% decorrelation d' between poke300 and onset300
+						bound1 = u.i.bound.poke300;
+						bound2 = u.i.bound.onset300;
+						msk1 = bound1(1) <= u.corrTimes & u.corrTimes < bound1(2);
+						msk2 = bound2(1) <= u.corrTimes & u.corrTimes < bound2(2);
+						R1 = u.corrR{uCondID,scoreID}(msk1);
+						R2 = u.corrR{uCondID,scoreID}(msk2);
+						avg1 = nanmean(R1);
+						avg2 = nanmean(R2);
+						std1 = nanstd(R1);
+						std2 = nanstd(R2);
+						su.decorrDPrime{sCondID,scoreID}(sUnitID) = ...
+							(avg2 - avg1) ./ sqrt(.5 * (std1.^2 + std2.^2));
 						
 						% correlation per interval
 						su.i.corrR{sCondID,scoreID}(sUnitID,:) = ...
