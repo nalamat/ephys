@@ -1,13 +1,15 @@
 function exportSummary(summaryFile)
 	%% export summary file to excel format
+% 	summaryFile = 'results/Summary-Trained-Sorted.mat';
+% 	summaryFile = 'results/Summary-Naive-Sorted.mat';
 
 	if length(summaryFile)<4 || ~strcmpi(summaryFile(end-3:end), '.mat')
 		error('[exportSummary] Need a .mat file');
 	end
-	exportFile = [summaryFile(1:end-4) '.xlsx'];
-	exportFile2 = [summaryFile(1:end-4) '.csv'];
+% 	exportFile = [summaryFile(1:end-4) '.xlsx'];
+	exportFile = [summaryFile(1:end-4) '.csv'];
 
-	fprintf('Exporting as excel to %s\n', exportFile);
+	fprintf('Exporting as csv to %s\n', exportFile);
 
 	% only export active/passive MMR, not quiet
 	modes = {'Active', 'Passive'};
@@ -29,10 +31,11 @@ function exportSummary(summaryFile)
 % 		tables.(tableNames{tableID}) = {};
 % 	end
 
-	f = fopen(exportFile2, 'w');
-	fprintf(f, ['SubjectID,UnitID,Group,Category,SubCategory,' ...
+	f = fopen(exportFile, 'w');
+	fprintf(f, ['SubjectID,SessionID,UnitID,Group,Category,SubCategory,' ...
 		'Mode,TargetLevel,Score,Interval,' ...
-		'TER,TEP,dPrime,FRMean,FRMax,MutualInfo,' ...
+		'BehavDPrime,RateDPrime,DecorrDPrime,' ...
+		'TER,TEP,FRMean,FRMax,MutualInfo,' ...
 		'VS10,VS10Phase,VS10PVal,MTS10,CorrR,CorrP\n']);
 
 	% load summary analysis
@@ -43,9 +46,6 @@ function exportSummary(summaryFile)
 	for modeID = 1:length(modes)
 		mode = modes{modeID};
 		u = a.units{modeID};
-		centers = u.psthCenters;
-		time = centers(0<=centers & centers<u.targetDuration);
-		time = time(1:round(50e-3/u.psthBin):end);
 
 		for condID = 1:u.condCount
 			levelID = condID-1;
@@ -59,27 +59,29 @@ function exportSummary(summaryFile)
 				% passive recordings don't have a score
 				if modeID~=1 && scoreID>1; continue; end
 
-				unitIDs = u.unitIDs{condID,scoreID};
 				if condID == 1
 					score = scoresNogo{scoreID};
 				else
 					score = scoresGo{scoreID};
 				end
 
-				for i = 1:length(unitIDs)
-					subjectID   = u.animalNames{condID,scoreID}{i}; % subjectID
-					unitID      = unitIDs(i);
+				for i = 1:length(u.unitIDs)
+					subjectID   = u.animalNames{i};
+					sessionID   = u.sessionIDs(i);
+					unitID      = u.unitIDs(i);
 					group       = u.group;
-					category    = u.category{condID,scoreID}{i};
-					subCategory = u.subCategory{condID,scoreID}{i};
+					category    = u.category{i};
+					subCategory = u.subCategory{i};
 
 					% for onset/peri/offset/perifull
 					for intervalID = 1:u.i.count
 						intervalName = u.i.names{intervalID};
 
+						behavDP = u.dPrimeBehavior{condID}(i);
+						rateDP = u.i.dPrime{condID,scoreID}(i,intervalID);
+						decorrDP = u.decorrDPrime{condID,scoreID}(i);
 						ter = u.i.ter{condID,scoreID}(i,intervalID);
 						tep = u.i.tep{condID,scoreID}(i,intervalID);
-						dp = u.i.dPrime{condID,scoreID}(i,intervalID);
 						firingMean = u.i.frMean{condID,scoreID}(i,intervalID);
 						firingMax = u.i.frMax{condID,scoreID}(i,intervalID);
 						mutualInfo = u.i.mutualInfo{condID,scoreID}(i,intervalID);
@@ -97,13 +99,15 @@ function exportSummary(summaryFile)
 % 							ter tep dp firingMean firingMax mutualInfo ...
 % 							vs10 vs10Phase vs10PVal mts10 corrR corrP};
 						
-						fprintf(f, ['%s,%d,%s,%s,%s,' ...
+						fprintf(f, ['%s,%d,%d,%s,%s,%s,' ...
 							'%s,%d,%s,%s,' ...
-							'%d,%d,%d,%d,%d,%d, ' ...
+							'%d,%d,%d,' ...
+							'%d,%d,%d,%d,%d,' ...
 							'%d,%d,%d,%d,%d,%d\n'], ...
-							subjectID, unitID, group, category, subCategory, ...
+							subjectID, sessionID, unitID, group, category, subCategory, ...
 							mode, level, score, intervalName, ...
-							ter, tep, dp, firingMean, firingMax, mutualInfo, ...
+							behavDP, rateDP, decorrDP, ...
+							ter, tep, firingMean, firingMax, mutualInfo, ...
 							vs10, vs10Phase, vs10PVal, mts10, corrR, corrP);
 					end
 				end
