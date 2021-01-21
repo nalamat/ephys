@@ -191,9 +191,24 @@ function summarizeAnalysis(analysis, summaryFile, group)
 		u.mtsFreqs           = u1.mtsFreqs;
 		u.mtsFreqs10         = u1.mtsFreqs10;
 		u.label              = recordingModeLabels{modeID};
+		
+		cc = cell(s.allUnits, 1);
+		cn = nan(s.allUnits, 1);
+		
+		u.animalNames     = cc;
+		u.sessionIDs      = cn;
+		u.unitIDs         = cn;
+		u.unitTypes       = cc;   % single/multi
+		u.phasic          = cn;
+		u.tonic           = cn;
+		u.category        = cc;   % phasic/tonic
+		u.subCategory     = cc;   % suppressing/enhancing
+% 		u.subCategory2    = cc;   % onset/offset/sustained
+% 		u.subCategory3    = cc;   % onset/offset/sustained
 
 		c    = cell(u.condCount, 5); % {conds x scores}
 		init = @(sz)cellfun(@(c){nan(sz)}, c);
+		c1   = init([s.allUnits, 1]);
 		ct   = init([s.allUnits, length(u.psthCenters)]);
 		cdp  = init([s.allUnits, length(u.dPrimeTimes)]);
 		cc   = init([s.allUnits, length(u.corrTimes)]);
@@ -203,17 +218,9 @@ function summarizeAnalysis(analysis, summaryFile, group)
 		cv2  = init([s.allUnits, length(u.vs10Times)]);
 		cm   = init([s.allUnits, length(u.mtsFreqs), u.i.count]);
 		cl   = init([s.allUnits, u.lfpBandCount, 3]);
+		cb   = cellfun(@(c){nan(s.allUnits,1)}, cell(u.condCount,1));
 
-		u.animalNames     = c;
-		u.sessionIDs      = c;
-		u.unitIDs         = c;
-		u.unitTypes       = c;   % single/multi
-		u.phasic          = c;
-		u.tonic           = c;
-		u.category        = c;   % phasic/tonic
-		u.subCategory     = c;   % suppressing/enhancing
-		u.subCategory2    = c;   % onset/offset/sustained
-		u.subCategory3    = c;   % onset/offset/sustained
+		u.dPrimeBehavior  = cb;
 		u.psth            = ct;  % function of time
 		u.corrR           = cc;  % running correlation, function of time
 		u.corrP           = cc;  % p-value of correlation, function of time
@@ -228,12 +235,11 @@ function summarizeAnalysis(analysis, summaryFile, group)
 		u.i.tep           = ci;  % per interval
 		u.dPrime          = cdp; % rate d' as function of time
 		u.i.dPrime        = ci;  % rate d' for each interval
-		u.dPrimeBehavior  = cell(s.condCount,1);
 		u.i.frMax         = ci;  % per interval
 		u.i.frMean        = ci;  % per interval
 		u.i.mutualInfo    = ci;  % per interval
-		u.mfsl            = c;
-		u.mfslPhase       = c;
+		u.mfsl            = c1;
+		u.mfslPhase       = c1;
 		u.i.vs            = cv;  % vector strength: frequency x interval
 		u.i.vsPhase       = cv;  % frequency x interval
 		u.i.vsPVal        = cv;  % frequency x interval
@@ -420,6 +426,21 @@ function summarizeAnalysis(analysis, summaryFile, group)
 				a = calculatePerformance(a);
 				u = a.units{unitID};            % unpack original analysis unit
 				su = s.units{modeID};           % unpack summary unit
+				
+				% keep a list of summarized animal names & unit IDs
+				% (different unit numbering scheme)
+				su.animalNames{sUnitID} = a.animalName;
+				su.sessionIDs(sUnitID)  = sessionID;
+				su.unitIDs(sUnitID)     = sUnitID;
+				su.unitTypes{sUnitID}   = u.type;
+				% does unit respond to masker?
+				su.tonic(sUnitID) = ~phasic;
+				su.phasic(sUnitID) = phasic;
+				su.category{sUnitID} = category;
+				su.subCategory{sUnitID} = subCategory;
+% 				su.subCategory2{sUnitID} = subCategory2;
+% 				su.subCategory3{sUnitID} = subCategory3;
+				
 				for uCondID = 1:u.condCount
 					% map condition ID from unit to summary
 					sCondID = mapCondID(uCondID, u, s);
@@ -427,23 +448,16 @@ function summarizeAnalysis(analysis, summaryFile, group)
 					% skip if a particular condition is not included in the
 					% summary analysis
 					if sCondID==0; continue; end
+					
+					if modeID==1
+						s.unitCountPerCond{sCondID} = s.unitCountPerCond{sCondID} + 1;
+					end
+					
+					su.dPrimeBehavior{sCondID}(sUnitID) = ...
+						a.dPrimeBehavior{uCondID};
 
 					for scoreID = 1:5
-						% keep a list of summarized animal names & unit IDs
-						% (different unit numbering scheme)
-						su.animalNames{sCondID,scoreID}{sUnitID} = a.animalName;
-						su.sessionIDs{sCondID,scoreID}(sUnitID) = sessionID;
-						su.unitIDs{sCondID,scoreID}(sUnitID) = sUnitID;
-						su.unitTypes{sCondID,scoreID}{sUnitID} = u.type;
-
-						% does unit respond to masker?
-						su.tonic{sCondID,scoreID}(sUnitID) = ~phasic;
-						su.phasic{sCondID,scoreID}(sUnitID) = phasic;
-						su.category{sCondID,scoreID}{sUnitID} = category;
-						su.subCategory{sCondID,scoreID}{sUnitID} = subCategory;
-% 						su.subCategory2{sCondID,scoreID}{sUnitID} = subCategory2;
-% 						su.subCategory3{sCondID,scoreID}{sUnitID} = subCategory3;
-
+						
 						% psth
 						su.psth{sCondID,scoreID}(sUnitID,:) = ...
 							u.psthMean{uCondID,scoreID};
@@ -567,15 +581,6 @@ function summarizeAnalysis(analysis, summaryFile, group)
 							su.lfp{sCondID,scoreID}(sUnitID,:,:) = nan;
 						end
 					end
-
-					if any(isnan(u.psthMean{uCondID,1})); continue; end
-
-					if modeID==1
-						s.unitCountPerCond{sCondID} = s.unitCountPerCond{sCondID} + 1;
-					end
-
-					su.dPrimeBehavior{sCondID}(sUnitID,:) = ...
-						a.dPrimeBehavior{uCondID};
 				end
 
 				s.units{modeID} = su;    % repack summary unit
