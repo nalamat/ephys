@@ -1,8 +1,8 @@
 function a = calculatePerformance(a)
-	a.dPrimeBehavior = cell(1,a.condCount);
+	a.behavDP = cell(1,a.condCount);
 	
 	if strcmpi(a.experimentMode, 'passive')
-		a.dPrimeBehavior(:) = {0};
+		a.behavDP(:) = {0};
 		return;
 	elseif strcmpi(a.experimentMode, 'poke training')
 		fa = sum([a.trialLog.targetLevel] == 0 & strcmpi({a.trialLog.score}, 'hit'));
@@ -13,14 +13,14 @@ function a = calculatePerformance(a)
 	end
 	if fa+cr == 0
 		warning('[calculatePerformance] No nogo trials')
-		a.dPrimeBehavior(:) = {0};
+		a.behavDP(:) = {0};
 		return;
 	end
 	faRate = fa / (fa+cr);
 	faRate = max(.05, faRate);
 	faRate = min(.95, faRate);
 	faZ = erfinv(1-2*(1-faRate))*sqrt(2);  % z-score
-	a.dPrimeBehavior{1} = 0;
+	a.behavDP{1} = 0;
 	
 	for condID = 2:a.condCount
 		freqID  = floor((condID-2) / length(a.targetLevels)) + 1;
@@ -40,6 +40,6 @@ function a = calculatePerformance(a)
 		
 		dPrime  = hitZ - faZ;
 		
-		a.dPrimeBehavior{condID} = dPrime;
+		a.behavDP{condID} = dPrime;
 	end
 end
