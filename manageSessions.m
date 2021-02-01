@@ -245,7 +245,7 @@ function btnCallback(btn, ~)
 				% save extracted spikes to its appropriate file
 				file = s.(['file' d.spikeConfig]);
 				fprintf('Saving to %s\n', file);
-				save(file, '-struct', 'mat', '-v7.3');
+				save(file, '-struct', 'mat');
 				
 				% update sessions list
 				s.(['extracted' d.spikeConfig]) = mat.extracted;
@@ -292,6 +292,7 @@ function btnCallback(btn, ~)
 			end
 			
 			overwrite = '';
+			tic;
 			for i = 1:length(sessionIDs)
 				sessionID = sessionIDs(i);
 				s = d.sessions{sessionID}; % unpack
@@ -340,7 +341,7 @@ function btnCallback(btn, ~)
 				
 				% save extracted spikes to its appropriate file
 				fprintf('Saving to %s\n', file);
-				save(file, '-struct', 'mat', '-append');
+				save(file, '-struct', 'mat');
 				
 				% update sessions list
 				s.(['analyzed' d.spikeConfig]) = mat.analyzed;
@@ -348,6 +349,7 @@ function btnCallback(btn, ~)
 				
 				d = updateSessionList(d);
 			end
+			toc
 			
 			fprintf('Done analyzing\n');
 			if exist('notify'); notify('Done analyzing'); end
