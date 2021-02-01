@@ -9,6 +9,13 @@ function units = analyzeUnits(units)
 %             {conds x scores}{trials}(spike times)
 %         lfp (nested cell array): RMS of LFP bands,
 %             {conds x scores}(bands x pre/per/post x trials)
+%
+% Notes: each unit has two structs, `i` and `t`.
+% `i` stands for interval, and contains parameters and metrics pertaining
+% to each time interval defined based on particular events such as nose
+% poke, tone onset, offset, etc.
+% `t` stands for trial, and contains metrics calculated per trial (PSTH),
+% and possibly also per interval (VS or MTS).
 
 	if ~iscell(units)
 		single = true;
@@ -17,7 +24,7 @@ function units = analyzeUnits(units)
 		single = false;
 	end
 
-	for unitID = 1:length(units)
+	parfor unitID = 1:length(units)
 		u = units{unitID};   % unpack
 
 		% few basic parameters for analysis
@@ -26,10 +33,9 @@ function units = analyzeUnits(units)
 		u.psthCenters    = u.viewBounds(1) : u.psthBin : u.viewBounds(2);
 		u.psthEdges      = u.viewBounds(1)-u.psthBin/2 : u.psthBin : ...
 			u.viewBounds(2)+u.psthBin/2;
-		psthBinCount     = length(u.psthCenters);
 		
-		u.dPrimeBin      = u.psthBin;
-		u.dPrimeTimes    = 0 : u.dPrimeBin : u.viewBounds(2);
+		u.rateDPBin      = u.psthBin;
+		u.rateDPTimes    = 0 : u.rateDPBin : u.viewBounds(2);
 		
 		% running pearson's correlation between nogo and go
 		u.corrWindow = 300e-3;
@@ -121,20 +127,25 @@ function units = analyzeUnits(units)
 % 		u.svmTimes       = 10e-3:10e-3:1;
 % 		u.svmScores      = [];
 
-		% clear everything, in case the unit has been already analyzed once
-		c    = cell(u.condCount, 5); % {conds x scores}
-		init = @(sz1, sz2)cellfun(@(c){nan(sz1, sz2)}, c);
-		c1   = init(1, 1);
-		ct   = init(1, length(u.psthCenters));
-		cdp  = init(1, length(u.dPrimeTimes));
-		cc   = init(1, length(u.corrTimes));
-		ci   = init(1, u.i.count);
-		cii  = init(u.i.count, u.i.count);
-		cv   = init(length(u.vsFreqs), u.i.count);
-		cv2  = init(1, length(u.vs10Times));
-		cm   = init(length(u.mtsFreqs), u.i.count);
-		u.psth           = init(0, length(u.psthCenters)); % per trial
-		u.psthMean       = ct;  % average firing rate versus time
+		% initialize and preallocate all metrics with NaNs
+		c     = cell(u.condCount, 5); % {conds x scores}
+		initt = @(sz1, sz2)cellfun(@(c, sp){nan(length(sp), sz1, sz2)}, ...
+			c, u.spikeTimes);      % per trial
+		init  = @(sz1, sz2)cellfun(@(c){nan(sz1, sz2)}, c);
+		c1    = init(1, 1);
+		cpt   = initt(length(u.psthCenters), 1);
+		ct    = init(1, length(u.psthCenters));
+		cdp   = init(1, length(u.rateDPTimes));
+		cc    = init(1, length(u.corrTimes));
+		cit   = initt(u.i.count, 1);
+		ci    = init(1, u.i.count);
+		cii   = init(u.i.count, u.i.count);
+		cv    = init(length(u.vsFreqs), u.i.count);
+		cv2   = init(1, length(u.vs10Times));
+		cmt   = initt(length(u.mtsFreqs), u.i.count);
+		cm    = init(length(u.mtsFreqs), u.i.count);
+		u.t.psth         = cpt; % firing versus time per trial
+		u.psth           = ct;  % average firing rate versus time
 		u.psthSTD        = ct;  % standard deviation of firing versus time
 		u.corrR          = cc;  % running correlation ref. nogo vs. time
 		u.corrP          = cc;  % p-value of correlation versus time
@@ -143,9 +154,10 @@ function units = analyzeUnits(units)
 		u.i.corrR        = ci;  % correlation ref. nogo per interval
 		u.i.corrP        = ci;  % p-value of correlation per interval
 		u.i.autocorrR    = cii; % auto-correlation between all interval pairs
-		u.i.autocorrP    = cii; % 
-		u.dPrime         = cdp; % neurometric rate d' as a function of time
-		u.i.dPrime       = ci;  % neurometric rate d' per interval
+		u.i.autocorrP    = cii; % p-value of autocorrelation
+		u.corrDP         = c1;  % decorrelation d' between poke and onset
+		u.rateDP         = cdp; % neurometric rate d' as a function of time
+		u.i.rateDP       = ci;  % neurometric rate d' per interval
 		u.i.lambda       = ci;  % est. lambda of poisson process per interval
 		u.i.mutualInfo   = ci;  % mutual info relative to nogo per interval
 		u.i.frMean       = ci;  % average firing rate per interval
@@ -162,8 +174,11 @@ function units = analyzeUnits(units)
 		u.vs10           = cv2; % running vector strength @ 10hz versus time
 		u.vs10Phase      = cv2; % phase of running VS @ 10hz versus time
 		u.vs10PVal       = cv2; % p values of running VS at 10hz versus time
-		u.i.mts          = cm;  % multi-taper spectrum: frequency x interval
-		u.i.mts10        = ci;  % mts @ 10hz per interval (same as above)
+		u.i.mts          = cm;  % multi-taper spectrum: freq x interval
+		u.i.mtsSTD       = cm;  % standard deviation of mts: freq x interval
+		u.i.mts10        = ci;  % mts @ 10hz: interval
+		u.i.mts10STD     = ci;  % standard deviation of mts @ 10hz: interval
+		u.i.mts10DP      = ci;  % d' of mts @ 10hz: interval
 		if isfield(u, 'lfp')
 			% {conds x scores}[bands x bins]
 			cl = init(u.lfpBandCount, 3);
@@ -189,19 +204,19 @@ function units = analyzeUnits(units)
 
 				if trials == 0; continue; end
 
-				psth = zeros(trials, psthBinCount);
+				tpsth = zeros(trials, length(u.psthCenters)); % per trial
 				for trialID = 1:trials
 					hist = histcounts(spikeTimes{trialID}, u.psthEdges);
 					% this smoothing filter is non-causal and may cause the
 					% neural response to spread backwards before an event
-					psth(trialID, :) = conv(hist, u.psthWindow, 'same');
+					tpsth(trialID, :) = conv(hist, u.psthWindow, 'same');
 				end
 
-				psthMean = mean(psth, 1);
-				psthSTD = std(psth, 0, 1);
+				psth    = mean(tpsth, 1);
+				psthSTD = std(tpsth, 0, 1);
 
-				u.psth{condID,scoreID} = psth;
-				u.psthMean{condID,scoreID} = psthMean;
+				u.t.psth{condID,scoreID}  = tpsth;
+				u.psth{condID,scoreID}    = psth;
 				u.psthSTD{condID,scoreID} = psthSTD;
 				
 				% running pearson's correlation between go and nogo versus time
@@ -216,7 +231,7 @@ function units = analyzeUnits(units)
 						% center aligned window
 						win = time - u.corrWindow/2 <= u.psthCenters & ...
 							u.psthCenters < time + u.corrWindow/2;
-						[r, p] = corrcoef(u.psthMean{1,1}(win), psthMean(win));
+						[r, p] = corrcoef(u.psth{1,1}(win), psth(win));
 						R(timeID) = r(1,2);
 						P(timeID) = p(1,2);
 					end
@@ -225,11 +240,11 @@ function units = analyzeUnits(units)
 				u.corrP{condID,scoreID} = P;
 				
 				% running auto-correlation in reference to pre300 versus time
-				psthPre300 = psthMean(u.i.mask.pre300);
+				psthPre300 = psth(u.i.mask.pre300);
 				for timeID = 1:length(u.corrTimes)
 					% center aligned window
 					win = timeID:timeID+length(psthPre300)-1;
-					[r, p] = corrcoef(psthPre300, psthMean(win));
+					[r, p] = corrcoef(psthPre300, psth(win));
 					u.autocorrR{condID,scoreID}(timeID) = r(1,2);
 					u.autocorrP{condID,scoreID}(timeID) = p(1,2);
 				end
@@ -245,7 +260,7 @@ function units = analyzeUnits(units)
 					P = ones(size(u.i.names));
 					for intervalID = 1:u.i.count
 						mask = u.i.masks{intervalID};
-						[r, p] = corrcoef(u.psthMean{1,1}(mask), psthMean(mask));
+						[r, p] = corrcoef(u.psth{1,1}(mask), psth(mask));
 						R(intervalID) = r(1,2);
 						P(intervalID) = p(1,2);
 					end
@@ -256,10 +271,10 @@ function units = analyzeUnits(units)
 				% auto-correlation per all interval pairs (if same length)
 				for intervalID1 = 1:u.i.count
 					mask1 = u.i.masks{intervalID1};
-					psth1 = u.psthMean{condID,scoreID}(mask1);
+					psth1 = u.psth{condID,scoreID}(mask1);
 					for intervalID2 = 1:u.i.count
 						mask2 = u.i.masks{intervalID2};
-						psth2 = u.psthMean{condID,scoreID}(mask2);
+						psth2 = u.psth{condID,scoreID}(mask2);
 						if length(psth1) == length(psth2)
 							[r, p] = corrcoef(psth1, psth2);
 							u.i.autocorrR{condID,scoreID}(intervalID1,intervalID2) = r(1,2);
@@ -270,16 +285,16 @@ function units = analyzeUnits(units)
 
 				% calculate neurometric dprime for each PSTH bin in
 				% reference to Nogo (both CR and FA)
-% 				if ~any(isnan(u.psthMean{1,1}))
+% 				if ~any(isnan(u.psth{1,1}))
 				if condID == 1 && scoreID == 1
-					u.dPrime  {condID,scoreID} = zeros(size(u.dPrimeTimes));
-					u.i.dPrime{condID,scoreID} = zeros(1, u.i.count);
+					u.rateDP  {condID,scoreID} = zeros(size(u.rateDPTimes));
+					u.i.rateDP{condID,scoreID} = zeros(1, u.i.count);
 					
 				else
-					for i = 1:length(u.dPrimeTimes)
-						t = u.dPrimeTimes(i);
+					for i = 1:length(u.rateDPTimes)
+						t = u.rateDPTimes(i);
 						if t == 0
-							u.dPrime{condID,scoreID}(i) = 0;
+							u.rateDP{condID,scoreID}(i) = 0;
 							continue;
 						end
 						frGo = zeros(size(spikeTimes));
@@ -297,34 +312,34 @@ function units = analyzeUnits(units)
 						avgNogo = mean(frNogo);
 						errGo = std(frGo);
 						errNogo = std(frNogo);
-						u.dPrime{condID,scoreID}(i) = ...
+						u.rateDP{condID,scoreID}(i) = ...
 							(avgGo - avgNogo) / (.5 * (errGo + errNogo));
 					end
 					
 					% old d' metrics
-% 					dPrime = (psthMean - u.psthMean{1,1}) ./ ...
+% 					dPrime = (psthMean - u.psth{1,1}) ./ ...
 % 						((psthSTD + u.psthSTD{1,1}) / 2);
 % 					dPrime(dPrime>4) = 4;
 % 					dPrime(dPrime<-4) = -4;
 % 					dPrime(isnan(dPrime)) = 0;
-% 					u.dPrime{condID,scoreID} = dPrime;
+% 					u.rateDP{condID,scoreID} = dPrime;
 % 
 % 					% cumulative quadratic mean of d'
 % 					cqMean = sqrt(cumsum(dPrime.^2) ./ ...
 % 						(1:length(dPrime)));
 % 					pre = find(u.psthCenters < 0);
 % 					cqMean = cqMean - cqMean(pre(end));
-% 					u.dPrimeCQMean{condID,scoreID} = cqMean;
+% 					u.rateDPCQMean{condID,scoreID} = cqMean;
 % 
 % 					% cumulative sum of squares
 % 					cqSum = sqrt(cumsum(dPrime.^2));
 % 					pre = find(u.psthCenters < 0);
 % 					cqSum = cqSum - cqSum(pre(end));
-% 					u.dPrimeCQSum{condID,scoreID} = cqSum;
+% 					u.rateDPCQSum{condID,scoreID} = cqSum;
 % 
 % 					% quadratic mean of d' in 50ms bins
 % 					mqMean = sqrt(movmean(dPrime.^2, 50e-3/u.psthBin));
-% 					u.dPrimeMQMean{condID,scoreID} = mqMean;
+% 					u.rateDPMQMean{condID,scoreID} = mqMean;
 
 					for intervalID = 1:u.i.count
 						bound = u.i.bounds(intervalID,:);
@@ -344,12 +359,12 @@ function units = analyzeUnits(units)
 						avgNogo = mean(frNogo);
 						errGo = std(frGo);
 						errNogo = std(frNogo);
-						u.i.dPrime{condID,scoreID}(intervalID) = ...
+						u.i.rateDP{condID,scoreID}(intervalID) = ...
 							(avgGo - avgNogo) / (.5 * (errGo + errNogo));
 						
 						% old d' metric
 						% quadratic mean for different intervals: pre/onset/peri ...
-% 						u.i.dPrime{condID,scoreID}(intervalID) = ...
+% 						u.i.rateDP{condID,scoreID}(intervalID) = ...
 % 							sqrt(mean(dPrime(u.i.masks{intervalID}).^2));
 					end
 
@@ -373,9 +388,9 @@ function units = analyzeUnits(units)
 					bound = u.i.bounds(intervalID,:);
 					
 					% mean and max firing rate
-					u.i.frMean{condID,scoreID}(intervalID) = mean(psthMean(mask));
-					u.i.frMax {condID,scoreID}(intervalID) = max (psthMean(mask));
-					u.i.frSTD {condID,scoreID}(intervalID) = std (psthMean(mask));
+					u.i.frMean{condID,scoreID}(intervalID) = mean(psth(mask));
+					u.i.frMax {condID,scoreID}(intervalID) = max (psth(mask));
+					u.i.frSTD {condID,scoreID}(intervalID) = std (psth(mask));
 					
 					% calculate the mean spiking rate "lambda"
 					% flooring divides the rate appropriately to adjust for the
@@ -410,7 +425,7 @@ function units = analyzeUnits(units)
 
 				% minimum first spike latency (MFSL) peri-stimulus
 				% assume no two peaks within 2*psthBin
-				[~,locs] = findpeaks(u.psthMean{condID,scoreID}(u.i.mask.periFull));
+				[~,locs] = findpeaks(u.psth{condID,scoreID}(u.i.mask.periFull));
 % 					'minpeakdistance',5);
 				if ~isempty(locs)
 					psthCentersPeri = u.psthCenters(u.i.mask.periFull);
@@ -467,16 +482,63 @@ function units = analyzeUnits(units)
 					u.i.vs10PVal{condID,scoreID}(intervalID) = ...
 						u.i.vsPVal{condID,scoreID}(freqID,intervalID);
 	
+					% use bootstrapping to calculate multi-taper spectrum (MTS)
+					% mean and STD across trials, per each frequency and interval
+					spikes = u.spikeTimes{condID,scoreID};
+					spikes = cellfun(@(sp)sp(bounds(1)<=sp & sp<bounds(2)), ...
+						spikes, 'un', 0);
+					m = min([spikes{:}]);
+					spikes = cellfun(@(sp)sp - m, spikes, 'un', 0);
+					
 					% multi-taper spectrum at different frequencies, per interval
-					if length(spikeTimesInterval)>10
-						mts = mtspectrumpt(spikeTimesInterval - ...
-							min(spikeTimesInterval), u.mtsParams)';
-						if length(mts) == length(u.mtsFreqs)
-							u.i.mts{condID,scoreID}(:,intervalID) = mts;
-							% mts only @ 10hz (within a band of 1hz)
-							u.i.mts10{condID,scoreID}(intervalID) = ...
-								mean(mts(u.mtsFreqs10));
+% 					if length(spikeTimesInterval)>10
+% 						mts = mtspectrumpt(spikeTimesInterval - ...
+% 							min(spikeTimesInterval), u.mtsParams)';
+% 						mts = 10*log10(mts); % convert to dB
+% 						if length(mts) == length(u.mtsFreqs)
+% 							u.i.mts{condID,scoreID}(:,intervalID) = mts;
+% 							% mts only @ 10hz (within a band of 1hz)
+% 							u.i.mts10{condID,scoreID}(intervalID) = ...
+% 								mean(mts(u.mtsFreqs10));
+% 						end
+% 					end
+					
+					rng(1); % random seed
+					reps = 20;
+					n = ceil(trials / 2);
+					mts = nan(reps, length(u.mtsFreqs));
+					mtsParams = u.mtsParams;
+					mtsFreqs = u.mtsFreqs;
+					for i = 1:reps
+						sample = datasample(spikes, n);
+						sample = [sample{:}];
+						if length(sample) > 10
+							mts_i = mtspectrumpt(sample, mtsParams)' / n;
+							mts_i = 10*log10(mts_i); % convert to dB
+							if length(mts_i) == length(mtsFreqs)
+								mts(i,:) = mts_i;
+							end
 						end
+					end
+					
+					u.i.mts{condID,scoreID}(:,intervalID) = nanmean(mts, 1);
+					u.i.mtsSTD{condID,scoreID}(:,intervalID) = nanstd(mts, 1);
+					
+					mts10 = nanmean(mts(:,u.mtsFreqs10), 2);
+					u.i.mts10{condID,scoreID}(intervalID) = nanmean(mts10, 1);
+					u.i.mts10STD{condID,scoreID}(intervalID) = nanstd(mts10, 1);
+					
+					% mts d'
+					if condID == 1 && scoreID == 1
+						u.i.mts10DP{1,1}(intervalID) = 0;
+					else
+						avg1 = u.i.mts10{1,1}(intervalID);
+						avg2 = u.i.mts10{condID,scoreID}(intervalID);
+						std1 = u.i.mts10STD{1,1}(intervalID);
+						std2 = u.i.mts10STD{condID,scoreID}(intervalID);
+						dp = (avg2 - avg1) / ((std1 + std2)/2);
+						if isinf(dp); dp = nan; end
+						u.i.mts10DP{condID,scoreID}(intervalID) = dp;
 					end
 					
 				end % intervalID
